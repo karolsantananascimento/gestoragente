@@ -121,7 +121,8 @@
       <span class="lbl">Consultar agora (sem IA):</span>
       <button type="button" class="ghost" data-q="contas">Contas do Meta</button>
       <button type="button" class="ghost" data-q="campanhas">Campanhas do Meta</button>
-      <button type="button" class="ghost" data-q="desempenho">Desempenho 7 dias</button>
+      <button type="button" class="ghost" data-q="desempenho">Desempenho</button>
+      <select id="perSel" title="Período do desempenho"><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="last_7d" selected>7 dias</option><option value="last_14d">14 dias</option><option value="last_30d">30 dias</option><option value="this_month">Este mês</option><option value="last_month">Mês passado</option></select>
     </div>
     <form id="form">
       <textarea id="input" rows="2" placeholder="Ex.: analisa a conta do Google 123-456-7890 dos últimos 7 dias e propõe as otimizações"></textarea>
@@ -387,10 +388,11 @@ $('#reset').onclick = async () => { await api('/api/reset', { method: 'POST', bo
 const QUERIES = {
   contas: { tool: 'meta_listar_contas', title: 'Contas de anúncio do Meta', needsAccount: false },
   campanhas: { tool: 'meta_listar_campanhas', title: 'Campanhas do Meta', needsAccount: true },
-  desempenho: { tool: 'meta_desempenho', title: 'Desempenho do Meta · últimos 7 dias', needsAccount: true, args: { nivel: 'campaign', periodo: 'last_7d' } },
+  desempenho: { tool: 'meta_desempenho', title: 'Desempenho do Meta', needsAccount: true, args: { nivel: 'campaign' } },
 };
+const money = (v, cur) => { try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur || 'BRL' }).format(Number(v) || 0); } catch { return String(v); } };
 const flatInsight = (r) => ({
-  campanha: r.campaign_name, gasto: r.spend, impressões: r.impressions, cliques: r.clicks, CTR: r.ctr ? Number(r.ctr).toFixed(2) + '%' : '', CPC: r.cpc ? Number(r.cpc).toFixed(2) : '',
+  campanha: r.campaign_name, gasto: money(r.spend, r.moeda), impressões: r.impressions, cliques: r.clicks, CTR: r.ctr ? Number(r.ctr).toFixed(2) + '%' : '', CPC: r.cpc ? Number(r.cpc).toFixed(2) : '',
   resultados: (r.actions || []).filter((a) => /lead|registration|purchase|contact|link_click/.test(a.action_type)).slice(0, 3).map((a) => `${a.action_type}: ${a.value}`).join(' · '),
 });
 function tableEl(rows, onAccount) {
@@ -420,7 +422,8 @@ async function runQuery(key, accountId) {
   const el = add('ai', 'Consultando o Meta…'); el.classList.add('wide');
   const call = (args) => api('/api/tool', { method: 'POST', body: JSON.stringify({ name: q.tool, args }) });
   try {
-    let r = await call({ ...(q.args || {}), ...(accountId ? { ad_account_id: accountId } : {}) });
+    const per = $('#perSel').value; const perTxt = $('#perSel').selectedOptions[0].textContent;
+    let r = await call({ ...(q.args || {}), ...(key === 'desempenho' ? { periodo: per } : {}), ...(accountId ? { ad_account_id: accountId } : {}) });
     // Sem conta padrão: descobre as contas e deixa você escolher (ou usa a única existente)
     if (q.needsAccount && !accountId && r?.status === 'nao_configurado') {
       const accs = await api('/api/tool', { method: 'POST', body: JSON.stringify({ name: 'meta_listar_contas', args: {} }) });
@@ -430,10 +433,15 @@ async function runQuery(key, accountId) {
       }
       r = accs;
     }
-    el.textContent = q.title + (accountId ? ` · ${accountId}` : '');
+    el.textContent = q.title + (key === 'desempenho' ? ` · ${perTxt}` : '') + (accountId ? ` · ${accountId}` : '');
     if (Array.isArray(r)) {
       if (!r.length) { el.append(document.createElement('br'), 'Nenhum resultado. ' + (key === 'contas' ? 'O token não enxerga contas: em Configurações da empresa, atribua as contas de anúncio ao usuário do sistema com controle total.' : '')); return; }
-      const rows = key === 'desempenho' ? r.map(flatInsight) : r;
+      let rows = key === 'desempenho' ? r.map(flatInsight) : r;
+      if (key === 'desempenho') {
+        const cur = r[0].moeda; const sum = (f) => r.reduce((a, x) => a + (Number(x[f]) || 0), 0);
+        rows = [...rows, { campanha: 'TOTAL', gasto: money(sum('spend'), cur), 'impressões': sum('impressions'), cliques: sum('clicks'), CTR: '', CPC: '', resultados: '' }];
+        el.append(document.createElement('br'), `Período: ${r[0].periodo_inicio} a ${r[0].periodo_fim} · moeda ${cur || '?'}`);
+      }
       el.appendChild(tableEl(rows, key === 'contas'));
     } else {
       el.append(document.createElement('br'), r?.erro || r?.error || JSON.stringify(r));

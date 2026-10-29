@@ -26,6 +26,19 @@ async function post(path, params = {}) {
 }
 
 const PRESETS = ['today', 'yesterday', 'last_3d', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'];
+// Moedas sem centavos na API de anúncios do Meta (menor unidade = 1 unidade da moeda).
+const ZERO_DEC = new Set(['CLP', 'COP', 'CRC', 'HUF', 'ISK', 'IDR', 'JPY', 'KRW', 'PYG', 'TWD', 'VND']);
+const fromMinor = (v, cur) => (v === undefined || v === null || v === '' ? 0 : Number(v) / (ZERO_DEC.has(String(cur).toUpperCase()) ? 1 : 100));
+// Segue a paginação do Graph API (até 10 páginas) para não cortar campanhas.
+async function getAll(path, params = {}) {
+  let r = await get(path, params); const out = [...(r.data || [])];
+  for (let i = 0; i < 10 && r.paging?.next; i++) {
+    const m = requireMeta(); const u = new URL(r.paging.next);
+    if (u.hostname !== 'graph.facebook.com') break;
+    r = await httpJson(r.paging.next.replace(/access_token=[^&]+/, `access_token=${encodeURIComponent(m.token)}`)); out.push(...(r.data || []));
+  }
+  return out;
+}
 const cents = (brl) => String(Math.round(Number(brl) * 100)); // BRL → centavos (menor unidade)
 
 async function currentDailyBudget(objectId) {
@@ -41,12 +54,12 @@ export const metaTools = [
     description: 'Lista as contas de anúncio do Meta que o token enxerga (id no formato act_..., nome, moeda, status e total gasto). Use para descobrir o ID da conta antes das demais ferramentas.',
     params: {},
     handler: async () => {
-      const r = await get('me/adaccounts', { fields: 'id,name,account_status,currency,amount_spent,business{name}', limit: '100' });
+      const r = { data: await getAll('me/adaccounts', { fields: 'id,name,account_status,currency,amount_spent,business{name}', limit: '100' }) };
       const status = { 1: 'ATIVA', 2: 'DESATIVADA', 3: 'COM PENDÊNCIA DE PAGAMENTO', 7: 'EM ANÁLISE', 9: 'EM PERÍODO DE CARÊNCIA', 100: 'ENCERRAMENTO PENDENTE', 101: 'ENCERRADA' };
       return (r.data || []).map((a) => ({
         id: a.id, nome: a.name, empresa: a.business?.name || null, moeda: a.currency,
         status: status[a.account_status] || String(a.account_status),
-        total_gasto: a.amount_spent ? Number(a.amount_spent) / 100 : 0,
+        gasto_vitalicio: fromMinor(a.amount_spent, a.currency), // total desde a criação da conta, NÃO é o gasto do período
       }));
     },
   },
@@ -57,7 +70,7 @@ export const metaTools = [
     description: 'Lista campanhas do Meta Ads (id, nome, objetivo, status e orçamento diário quando definido na campanha).',
     params: { ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' } },
     handler: async ({ ad_account_id }) => {
-      const r = await get(`${acct(ad_account_id)}/campaigns`, { fields: 'id,name,objective,status,effective_status,daily_budget', limit: '100' });
+      const r = { data: await getAll(`${acct(ad_account_id)}/campaigns`, { fields: 'id,name,objective,status,effective_status,daily_budget', limit: '100' }) };
       return (r.data || []).map((c) => ({ id: c.id, nome: c.name, objetivo: c.objective, status: c.status, situacao: c.effective_status, orcamento_dia_brl: c.daily_budget ? Number(c.daily_budget) / 100 : null }));
     },
   },
@@ -70,13 +83,17 @@ export const metaTools = [
       nivel: { type: 'string', enum: ['campaign', 'adset', 'ad'], desc: 'Nível do relatório (padrão campaign)' },
       periodo: { type: 'string', enum: PRESETS, desc: 'Período (padrão last_7d)' },
       ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
+      de: { type: 'string', desc: 'Data inicial AAAA-MM-DD (opcional; use com "ate" no lugar de periodo)' },
+      ate: { type: 'string', desc: 'Data final AAAA-MM-DD (opcional)' },
     },
-    handler: async ({ nivel = 'campaign', periodo = 'last_7d', ad_account_id }) => {
-      const r = await get(`${acct(ad_account_id)}/insights`, {
-        level: nivel, date_preset: periodo, limit: '100',
-        fields: 'campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,impressions,clicks,ctr,cpc,frequency,actions,cost_per_action_type',
+    handler: async ({ nivel = 'campaign', periodo = 'last_7d', ad_account_id, de, ate }) => {
+      const range = de && ate ? { time_range: JSON.stringify({ since: de, until: ate }) } : { date_preset: periodo };
+      const rows = await getAll(`${acct(ad_account_id)}/insights`, {
+        level: nivel, ...range, limit: '100',
+        fields: 'account_currency,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,impressions,clicks,ctr,cpc,frequency,actions,cost_per_action_type,date_start,date_stop',
       });
-      return r.data || [];
+      // spend já vem em unidades da moeda da conta (ex.: "123.45"); não dividir por 100.
+      return rows.map((x) => ({ ...x, moeda: x.account_currency, periodo_inicio: x.date_start, periodo_fim: x.date_stop }));
     },
   },
   {
