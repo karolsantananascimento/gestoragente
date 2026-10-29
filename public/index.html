@@ -5,80 +5,150 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Agente de Tráfego</title>
 <style>
-  :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e8eaf0; --muted:#8b93a7; --accent:#7c5cff; --ok:#2fbf71; --warn:#f0a13a; --bad:#ef5b5b; }
-  @media (prefers-color-scheme: light) { :root { --bg:#f5f6fa; --panel:#fff; --line:#e1e4ec; --text:#171a21; --muted:#6a7287; } }
+  :root { --bg:#0c0e13; --panel:#141821; --panel2:#1a1f2b; --line:#262c3a; --text:#eceef4; --muted:#8c94a8; --accent:#7c5cff; --accent2:#4f8cff; --ok:#2fbf71; --warn:#f0a13a; --bad:#ef5b5b; --shadow:0 6px 24px rgba(0,0,0,.28); --r:14px; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f3f4f9; --panel:#fff; --panel2:#f7f8fc; --line:#e2e5ee; --text:#161a24; --muted:#667089; --shadow:0 6px 24px rgba(30,40,80,.08); } }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; height:100dvh; display:flex; flex-direction:column; }
-  header { display:flex; gap:10px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
-  header h1 { font-size:16px; margin:0; flex:1; min-width:140px; }
+  html { color-scheme: dark light; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; height:100dvh; display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; }
+  ::-webkit-scrollbar { width:10px; height:10px; } ::-webkit-scrollbar-thumb { background:var(--line); border-radius:99px; border:2px solid var(--bg); }
+  h1,h2,h3,h4 { margin:0; }
+  /* cabeçalho */
+  header { display:flex; gap:12px; align-items:center; padding:10px 18px; border-bottom:1px solid var(--line); background:var(--panel); }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-.01em; white-space:nowrap; }
+  .logo { width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:grid; place-items:center; color:#fff; font-weight:800; font-size:15px; }
+  .clientpick { display:flex; align-items:center; gap:8px; margin-left:8px; }
+  .clientpick select { font-weight:600; padding:7px 10px; border-radius:10px; min-width:170px; max-width:240px; }
+  .spacer { flex:1; }
   .pill { font-size:12px; padding:3px 10px; border-radius:99px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
-  .pill.sim { color:var(--warn); border-color:var(--warn); } .pill.real { color:var(--bad); border-color:var(--bad); } .pill.on { color:var(--ok); border-color:var(--ok); }
-  main { flex:1; display:grid; grid-template-columns: 1fr 360px; min-height:0; }
-  @media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } aside { max-height: 38dvh; } }
-  #chat { display:flex; flex-direction:column; min-height:0; }
-  #log { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
-  .msg { max-width:820px; padding:10px 14px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
-  .me { align-self:flex-end; background:var(--accent); color:#fff; }
-  .ai { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
-  #form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--panel); }
-  textarea, input, select { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
-  textarea { flex:1; resize:none; }
-  button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:0 16px; font:inherit; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); padding:4px 10px; border-radius:8px; font-size:13px; }
-  button.danger { background:transparent; color:var(--bad); border:1px solid var(--line); padding:3px 9px; border-radius:8px; font-size:12px; }
+  .pill.sim { color:var(--warn); border-color:color-mix(in srgb,var(--warn) 50%,transparent); background:color-mix(in srgb,var(--warn) 10%,transparent); }
+  .pill.real { color:var(--bad); border-color:var(--bad); background:color-mix(in srgb,var(--bad) 10%,transparent); } .pill.on { color:var(--ok); border-color:color-mix(in srgb,var(--ok) 50%,transparent); }
+  .usermenu { position:relative; }
+  .avatar { width:34px; height:34px; border-radius:50%; padding:0; background:var(--panel2); color:var(--text); border:1px solid var(--line); font-weight:700; }
+  .pop { position:absolute; right:0; top:42px; min-width:230px; background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:8px; z-index:20; display:flex; flex-direction:column; gap:2px; }
+  .pop .who { padding:8px 10px; color:var(--muted); font-size:13px; border-bottom:1px solid var(--line); margin-bottom:4px; word-break:break-all; }
+  .pop button { background:transparent; color:var(--text); text-align:left; padding:8px 10px; border-radius:8px; }
+  .pop button:hover { background:var(--panel2); }
+  /* abas */
+  nav#tabs { display:flex; gap:4px; padding:8px 18px 0; background:var(--panel); border-bottom:1px solid var(--line); overflow:auto; }
+  nav#tabs button { background:transparent; color:var(--muted); border-radius:10px 10px 0 0; padding:9px 16px; border-bottom:2px solid transparent; white-space:nowrap; display:flex; align-items:center; gap:8px; font-weight:500; }
+  nav#tabs button:hover { color:var(--text); background:var(--panel2); }
+  nav#tabs button.on { color:var(--text); border-bottom-color:var(--accent); background:var(--panel2); }
+  .badge { background:var(--accent); color:#fff; font-size:11px; font-weight:700; padding:1px 7px; border-radius:99px; min-width:20px; text-align:center; }
+  .badge:empty { display:none; }
+  /* base */
+  textarea, input, select { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; outline:none; transition:border-color .15s, box-shadow .15s; }
+  textarea:focus, input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent); }
+  textarea { flex:1; resize:vertical; }
+  button { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:0; border-radius:10px; padding:0 16px; font:inherit; font-weight:600; cursor:pointer; transition:filter .15s, transform .05s; min-height:36px; }
+  button:hover { filter:brightness(1.08); } button:active { transform:translateY(1px); }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); padding:4px 12px; font-weight:500; font-size:14px; }
+  button.ghost:hover { background:var(--panel2); filter:none; }
+  button.danger { background:transparent; color:var(--bad); border:1px solid var(--line); padding:3px 10px; font-size:13px; font-weight:500; min-height:30px; }
   button:disabled { opacity:.5; cursor:wait; }
-  aside { border-left:1px solid var(--line); background:var(--panel); overflow:auto; padding:14px; }
-  aside h2, .modal h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
-  .card { border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:var(--bg); }
-  .card small { color:var(--muted); display:block; margin-top:4px; }
-  .card .warn { color:var(--warn); font-size:13px; margin-top:4px; }
   .row { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
-  .row button { padding:6px 12px; font-size:13px; }
-  .row .no { background:transparent; border:1px solid var(--line); color:var(--muted); }
+  .row button { padding:6px 14px; font-size:14px; }
+  .row .no, button.no { background:transparent; border:1px solid var(--line); color:var(--text); font-weight:500; }
+  .row button.big, button.big { background:var(--ok); color:#06210f; padding:8px 16px; font-weight:700; }
   .empty, .note { color:var(--muted); font-size:14px; }
-  .overlay { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; z-index:10; }
-  .overlay.dim { background:rgba(0,0,0,.55); }
-  .box { width:360px; max-width:100%; border:1px solid var(--line); border-radius:14px; padding:20px; background:var(--panel); display:flex; flex-direction:column; gap:10px; }
-  .box.wide { width:640px; max-height:90dvh; overflow:auto; }
-  .box h1 { margin:0; font-size:18px; }
-  .box button { padding:10px; }
-  .err { color:var(--bad); font-size:13px; min-height:18px; }
-  .ok { color:var(--ok); font-size:13px; }
   .hidden { display:none !important; }
+  .err { color:var(--bad); font-size:13px; min-height:18px; } .ok { color:var(--ok); font-size:13px; }
+  .grow { flex:1; min-width:160px; }
+  .alert { background:color-mix(in srgb,var(--warn) 12%,transparent); border:1px solid color-mix(in srgb,var(--warn) 40%,transparent); color:var(--text); padding:10px 14px; border-radius:12px; font-size:14px; margin:0 0 12px; }
+  .alert:empty { display:none; }
+  .link { word-break:break-all; font-size:13px; padding:8px; border:1px dashed var(--line); border-radius:8px; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   td, th { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
   th { color:var(--muted); font-weight:500; font-size:12px; }
-  .link { word-break:break-all; font-size:13px; padding:8px; border:1px dashed var(--line); border-radius:8px; }
-  .grow { flex:1; min-width:160px; }
-  #quick { display:flex; gap:8px; padding:8px 16px 0; background:var(--panel); border-top:1px solid var(--line); flex-wrap:wrap; align-items:center; }
-  #quick .lbl { font-size:12px; color:var(--muted); }
+  /* modais */
+  .overlay { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; z-index:30; }
+  .overlay.dim { background:rgba(5,7,12,.62); backdrop-filter:blur(3px); }
+  .box { width:380px; max-width:100%; border:1px solid var(--line); border-radius:18px; padding:22px; background:var(--panel); display:flex; flex-direction:column; gap:10px; box-shadow:var(--shadow); }
+  .box.wide { width:680px; max-height:92dvh; overflow:auto; }
+  .box h1 { font-size:20px; } .box button { padding:10px; }
+  .modal h2, aside h2 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:600; }
+  #toasts { position:fixed; right:18px; bottom:18px; display:flex; flex-direction:column; gap:8px; z-index:60; }
+  .toast { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent); padding:10px 14px; border-radius:10px; box-shadow:var(--shadow); max-width:360px; font-size:14px; animation:in .2s ease; }
+  .toast.bad { border-left-color:var(--bad); } .toast.ok { border-left-color:var(--ok); color:var(--text); }
+  @keyframes in { from { opacity:0; transform:translateY(8px); } }
+  /* tráfego */
+  main { flex:1; display:grid; grid-template-columns: 1fr 360px; min-height:0; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } aside { max-height: 38dvh; } }
+  #chat { display:flex; flex-direction:column; min-height:0; }
+  #log { flex:1; overflow:auto; padding:18px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:780px; padding:11px 15px; border-radius:16px; white-space:pre-wrap; word-wrap:break-word; }
+  .me { align-self:flex-end; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-bottom-right-radius:5px; }
+  .ai { align-self:flex-start; background:var(--panel); border:1px solid var(--line); border-bottom-left-radius:5px; }
   .msg.wide { max-width:100%; white-space:normal; }
-  .tbl { overflow:auto; max-width:100%; margin-top:6px; }
-  .tbl table { font-size:13px; white-space:nowrap; }
-  .tbl button { padding:3px 9px; font-size:12px; margin-right:4px; }
-
-  nav#tabs { display:flex; gap:4px; padding:0 16px; background:var(--panel); border-bottom:1px solid var(--line); overflow:auto; }
-  nav#tabs button { background:transparent; color:var(--muted); border-radius:0; padding:10px 14px; border-bottom:2px solid transparent; white-space:nowrap; }
-  nav#tabs button.on { color:var(--text); border-bottom-color:var(--accent); }
-  .view { flex:1; overflow:auto; padding:16px; min-height:0; }
-  .board { display:grid; grid-template-columns:repeat(4, minmax(240px,1fr)); gap:12px; align-items:start; min-width:1000px; }
-  .col h3 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
-  .item { border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:var(--panel); }
-  .item h4 { margin:0 0 4px; font-size:14px; }
-  .item .meta { color:var(--muted); font-size:12px; }
-  .item .cap { font-size:13px; white-space:pre-wrap; margin-top:6px; max-height:86px; overflow:hidden; cursor:pointer; }
-  .item .cap.open { max-height:none; }
-  .item img { max-width:100%; border-radius:8px; margin-top:6px; border:1px solid var(--line); }
+  #sugs, #quick { display:flex; gap:8px; padding:8px 18px 0; background:var(--panel); flex-wrap:wrap; align-items:center; }
+  #sugs { border-top:1px solid var(--line); padding-top:10px; }
+  #quick .lbl, #sugs .lbl { font-size:12px; color:var(--muted); }
+  #form { display:flex; gap:8px; padding:12px 18px 16px; background:var(--panel); }
+  #form textarea { resize:none; } #form button { padding:0 22px; }
+  aside { border-left:1px solid var(--line); background:var(--panel); overflow:auto; padding:16px; }
+  .card { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--panel2); }
+  .card small { color:var(--muted); display:block; margin-top:4px; }
+  .card .warn, .warn { color:var(--warn); font-size:13px; margin-top:4px; }
+  .tbl { overflow:auto; max-width:100%; margin-top:6px; } .tbl table { font-size:13px; white-space:nowrap; } .tbl button { padding:3px 9px; font-size:12px; margin-right:4px; min-height:28px; }
+  /* páginas */
+  .view { flex:1; overflow:auto; padding:20px 22px 40px; min-height:0; }
+  .pagehead { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px; }
+  .ptitle { font-size:24px; letter-spacing:-.02em; }
+  .flow { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 0; font-size:13px; color:var(--muted); }
+  .flow .st { padding:2px 10px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); }
+  .flow .st.hu { color:var(--ok); border-color:color-mix(in srgb,var(--ok) 50%,transparent); font-weight:600; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .actions button { padding:8px 16px; }
+  .weeks { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-bottom:14px; }
+  .wk { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; }
+  .wk b { font-size:13px; } .wk small { color:var(--muted); float:right; }
+  .bar { height:6px; background:var(--panel2); border-radius:99px; margin-top:8px; overflow:hidden; } .bar i { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:99px; } .bar.full i { background:var(--ok); }
+  .tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:10px; margin-bottom:16px; align-items:start; }
+  details.panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:0; }
+  details.panel summary { cursor:pointer; padding:12px 16px; font-weight:600; list-style:none; display:flex; align-items:center; gap:8px; }
+  details.panel summary::-webkit-details-marker { display:none; } details.panel summary::after { content:'▾'; margin-left:auto; color:var(--muted); transition:transform .15s; }
+  details.panel[open] summary::after { transform:rotate(180deg); }
+  details.panel .in { padding:0 16px 14px; }
+  .meta { color:var(--muted); font-size:12px; }
+  /* quadro */
+  .board { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(290px,1fr); gap:14px; align-items:start; overflow-x:auto; padding-bottom:10px; scroll-snap-type:x proximity; }
+  .col { background:color-mix(in srgb,var(--panel) 70%,transparent); border:1px solid var(--line); border-radius:var(--r); padding:12px; scroll-snap-align:start; min-height:160px; }
+  .col h3 { font-size:13px; font-weight:700; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .col h3 .dot { width:9px; height:9px; border-radius:50%; background:var(--c,var(--accent)); } .col h3 .n { margin-left:auto; background:var(--panel2); border:1px solid var(--line); border-radius:99px; padding:0 9px; font-size:12px; color:var(--muted); }
+  .col .vazio { color:var(--muted); font-size:13px; text-align:center; padding:22px 8px; border:1px dashed var(--line); border-radius:10px; }
+  .item { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:var(--panel); cursor:pointer; transition:border-color .15s, transform .15s, box-shadow .15s; border-top:3px solid var(--c,var(--line)); }
+  .item:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow); }
+  .item h4 { margin:8px 0 4px; font-size:15px; line-height:1.3; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .chip { font-size:12px; padding:2px 9px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .chip.fmt { color:var(--text); } .chip.late { color:var(--bad); border-color:var(--bad); }
+  .item .cap { font-size:13px; color:var(--muted); white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-top:4px; }
+  .item.full { cursor:default; border:0; padding:0; background:transparent; } .item.full:hover { transform:none; box-shadow:none; }
+  .item.full .cap { display:block; -webkit-line-clamp:unset; color:var(--text); font-size:14px; background:var(--panel2); border:1px solid var(--line); padding:12px; border-radius:10px; }
+  .item.full .meta { font-size:13px; }
+  .item img { max-width:100%; border-radius:10px; margin-top:8px; border:1px solid var(--line); display:block; }
+  .item .thumb { width:100%; height:170px; object-fit:cover; }
+  .item.full img { max-height:60dvh; object-fit:contain; }
   .tag { display:inline-block; font-size:11px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); margin:2px 4px 0 0; }
   .tag.ok { color:var(--ok); border-color:var(--ok); } .tag.bad { color:var(--bad); border-color:var(--bad); } .tag.warn { color:var(--warn); border-color:var(--warn); }
-  .row button.big { background:var(--ok); padding:8px 14px; font-weight:600; }
-  .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-  .agent { border:1px solid var(--line); border-radius:12px; padding:14px; background:var(--panel); }
-  .agent .em { font-size:28px; } .agent h3 { margin:4px 0 0; font-size:16px; } .agent .cargo { color:var(--muted); font-size:13px; margin-bottom:8px; }
-  .flow { color:var(--muted); font-size:14px; margin:0 0 14px; }
-  .form { display:flex; flex-direction:column; gap:8px; max-width:640px; }
-  .form label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:4px; }
+  .lbl2 { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:14px 0 4px; }
+  .hist { font-size:12px; color:var(--muted); max-height:120px; overflow:auto; }
+  /* time */
+  .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+  .agent { border:1px solid var(--line); border-radius:var(--r); padding:16px; background:var(--panel); } .agent .em { font-size:28px; width:52px; height:52px; display:grid; place-items:center; border-radius:14px; background:var(--panel2); margin-bottom:8px; }
+  .agent h3 { margin:4px 0 0; font-size:17px; } .agent .cargo { color:var(--accent); font-size:13px; margin-bottom:8px; font-weight:600; }
+  /* marca */
+  .form { display:flex; flex-direction:column; gap:14px; }
+  .sec label { margin-top:4px; }
+  .form label { font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:5px; font-weight:500; }
   .form textarea { min-height:70px; }
+  .sec { background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px; margin-bottom:14px; }
+  .sec h3 { font-size:15px; margin-bottom:2px; } .sec .sub { color:var(--muted); font-size:13px; margin-bottom:12px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+  .kit { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 14px; }
+  .kit .chip.okk { color:var(--ok); border-color:var(--ok); } .kit .chip.no2 { color:var(--warn); border-color:var(--warn); }
+  .savebar { position:sticky; bottom:-40px; background:var(--bg); border-top:1px solid var(--line); padding:12px 0; margin-top:6px; display:flex; gap:12px; align-items:center; z-index:2; }
+  #brandForm { max-width:980px; }
+  @media (max-width:700px) { header { flex-wrap:wrap; padding:10px 12px; } .clientpick { order:3; width:100%; margin:0; } .clientpick select { flex:1; max-width:none; } #pg { display:none; } .view { padding:14px 12px 40px; } nav#tabs { padding:6px 8px 0; } .ptitle { font-size:20px; } }
 </style>
 </head>
 <body>
@@ -100,25 +170,37 @@
 </div>
 
 <header>
-  <h1>Agente de Tráfego</h1>
+  <div class="brand"><span class="logo">A</span><span>Agente de Tráfego</span></div>
+  <label class="clientpick"><span class="note">Cliente</span><select id="clientSel" title="Área de trabalho do cliente"></select></label>
+  <span class="spacer"></span>
   <span class="pill" id="modo">…</span>
   <span class="pill" id="pg">…</span>
-  <span class="pill" id="who">…</span>
-  <button class="ghost hidden" id="teamBtn">Equipe</button>
-  <button class="ghost" id="pwBtn">Senha</button>
-  <button class="ghost" id="reset">Nova conversa</button>
-  <button class="ghost" id="logout">Sair</button>
+  <div class="usermenu">
+    <button class="avatar" id="whoBtn" title="Minha conta">?</button>
+    <div class="pop hidden" id="userPop">
+      <div class="who" id="who">…</div>
+      <button class="hidden" id="teamBtn">👥 Equipe e convites</button>
+      <button id="pwBtn">🔑 Alterar senha</button>
+      <button id="reset">💬 Nova conversa</button>
+      <button id="logout">↩ Sair</button>
+    </div>
+  </div>
 </header>
 <nav id="tabs">
-  <button data-tab="trafego" class="on">Tráfego</button>
-  <button data-tab="conteudo">Conteúdo</button>
-  <button data-tab="time">Time</button>
-  <button data-tab="marca">Marca</button>
-  <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><small class="note">Cliente:</small><select id="clientSel" title="Área de trabalho do cliente"></select></span>
+  <button data-tab="conteudo" class="on">🗂 Conteúdo <span class="badge" id="bdgConteudo"></span></button>
+  <button data-tab="trafego">📈 Tráfego <span class="badge" id="bdgTrafego"></span></button>
+  <button data-tab="time">🤝 Time</button>
+  <button data-tab="marca">🎨 Marca</button>
 </nav>
-<main id="v-trafego">
+<main id="v-trafego" class="hidden">
   <section id="chat">
     <div id="log"></div>
+    <div id="sugs">
+      <span class="lbl">Atalhos:</span>
+      <button type="button" class="ghost" data-s="criar pauta de ">✍ Criar pauta</button>
+      <button type="button" class="ghost" data-s="listar pauta">📋 Listar pauta</button>
+      <button type="button" class="ghost" data-s="ajustar criativo ">🎯 Ajustar criativo</button>
+    </div>
     <div id="quick">
       <span class="lbl">Consultar agora (sem IA):</span>
       <button type="button" class="ghost" data-q="contas">Contas do Meta</button>
@@ -138,52 +220,64 @@
 </main>
 
 
-<div class="view hidden" id="v-conteudo">
-  <p class="flow">Squad de <b id="curName"></b>: Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
-  <div id="weeks" class="row" style="margin:0 0 12px"></div>
-  <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar a squad do cliente (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
-  <div class="note" id="autoNote" style="margin:0 0 10px"></div>
-  <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Fontes de pauta (Google Docs ou Sheets)</h4>
-    <div class="note">Cole o link de um documento ou planilha com recomendações de conteúdo. O Hugo lê e cria as pautas a partir dele. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link" (leitor).</div>
-    <div class="row" style="margin-top:6px"><input id="srcUrl" class="grow" placeholder="https://docs.google.com/document/d/... ou /spreadsheets/d/..."><input id="srcTitle" placeholder="Nome (opcional)" style="max-width:200px"><button id="srcAdd">Adicionar e pedir pautas</button></div>
-    <div class="err" id="srcErr"></div>
-    <div id="srcList" class="meta" style="margin-top:6px"></div></div>
-  <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Pedir ao time</h4>
-    <textarea id="reqText" rows="3" style="width:100%" placeholder="Ex.: Crie um post de carrossel para a Disco sobre 3 erros comuns de site lento, para quinta às 11h."></textarea>
-    <div class="row" style="margin-top:6px"><input id="reqCanais" value="instagram" style="max-width:220px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
-    <div id="reqList" class="meta" style="margin-top:8px"></div></div>
+<div class="view" id="v-conteudo">
+  <div class="pagehead">
+    <div>
+      <h2 class="ptitle">Conteúdo · <span id="curName"></span></h2>
+      <div class="flow"><span class="st">✍ Hugo escreve a pauta</span>→<span class="st">🎨 Luiz faz a arte</span>→<span class="st hu">✅ Você aprova</span>→<span class="st">📅 Mariana agenda</span></div>
+    </div>
+    <div class="actions"><span class="note" id="contentNote"></span><button class="ghost" id="reloadItems" title="Atualizar">↻</button><button class="ghost" id="newItem">+ Nova pauta</button><button id="runTeam">▶ Rodar</button></div>
+  </div>
+  <div class="alert" id="autoNote"></div>
+  <div class="weeks" id="weeks"></div>
+  <div class="tools">
+    <details class="panel"><summary>💬 Pedir ao time <span class="note">descreva o post que você quer</span></summary><div class="in">
+      <textarea id="reqText" rows="3" style="width:100%" placeholder="Ex.: Crie um post de carrossel sobre 3 erros comuns de atendimento, para quinta às 11h."></textarea>
+      <div class="row"><input id="reqCanais" value="instagram" style="max-width:200px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
+      <div id="reqList" class="meta" style="margin-top:8px"></div></div></details>
+    <details class="panel"><summary>🔗 Fontes de pauta <span class="note">Google Docs ou Sheets</span></summary><div class="in">
+      <div class="note">Cole o link de um documento ou planilha com recomendações. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link" (leitor).</div>
+      <div class="row"><input id="srcUrl" class="grow" placeholder="https://docs.google.com/..."><input id="srcTitle" placeholder="Nome (opcional)" style="max-width:180px"><button id="srcAdd">Adicionar</button></div>
+      <div class="err" id="srcErr"></div>
+      <div id="srcList" class="meta"></div></div></details>
+  </div>
   <div class="board" id="board"></div>
 </div>
 
 <div class="view hidden" id="v-time">
-  <p class="flow">O time trabalha dentro do Claude (conector) e deixa o resultado aqui. Só um humano aprova.</p>
+  <div class="pagehead"><div><h2 class="ptitle">Time</h2><div class="flow"><span>Cada agente tem uma função. O resultado aparece aqui e só uma administradora aprova.</span></div></div></div>
   <div class="agents" id="agents"></div>
 </div>
 
 <div class="view hidden" id="v-marca">
-  <p class="flow">Registro do cliente: identidade, tom, estilo visual e de comunicação que o Hugo e o Luiz seguem <b>só</b> para este cliente. Só administradores editam. <button type="button" class="ghost" id="newClient">+ Novo cliente</button></p>
-  <div class="note" id="kitAviso"></div>
+  <div class="pagehead"><div><h2 class="ptitle">Marca · <span id="brandName"></span></h2>
+    <div class="flow"><span>O Hugo e o Luiz seguem <b>só</b> este registro ao criar para o cliente. Só administradores editam.</span></div></div>
+    <div class="actions"><button type="button" class="ghost hidden" id="newClient">+ Novo cliente</button></div></div>
+  <div class="alert" id="kitAviso"></div>
+  <div class="kit" id="kitCheck"></div>
   <form class="form" id="brandForm">
-    <label>Nome do cliente<input name="nome"></label>
-    <label>Posts por semana (meta)<input name="meta_semanal" type="number" min="1" max="21"></label>
-    <label>Identidade da marca (quem é, essência, valores, personalidade)<textarea name="identidade" rows="5"></textarea></label>
-    <label>Estilo de comunicação (como se comunica: formato dos posts, estrutura da legenda, CTAs, emojis, hashtags)<textarea name="estilo_comunicacao" rows="5"></textarea></label>
-    <label>Estilo visual (fotos, cores em uso, composição, referências para o designer)<textarea name="estilo_visual" rows="6"></textarea></label>
-    <label>Instagram: ID da conta profissional (para publicar; vazio = não publica)<input name="ig_user_id" inputmode="numeric"></label>
-    <label>Facebook: ID da página<input name="fb_page_id" inputmode="numeric"></label>
-    <label>Posicionamento<textarea name="posicionamento" rows="3"></textarea></label>
-    <label>Foco do conteúdo<textarea name="objetivo_conteudo" rows="4"></textarea></label>
-    <label>Frentes / unidades<textarea name="frentes" rows="4"></textarea></label>
-    <label>Tom de voz<textarea name="tom_de_voz" rows="12" placeholder="Ex.: próximo, direto, sem jargão, emojis com moderação"></textarea></label>
-    <label>Público<textarea name="publico"></textarea></label>
-    <label>Cores (hex e uso)<textarea name="cores" rows="6" placeholder="Ex.: Principal #7C5CFF; Fundo #0F1115; Destaque #2FBF71"></textarea></label>
-    <label>Fontes<textarea name="fontes" rows="4" placeholder="Ex.: Títulos Poppins Bold; texto Inter"></textarea></label>
-    <label>Link do logo (https)<input name="logo_url"></label>
-    <label>Regras visuais e estilo<textarea name="regras_visuais" rows="14" placeholder="Ex.: logo no canto inferior direito; fotos reais; margem mínima"></textarea></label>
-    <label>Proibido<textarea name="proibido" placeholder="Ex.: promessas de resultado; cores fora da paleta"></textarea></label>
-    <label>Outros links (manual da marca, pasta de assets)<textarea name="links"></textarea></label>
-    <div class="err" id="brandErr"></div>
-    <div class="row"><button id="brandSave">Salvar</button></div>
+    <div class="sec"><h3>Essencial</h3><div class="sub">Quem é a marca e o que o conteúdo precisa alcançar.</div>
+      <div class="grid2"><label>Nome do cliente<input name="nome"></label>
+      <label>Posts por semana (meta)<input name="meta_semanal" type="number" min="1" max="21"></label></div>
+      <label>Identidade da marca (quem é, essência, valores, personalidade)<textarea name="identidade" rows="5"></textarea></label>
+      <label>Posicionamento<textarea name="posicionamento" rows="3"></textarea></label>
+      <label>Foco do conteúdo<textarea name="objetivo_conteudo" rows="4"></textarea></label>
+      <div class="grid2"><label>Frentes / unidades<textarea name="frentes" rows="3"></textarea></label><label>Público<textarea name="publico" rows="3"></textarea></label></div></div>
+    <div class="sec"><h3>Voz e comunicação</h3><div class="sub">Como a marca fala. O Hugo escreve as legendas a partir daqui.</div>
+      <label>Tom de voz<textarea name="tom_de_voz" rows="8" placeholder="Ex.: próximo, direto, sem jargão, emojis com moderação"></textarea></label>
+      <label>Estilo de comunicação (formato dos posts, estrutura da legenda, CTAs, emojis, hashtags)<textarea name="estilo_comunicacao" rows="6"></textarea></label></div>
+    <div class="sec"><h3>Visual</h3><div class="sub">O Luiz cria as artes seguindo isto à risca.</div>
+      <label>Estilo visual (fotos, composição, referências)<textarea name="estilo_visual" rows="6"></textarea></label>
+      <div class="grid2"><label>Cores (hex e uso)<textarea name="cores" rows="6" placeholder="Ex.: Principal #7C5CFF; Fundo #0F1115"></textarea></label>
+      <label>Fontes<textarea name="fontes" rows="6" placeholder="Ex.: Títulos Poppins Bold; texto Inter"></textarea></label></div>
+      <label>Link do logo (https)<input name="logo_url"></label>
+      <label>Regras visuais e estilo<textarea name="regras_visuais" rows="8" placeholder="Ex.: logo no canto inferior direito; margem mínima"></textarea></label>
+      <label>Proibido<textarea name="proibido" rows="3" placeholder="Ex.: promessas de resultado; cores fora da paleta"></textarea></label></div>
+    <div class="sec"><h3>Publicação e links</h3><div class="sub">Contas onde o Mariana publica. Vazio = não publica.</div>
+      <div class="grid2"><label>Instagram: ID da conta profissional<input name="ig_user_id" inputmode="numeric"></label>
+      <label>Facebook: ID da página<input name="fb_page_id" inputmode="numeric"></label></div>
+      <label>Outros links (manual da marca, pasta de assets)<textarea name="links" rows="3"></textarea></label></div>
+    <div class="savebar"><button id="brandSave" style="padding:10px 28px">Salvar marca</button><span class="err" id="brandErr"></span></div>
   </form>
 </div>
 
@@ -256,9 +350,44 @@
   </form>
 </div>
 
+<div id="toasts"></div>
+
+<!-- Visualização completa da pauta -->
+<div class="overlay dim hidden" id="viewModal">
+  <div class="box wide modal">
+    <button type="button" class="ghost" id="viewClose" style="align-self:flex-end;min-height:32px;padding:2px 12px" title="Fechar (Esc)">✕ Fechar</button>
+    <div id="viewBody"></div>
+  </div>
+</div>
+
+<!-- Pergunta rápida (substitui caixas do navegador) -->
+<div class="overlay dim hidden" id="askModal" style="z-index:50">
+  <form class="box modal form" id="askForm" style="max-width:460px">
+    <h2 id="askTitle"></h2>
+    <label id="askLabel"></label>
+    <textarea id="askInput" rows="3" required></textarea>
+    <div class="row"><button>Confirmar</button><button type="button" class="ghost" id="askCancel">Cancelar</button></div>
+  </form>
+</div>
+
 <script>
 const $ = (s) => document.querySelector(s);
 const show = (el, v) => el.classList.toggle('hidden', !v);
+function toast(msg, kind) {
+  const t = document.createElement('div'); t.className = 'toast ' + (kind || ''); t.textContent = msg; $('#toasts').appendChild(t);
+  setTimeout(() => t.remove(), kind === 'bad' ? 7000 : 4500);
+}
+// Pergunta rápida no lugar do prompt() do navegador
+function ask(title, label, { value = '', multiline = true, placeholder = '' } = {}) {
+  return new Promise((resolve) => {
+    $('#askTitle').textContent = title; $('#askLabel').textContent = label;
+    const i = $('#askInput'); i.value = value; i.placeholder = placeholder; i.rows = multiline ? 3 : 1;
+    show($('#askModal'), true); setTimeout(() => i.focus(), 30);
+    const done = (v) => { show($('#askModal'), false); $('#askForm').onsubmit = null; $('#askCancel').onclick = null; resolve(v); };
+    $('#askForm').onsubmit = (e) => { e.preventDefault(); done(i.value.trim() || null); };
+    $('#askCancel').onclick = () => done(null);
+  });
+}
 const store_ = { get: (k) => { try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; } },
   set: (k, v, keep) => { try { (keep ? localStorage : sessionStorage).setItem(k, v); (keep ? sessionStorage : localStorage).removeItem(k); } catch {} },
   del: (k) => { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch {} } };
@@ -288,8 +417,15 @@ function add(role, text) {
   return d;
 }
 
+/* ---------- menu da conta ---------- */
+$('#whoBtn').onclick = (e) => { e.stopPropagation(); $('#userPop').classList.toggle('hidden'); };
+document.addEventListener('click', (e) => { if (!e.target.closest('.usermenu')) $('#userPop').classList.add('hidden'); });
+for (const b of document.querySelectorAll('#userPop button')) b.addEventListener('click', () => $('#userPop').classList.add('hidden'));
+for (const b of document.querySelectorAll('#sugs [data-s]')) b.onclick = () => { const i = $('#input'); i.value = b.dataset.s; i.focus(); };
+
 /* ---------- pendências ---------- */
 function renderPending(list) {
+  $('#bdgTrafego').textContent = list.length || '';
   const el = $('#pending');
   if (!list.length) { el.innerHTML = '<div class="empty">Nenhuma ação pendente.</div>'; return; }
   el.innerHTML = '';
@@ -341,9 +477,11 @@ async function boot() {
   me = await api('/api/me');
   show($('#login'), false);
   $('#who').textContent = `${me.email} · ${me.role === 'admin' ? 'administrador' : 'colaborador'}`;
+  $('#whoBtn').textContent = (me.nome || me.email || '?').trim().charAt(0).toUpperCase();
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
   await loadClients(); await loadStatus(); await loadPending();
+  openTab(store_.get('tab') || 'conteudo');
   if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para campanhas (analisar conta, negativas, orçamento) o que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
@@ -508,7 +646,7 @@ $('#pwBtn').onclick = () => { $('#pwErr').textContent = ''; $('#pwForm').reset()
 $('#pwClose').onclick = () => show($('#pwModal'), false);
 $('#pwForm').onsubmit = async (e) => {
   e.preventDefault();
-  try { await api('/api/password', { method: 'POST', body: JSON.stringify({ current: $('#pwCur').value, next: $('#pwNew').value }) }); show($('#pwModal'), false); add('ai', 'Senha alterada.'); }
+  try { await api('/api/password', { method: 'POST', body: JSON.stringify({ current: $('#pwCur').value, next: $('#pwNew').value }) }); show($('#pwModal'), false); toast('Senha alterada.', 'ok'); }
   catch (err) { $('#pwErr').textContent = err.message; }
 };
 
@@ -522,7 +660,7 @@ async function loadTeam() {
   for (const c of cadastros) {
     const row = document.createElement('div'); row.className = 'row';
     const sp = document.createElement('span'); sp.className = 'grow'; sp.textContent = `${c.nome} · ${c.email} · ${fmt(c.createdAt)}`;
-    const mkb = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.onclick = async () => { try { await fn(); loadTeam(); } catch (e) { alert(e.message); } }; return b; };
+    const mkb = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.onclick = async () => { try { await fn(); loadTeam(); } catch (e) { toast(e.message, 'bad'); } }; return b; };
     row.append(sp,
       mkb('Liberar como colaborador', 'big', () => api(`/api/users/${encodeURIComponent(c.email)}/approve`, { method: 'POST', body: JSON.stringify({ role: 'member' }) })),
       mkb('Liberar como administrador', 'ghost', () => api(`/api/users/${encodeURIComponent(c.email)}/approve`, { method: 'POST', body: JSON.stringify({ role: 'admin' }) })),
@@ -538,7 +676,7 @@ async function loadTeam() {
     const td = document.createElement('td');
     if (!u.owner && u.email !== me.email) {
       const b = document.createElement('button'); b.className = 'danger'; b.textContent = 'Remover';
-      b.onclick = async () => { if (confirm(`Remover o acesso de ${u.email}?`)) { try { await api('/api/users/' + encodeURIComponent(u.email), { method: 'DELETE' }); loadTeam(); } catch (e) { alert(e.message); } } };
+      b.onclick = async () => { if (confirm(`Remover o acesso de ${u.email}?`)) { try { await api('/api/users/' + encodeURIComponent(u.email), { method: 'DELETE' }); loadTeam(); } catch (e) { toast(e.message, 'bad'); } } };
       td.appendChild(b);
     }
     tr.appendChild(td); t.appendChild(tr);
@@ -580,6 +718,7 @@ const TABS = ['trafego', 'conteudo', 'time', 'marca'];
 function openTab(t) {
   for (const x of TABS) show($('#v-' + x), x === t);
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === t);
+  store_.set('tab', t, true);
   if (t === 'conteudo') loadItems().catch(() => {});
   if (t === 'time') loadAgents().catch(() => {});
   if (t === 'marca') loadBrand().catch(() => {});
@@ -611,29 +750,40 @@ async function loadBrand() {
     el.disabled = me.role !== 'admin';
   }
   $('#brandSave').disabled = me.role !== 'admin'; show($('#newClient'), me.role === 'admin');
-  $('#kitAviso').textContent = c.kit_completo ? '' : '⚠ Kit incompleto: preencha identidade, tom de voz, estilo visual e estilo de comunicação. Enquanto isso o time não cria pautas nem artes para este cliente.';
+  $('#brandName').textContent = c.nome;
+  $('#kitAviso').textContent = c.kit_completo ? '' : '⚠ Kit incompleto: enquanto faltar algum item abaixo, o time não cria pautas nem artes para este cliente.';
+  kitCheck();
 }
+function kitCheck() {
+  const f = $('#brandForm').elements; const v = (n) => (f[n]?.value || '').trim();
+  const itens = [['Identidade', v('identidade') || v('posicionamento')], ['Tom de voz', v('tom_de_voz')], ['Estilo visual', v('estilo_visual') || v('regras_visuais')], ['Estilo de comunicação', v('estilo_comunicacao') || v('tom_de_voz')]];
+  $('#kitCheck').innerHTML = '';
+  for (const [n, ok] of itens) { const c = document.createElement('span'); c.className = 'chip ' + (ok ? 'okk' : 'no2'); c.textContent = (ok ? '✓ ' : '○ ') + n; $('#kitCheck').appendChild(c); }
+}
+$('#brandForm').addEventListener('input', kitCheck);
 $('#newClient').onclick = async () => {
-  const nome = prompt('Nome do novo cliente:'); if (!nome) return;
-  const meta = prompt('Quantos posts por semana?', '2'); if (!meta) return;
+  const nome = await ask('Novo cliente', 'Nome do cliente', { multiline: false }); if (!nome) return;
+  const meta = await ask('Novo cliente', 'Quantos posts por semana?', { value: '2', multiline: false }); if (!meta) return;
   try { const c = await api('/api/clients', { method: 'POST', body: JSON.stringify({ nome, meta_semanal: Number(meta) }) }); await loadClients(c.id); CUR = c.id; loadBrand(); }
-  catch (e) { alert(e.message); }
+  catch (e) { toast(e.message, 'bad'); }
 };
 $('#brandForm').onsubmit = async (e) => {
   e.preventDefault(); $('#brandErr').textContent = '';
   const marca = {}; let meta_semanal; const contas = {};
   for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id') contas[el.name] = el.value; else marca[el.name] = el.value; }
-  try { await api('/api/clients/' + encodeURIComponent(CUR), { method: 'PUT', body: JSON.stringify({ marca, meta_semanal, contas }) }); await loadClients(CUR); $('#brandErr').textContent = 'Salvo.'; loadBrand(); }
+  try { await api('/api/clients/' + encodeURIComponent(CUR), { method: 'PUT', body: JSON.stringify({ marca, meta_semanal, contas }) }); await loadClients(CUR); toast('Marca salva.', 'ok'); loadBrand(); }
   catch (err) { $('#brandErr').textContent = err.message; }
 };
 
 /* ---------- conteúdo ---------- */
 const COLS = [
-  ['Pauta pronta · Em arte', ['em_arte', 'ajustes']],
-  ['Aguardando aprovação', ['aguardando_aprovacao']],
-  ['Aprovado / agendado', ['aprovado', 'agendado']],
-  ['Publicado / outros', ['publicado', 'erro', 'cancelado']],
+  ['✍ Em arte', ['em_arte', 'ajustes'], '#7c5cff', 'Nada aqui. Peça uma pauta ao time ou clique em Rodar.'],
+  ['⏳ Aguardando aprovação', ['aguardando_aprovacao'], '#f0a13a', 'Quando o Luiz entregar a arte, ela aparece aqui para você aprovar.'],
+  ['📅 Aprovado / agendado', ['aprovado', 'agendado'], '#4f8cff', 'Os posts aprovados ficam aqui até a hora de publicar.'],
+  ['✅ Publicado / outros', ['publicado', 'erro', 'cancelado'], '#2fbf71', 'Publicados, com erro ou cancelados.'],
 ];
+const FMT = { reels: '🎬 Reels', carrossel: '🖼 Carrossel', feed: '📷 Feed', story: '⭕ Story' };
+const dia = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Recife' }).replace('.', '') : 'sem data';
 const CH_TAG = { agendado: 'ok', publicado: 'ok', na_fila: 'ok', simulado: 'warn', sem_integracao: 'warn', erro: 'bad' };
 let STATUS_TXT = {};
 let editing = null;
@@ -644,13 +794,15 @@ async function loadPlan() {
   const el = $('#weeks'); el.innerHTML = '';
   const d = (ymd) => ymd.slice(8) + '/' + ymd.slice(5, 7);
   for (const w of semanas) {
-    const t = document.createElement('span'); t.className = 'tag ' + (w.faltam ? 'warn' : 'ok'); t.style.fontSize = '13px';
-    t.textContent = `Semana ${d(w.semana_de)}–${d(w.semana_ate)}: ${w.planejados}/${w.meta} posts`;
-    el.appendChild(t);
+    const x = document.createElement('div'); x.className = 'wk';
+    const pct = Math.min(100, Math.round((w.planejados / Math.max(1, w.meta)) * 100));
+    x.innerHTML = `<b>Semana ${d(w.semana_de)}–${d(w.semana_ate)}</b><small>${w.planejados}/${w.meta} posts</small><div class="bar ${w.faltam ? '' : 'full'}"><i style="width:${pct}%"></i></div>`;
+    if (w.faltam) { const m = document.createElement('div'); m.className = 'meta'; m.style.marginTop = '6px'; m.textContent = `Faltam ${w.faltam} para a meta`; x.appendChild(m); }
+    el.appendChild(x);
   }
   if (me.role === 'admin' && semanas[0]) {
-    const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Meta semanal';
-    b.onclick = async () => { const v = prompt('Quantos posts por semana?', semanas[0].meta); if (v) { try { await api('/api/settings', { method: 'PUT', body: JSON.stringify({ meta_semanal: Number(v), cliente: CUR }) }); loadPlan(); } catch (e) { alert(e.message); } } };
+    const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Alterar meta semanal'; b.style.alignSelf = 'center'; b.style.justifySelf = 'start';
+    b.onclick = async () => { const v = await ask('Meta semanal', 'Quantos posts por semana?', { value: String(semanas[0].meta), multiline: false }); if (v) { try { await api('/api/settings', { method: 'PUT', body: JSON.stringify({ meta_semanal: Number(v), cliente: CUR }) }); loadPlan(); } catch (e) { toast(e.message, 'bad'); } } };
     el.appendChild(b);
   }
 }
@@ -663,14 +815,14 @@ async function loadAuto() {
   if (st.rodando) parts.push('⏳ O Hugo está trabalhando neste cliente agora; as pautas aparecem em instantes.');
   n.textContent = parts.join('  ');
   const b = $('#runTeam'); b.dataset.auto = st.automacao ? '1' : '';
-  b.textContent = st.automacao ? '▶ Rodar agora (Hugo cria as pautas)' : '▶ Rodar a squad do cliente (copiar comando)';
+  b.textContent = st.automacao ? '▶ Rodar agora' : '📋 Copiar comando da squad';
 }
 $('#runTeam').onclick = async () => {
   if ($('#runTeam').dataset.auto) {
-    try { const r = await api('/api/team/run', { method: 'POST', body: JSON.stringify({ cliente: CUR }) }); $('#contentNote').textContent = r.status === 'ja_rodando' ? 'O Hugo já está trabalhando neste cliente.' : 'Hugo iniciou: as pautas aparecem em "Pauta pronta · Em arte" em 1–2 minutos.'; setTimeout(() => loadItems().catch(() => {}), 20000); loadAuto(); }
-    catch (e) { $('#contentNote').textContent = e.message; }
+    try { const r = await api('/api/team/run', { method: 'POST', body: JSON.stringify({ cliente: CUR }) }); toast(r.status === 'ja_rodando' ? 'O Hugo já está trabalhando neste cliente.' : 'Hugo iniciou: as pautas aparecem em "Em arte" em 1–2 minutos.'); setTimeout(() => loadItems().catch(() => {}), 20000); loadAuto(); }
+    catch (e) { toast(e.message, 'bad'); }
     return;
-  } const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); $('#contentNote').textContent = `Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`; } catch { prompt('Copie e cole no Claude:', cmd); } };
+  } const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); toast(`Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`, 'ok'); } catch { prompt('Copie e cole no Claude:', cmd); } };
 
 async function loadSources() {
   const r = await api(`/api/clients/${encodeURIComponent(CUR)}/sources`); const box = $('#srcList'); box.innerHTML = '';
@@ -679,7 +831,7 @@ async function loadSources() {
     const d = document.createElement('div'); d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap';
     const a = document.createElement('a'); a.href = f.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = `${f.tipo === 'doc' ? '📄' : '📊'} ${f.titulo}`;
     const info = document.createElement('span'); info.className = 'note'; info.style.flex = '1'; info.textContent = `${f.caracteres} caracteres${f.cortado ? ' (cortado)' : ''} · lido ${fmt(f.lido_em)}${f.erro ? ' · ' + f.erro : ''}`;
-    const rf = document.createElement('button'); rf.className = 'ghost'; rf.textContent = 'Reler'; rf.onclick = async () => { rf.disabled = true; try { await api(`/api/clients/${encodeURIComponent(CUR)}/sources/${f.id}/refresh`, { method: 'POST' }); } catch (e) { alert(e.message); } loadSources(); };
+    const rf = document.createElement('button'); rf.className = 'ghost'; rf.textContent = 'Reler'; rf.onclick = async () => { rf.disabled = true; try { await api(`/api/clients/${encodeURIComponent(CUR)}/sources/${f.id}/refresh`, { method: 'POST' }); } catch (e) { toast(e.message, 'bad'); } loadSources(); };
     const rm = document.createElement('button'); rm.className = 'no'; rm.textContent = 'Remover'; rm.onclick = async () => { if (confirm('Remover esta fonte?')) { await api(`/api/clients/${encodeURIComponent(CUR)}/sources/${f.id}`, { method: 'DELETE' }); loadSources(); } };
     d.append(a, info, rf, rm); box.appendChild(d);
   }
@@ -715,44 +867,67 @@ async function loadItems() {
   loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {}); loadAuto().catch(() => {});
   const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
   const board = $('#board'); board.innerHTML = '';
-  for (const [title, sts] of COLS) {
-    const col = document.createElement('div'); col.className = 'col';
-    const items = r.items.filter((i) => sts.includes(i.status));
-    const h = document.createElement('h3'); h.textContent = `${title} (${items.length})`; col.appendChild(h);
-    for (const it of items) col.appendChild(itemCard(it));
+  for (const [title, sts, color, vazio] of COLS) {
+    const col = document.createElement('div'); col.className = 'col'; col.style.setProperty('--c', color);
+    const items = r.items.filter((i) => sts.includes(i.status)).sort((a, b) => String(a.data_publicacao || '9').localeCompare(String(b.data_publicacao || '9')));
+    const h = document.createElement('h3'); h.innerHTML = '<span class="dot"></span><span></span><span class="n"></span>'; h.children[1].textContent = title; h.children[2].textContent = items.length; col.appendChild(h);
+    if (!items.length) { const v = document.createElement('div'); v.className = 'vazio'; v.textContent = vazio; col.appendChild(v); }
+    for (const it of items) col.appendChild(itemCard(it, false, color));
     board.appendChild(col);
   }
+  $('#bdgConteudo').textContent = r.items.filter((i) => i.status === 'aguardando_aprovacao').length || '';
+  const open = $('#viewBody').dataset.id;
+  if (open && !$('#viewModal').classList.contains('hidden')) { const it = r.items.find((i) => i.id === open); if (it) renderView(it); else show($('#viewModal'), false); }
 }
-function itemCard(it) {
-  const c = document.createElement('div'); c.className = 'item';
+function renderView(it) { const b = $('#viewBody'); b.innerHTML = ''; b.dataset.id = it.id; b.appendChild(itemCard(it, true)); }
+$('#viewClose').onclick = () => { $('#viewBody').dataset.id = ''; show($('#viewModal'), false); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#viewModal').classList.contains('hidden') && $('#askModal').classList.contains('hidden')) $('#viewClose').click(); });
+$('#viewModal').addEventListener('click', (e) => { if (e.target.id === 'viewModal') $('#viewClose').click(); });
+function itemCard(it, full, color) {
+  const c = document.createElement('div'); c.className = 'item' + (full ? ' full' : ''); if (color) c.style.setProperty('--c', color);
   const mk = (tag, txt, cls) => { const x = document.createElement(tag); x.textContent = txt; if (cls) x.className = cls; return x; };
-  c.append(mk('h4', it.titulo), mk('div', `${it.marca ? it.marca + ' · ' : ''}${STATUS_TXT[it.status] || it.status} · ${it.canais.join(', ')} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
-  const cap = mk('div', it.legenda, 'cap'); cap.onclick = () => cap.classList.toggle('open'); c.appendChild(cap);
-  const br = mk('div', 'Briefing: ' + it.briefing_arte, 'meta'); br.style.marginTop = '6px'; c.appendChild(br);
-  if (it.rascunho_auto) c.appendChild(mk('div', 'Rascunho automático: revise a legenda e o briefing (Editar) ou rode a squad para o Hugo com IA refinar.', 'warn'));
-  if (it.status === 'ajustes' && it.feedback) c.appendChild(mk('div', 'Ajustes pedidos: ' + it.feedback, 'warn'));
-  if (it.arte_url) {
-    const img = document.createElement('img'); img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.replaceWith(mk('div', 'Não foi possível exibir a prévia da arte (o link precisa ser público).', 'warn'));
-    c.appendChild(img);
-    const a = mk('a', 'Abrir arte'); a.href = it.arte_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.fontSize = '12px'; c.appendChild(a);
-  }
+  const chips = document.createElement('div'); chips.className = 'chips';
+  const late = it.data_publicacao && Date.parse(it.data_publicacao) < Date.now() && !['publicado', 'cancelado'].includes(it.status);
+  chips.append(mk('span', FMT[it.formato] || it.formato || 'Feed', 'chip fmt'), mk('span', '📅 ' + dia(it.data_publicacao), 'chip' + (late ? ' late' : '')));
+  if (it.status === 'ajustes') chips.append(mk('span', '↩ Ajustes', 'chip late'));
+  if (it.rascunho_auto) chips.append(mk('span', 'Rascunho', 'chip'));
+  c.append(chips, mk('h4', it.titulo));
+  if (!full && it.arte_url) { const img = document.createElement('img'); img.className = 'thumb'; img.loading = 'lazy'; img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); c.appendChild(img); }
+  c.appendChild(mk('div', it.legenda, 'cap'));
   const cs = Object.entries(it.canais_status || {});
-  if (cs.length) { const w = document.createElement('div'); for (const [canal, v] of cs) { const t = mk('span', `${canal}: ${v.status.replace('_', ' ')}`, 'tag ' + (CH_TAG[v.status] || '')); t.title = v.detalhe || ''; w.appendChild(t); } c.appendChild(w); }
+  const w = document.createElement('div'); w.style.marginTop = '6px';
+  if (cs.length) for (const [canal, v] of cs) { const t = mk('span', `${canal}: ${v.status.replace('_', ' ')}`, 'tag ' + (CH_TAG[v.status] || '')); t.title = v.detalhe || ''; w.appendChild(t); }
+  else for (const k of it.canais) w.appendChild(mk('span', k, 'tag'));
+  c.appendChild(w);
+  if (full) {
+    c.append(mk('div', `${STATUS_TXT[it.status] || it.status}${it.marca ? ' · ' + it.marca : ''} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
+    c.append(mk('div', 'Briefing da arte', 'lbl2'), mk('div', it.briefing_arte, 'cap'));
+    if (it.rascunho_auto) c.appendChild(mk('div', 'Rascunho automático: revise a legenda e o briefing (Editar) ou rode a squad para o Hugo com IA refinar.', 'warn'));
+    if (it.status === 'ajustes' && it.feedback) c.appendChild(mk('div', 'Ajustes pedidos: ' + it.feedback, 'warn'));
+    if (it.arte_url) {
+      c.append(mk('div', 'Arte', 'lbl2'));
+      const img = document.createElement('img'); img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.replaceWith(mk('div', 'Não foi possível exibir a prévia da arte (o link precisa ser público).', 'warn'));
+      c.appendChild(img);
+      const a = mk('a', 'Abrir arte em nova aba'); a.href = it.arte_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.fontSize = '13px'; c.appendChild(a);
+    }
+    if (it.historico?.length) { c.append(mk('div', 'Histórico', 'lbl2')); c.appendChild(mk('div', it.historico.slice(-8).reverse().map((h) => `${fmt(h.at)} · ${h.by || ''} · ${h.text || ''}`).join('\n'), 'hist cap')); }
+  }
   const row = document.createElement('div'); row.className = 'row';
-  const btn = (label, fn, cls) => { const b = mk('button', label, cls); b.onclick = async () => { b.disabled = true; try { await fn(); } catch (e) { alert(e.message); } loadItems().catch(() => {}); }; row.appendChild(b); return b; };
+  const btn = (label, fn, cls) => { const b = mk('button', label, cls); b.onclick = async (ev) => { ev.stopPropagation(); b.disabled = true; try { await fn(); } catch (e) { toast(e.message, 'bad'); } b.disabled = false; loadItems().catch(() => {}); }; row.appendChild(b); return b; };
   const post = (path, body) => api(`/api/content/${it.id}/${path}`, { method: 'POST', body: JSON.stringify(body || {}) });
   const admin = me.role === 'admin';
-  if (['em_arte', 'ajustes'].includes(it.status)) btn('Registrar arte', async () => { const u = prompt('Link público (https) da arte pronta:'); if (u) await post('art', { arte_url: u }); }, 'no');
-  if (['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) btn('Editar', async () => openItem(it), 'no');
-  if (['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) btn('Pedir ajuste', async () => { const n = prompt('O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');
-  if (it.status === 'aguardando_aprovacao') {
-    if (admin) {
-      btn('Aprovar…', async () => { await openApproval(it); }, 'big');
-    } else row.appendChild(mk('small', 'Aguardando um administrador aprovar.', 'note'));
-  }
-  if (admin && ['aprovado', 'erro'].includes(it.status)) btn('Tentar agendar de novo', () => post('schedule'), 'no');
-  if (admin && !['publicado', 'cancelado'].includes(it.status)) btn('Cancelar', async () => { if (confirm('Cancelar este conteúdo?')) await post('cancel'); }, 'no');
+  const emArte = ['em_arte', 'ajustes'].includes(it.status);
+  if (it.status === 'aguardando_aprovacao' && admin) btn('Aprovar…', async () => { await openApproval(it); }, 'big');
+  else if (it.status === 'aguardando_aprovacao' && full) row.appendChild(mk('small', 'Aguardando um administrador aprovar.', 'note'));
+  if (full) {
+    if (emArte) btn('Registrar arte', async () => { const u = await ask('Registrar arte', 'Link público (https) da arte pronta', { multiline: false }); if (u) await post('art', { arte_url: u }); }, 'no');
+    if (emArte || it.status === 'aguardando_aprovacao') btn('Editar', async () => { $('#viewClose').click(); openItem(it); }, 'no');
+    if (emArte || it.status === 'aguardando_aprovacao') btn('Pedir ajuste', async () => { const n = await ask('Pedir ajuste', 'O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');
+    if (admin && ['aprovado', 'erro'].includes(it.status)) btn('Tentar agendar de novo', () => post('schedule'), 'no');
+    if (admin && !['publicado', 'cancelado'].includes(it.status)) btn('Cancelar', async () => { if (confirm('Cancelar este conteúdo?')) { await post('cancel'); $('#viewClose').click(); } }, 'no');
+  } else if (emArte && !it.arte_url) { const m = mk('span', 'Aguardando a arte do Luiz', 'meta'); row.appendChild(m); }
   if (row.children.length) c.appendChild(row);
+  if (!full) c.onclick = () => { renderView(it); show($('#viewModal'), true); };
   return c;
 }
 const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok' };
@@ -781,8 +956,8 @@ $('#apprForm').onsubmit = async (e) => {
   if (modo === 'agora' && !confirm('Publicar AGORA em: ' + canais.map((k) => CH_NAMES[k]).join(', ') + '?')) return;
   try {
     const r = await api(`/api/content/${apprItem.id}/approve`, { method: 'POST', body: JSON.stringify({ canais, modo }) });
-    show($('#apprModal'), false);
-    if (Object.values(r.item.canais_status || {}).some((x) => x.status === 'sem_integracao')) alert('Aprovado. Alguns canais não têm integração conectada: publique esses manualmente.');
+    show($('#apprModal'), false); $('#viewClose').click();
+    if (Object.values(r.item.canais_status || {}).some((x) => x.status === 'sem_integracao')) toast('Aprovado. Alguns canais não têm integração conectada: publique esses manualmente.', 'ok');
     loadItems();
   } catch (err) { $('#apprErr').textContent = err.message; }
 };
