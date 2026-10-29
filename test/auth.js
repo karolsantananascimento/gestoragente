@@ -108,6 +108,13 @@ try {
   r = await call('/api/tool', { method: 'POST', body: { name: 'meta_listar_contas' } });
   ok(r.status === 401, 'rota do painel exige login');
 
+  // "manter conectado": 30 dias; sem marcar, 12 horas
+  const exp = (t) => JSON.parse(Buffer.from(t.split('.')[0], 'base64url').toString()).x - Date.now();
+  r = await call('/api/login', { method: 'POST', body: { email: 'knasck@gmail.com', password: 'senha-do-admin-1', remember: true } });
+  const long = r.data.token;
+  r = await call('/api/login', { method: 'POST', body: { email: 'knasck@gmail.com', password: 'senha-do-admin-1' } });
+  ok(exp(long) > 29 * 86400e3 && exp(r.data.token) < 13 * 3600e3, 'manter conectado dura 30 dias; sem marcar, 12 horas');
+
   // troca de senha do admin
   r = await call('/api/password', { method: 'POST', token: admin, body: { current: 'senha-do-admin-1', next: 'nova-senha-admin-2' } });
   ok(r.status === 200, 'admin troca a própria senha');

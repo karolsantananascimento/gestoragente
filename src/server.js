@@ -97,7 +97,7 @@ app.post('/api/login/google', async (req, res) => {
     }
     attempts.delete(key);
     store.log({ type: 'login', email: user.email, via: 'google' });
-    res.json({ token: signSession(user), user: { email: user.email, role: user.role } });
+    res.json({ token: signSession(user, !!req.body?.remember), user: { email: user.email, role: user.role } });
   } catch (e) {
     fail(key);
     res.status(401).json({ error: e.message });
@@ -109,7 +109,7 @@ app.post('/api/accept-invite-google', async (req, res) => {
     const g = await verifyGoogleIdToken(req.body?.credential);
     const r = acceptInvite(req.body?.token, null, g.email);
     if (r.error) return res.status(400).json({ error: r.error });
-    res.json({ token: signSession(r.user), user: { email: r.user.email, role: r.user.role } });
+    res.json({ token: signSession(r.user, !!req.body?.remember), user: { email: r.user.email, role: r.user.role } });
   } catch (e) {
     res.status(401).json({ error: e.message });
   }
@@ -123,7 +123,7 @@ app.post('/api/login', (req, res) => {
   const user = authenticate(email, password);
   if (!user) { fail(key); store.log({ type: 'login_failed', email: String(email || '').slice(0, 120) }); return res.status(401).json({ error: 'E-mail ou senha inválidos.' }); }
   attempts.delete(key);
-  res.json({ token: signSession(user), user: { email: user.email, role: user.role } });
+  res.json({ token: signSession(user, !!req.body?.remember), user: { email: user.email, role: user.role } });
 });
 
 app.get('/api/invite-info', (req, res) => {
@@ -137,7 +137,7 @@ app.post('/api/accept-invite', (req, res) => {
   const { token, password } = req.body || {};
   const r = acceptInvite(token, password);
   if (r.error) return res.status(400).json({ error: r.error });
-  res.json({ token: signSession(r.user), user: { email: r.user.email, role: r.user.role } });
+  res.json({ token: signSession(r.user, !!req.body?.remember), user: { email: r.user.email, role: r.user.role } });
 });
 
 app.get('/api/me', requireUser, (req, res) => res.json({ email: req.user.email, role: req.user.role }));

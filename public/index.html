@@ -90,6 +90,7 @@
     <div class="note" id="loginNote">Entre com seu e-mail e senha.</div>
     <input id="email" type="email" placeholder="E-mail" autocomplete="username" required>
     <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" required>
+    <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="remember" checked style="padding:0"> Manter conectado neste navegador (30 dias)</label>
     <div class="err" id="loginErr"></div>
     <button id="loginBtn">Entrar</button>
     <div class="note hidden" id="gDiv" style="text-align:center">ou</div>
@@ -214,7 +215,10 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const show = (el, v) => el.classList.toggle('hidden', !v);
-let token = sessionStorage.getItem('tk') || '';
+const store_ = { get: (k) => { try { return localStorage.getItem(k) || sessionStorage.getItem(k) || ''; } catch { return ''; } },
+  set: (k, v, keep) => { try { (keep ? localStorage : sessionStorage).setItem(k, v); (keep ? sessionStorage : localStorage).removeItem(k); } catch {} },
+  del: (k) => { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch {} } };
+let token = store_.get('tk');
 let me = null;
 const sid = sessionStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 sessionStorage.setItem('sid', sid);
@@ -228,7 +232,7 @@ async function api(path, opts = {}) {
   return data;
 }
 function logout() {
-  token = ''; me = null; sessionStorage.removeItem('tk');
+  token = ''; me = null; store_.del('tk');
   show($('#login'), true); $('#pw').value = '';
 }
 function add(role, text) {
@@ -282,7 +286,7 @@ async function boot() {
   await loadStatus(); await loadPending();
   if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
-async function setSession(r) { token = r.token; sessionStorage.setItem('tk', token); await boot(); }
+async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
 
 if (inviteToken) {
   $('#loginTitle').textContent = 'Você foi convidado(a)';
@@ -299,8 +303,8 @@ $('#loginForm').onsubmit = async (e) => {
   e.preventDefault(); $('#loginErr').textContent = ''; $('#loginBtn').disabled = true;
   try {
     const r = inviteToken
-      ? await api('/api/accept-invite', { method: 'POST', body: JSON.stringify({ token: inviteToken, password: $('#pw').value }) })
-      : await api('/api/login', { method: 'POST', body: JSON.stringify({ email: $('#email').value, password: $('#pw').value }) });
+      ? await api('/api/accept-invite', { method: 'POST', body: JSON.stringify({ token: inviteToken, password: $('#pw').value, remember: $('#remember').checked }) })
+      : await api('/api/login', { method: 'POST', body: JSON.stringify({ email: $('#email').value, password: $('#pw').value, remember: $('#remember').checked }) });
     await setSession(r);
   } catch (err) { $('#loginErr').textContent = err.message; }
   $('#loginBtn').disabled = false;
@@ -313,8 +317,8 @@ async function onGoogle(resp) {
   $('#loginErr').textContent = '';
   try {
     const r = inviteToken
-      ? await api('/api/accept-invite-google', { method: 'POST', body: JSON.stringify({ token: inviteToken, credential: resp.credential }) })
-      : await api('/api/login/google', { method: 'POST', body: JSON.stringify({ credential: resp.credential }) });
+      ? await api('/api/accept-invite-google', { method: 'POST', body: JSON.stringify({ token: inviteToken, credential: resp.credential, remember: $('#remember').checked }) })
+      : await api('/api/login/google', { method: 'POST', body: JSON.stringify({ credential: resp.credential, remember: $('#remember').checked }) });
     await setSession(r);
   } catch (err) { $('#loginErr').textContent = err.message; }
 }

@@ -8,6 +8,7 @@ export const norm = (e) => String(e || '').trim().toLowerCase();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITE_TTL_MS = 7 * 24 * 3600 * 1000;
 const SESSION_TTL_MS = 12 * 3600 * 1000;
+const REMEMBER_TTL_MS = 30 * 24 * 3600 * 1000; // "manter conectado"
 
 const safeEq = (a, b) => {
   const x = Buffer.from(String(a ?? ''));
@@ -97,8 +98,8 @@ export function changePassword(email, current, next) {
 // --- sessões (token assinado, 12h) ---
 const sign = (payload) => crypto.createHmac('sha256', config.sessionSecret).update(payload).digest('base64url');
 
-export function signSession(user) {
-  const payload = Buffer.from(JSON.stringify({ e: user.email, x: Date.now() + SESSION_TTL_MS })).toString('base64url');
+export function signSession(user, remember = false) {
+  const payload = Buffer.from(JSON.stringify({ e: user.email, x: Date.now() + (remember ? REMEMBER_TTL_MS : SESSION_TTL_MS) })).toString('base64url');
   return `${payload}.${sign(payload)}`;
 }
 
