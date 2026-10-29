@@ -6,12 +6,14 @@ process.env.META_ACCESS_TOKEN = 'tk';
 process.env.META_PAGE_ID = 'P1';
 process.env.META_PAGE_ACCESS_TOKEN = 'pt';
 process.env.INSTAGRAM_USER_ID = 'IG1';
+process.env.PUBLIC_URL = 'https://app.exemplo.com';
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 
 const calls = [];
 globalThis.fetch = async (url, opts = {}) => {
   calls.push({ url: String(url), body: String(opts.body || '') });
   const u = String(url);
+  if (u.startsWith('https://cdn.exemplo.com')) return new Response(Buffer.from('89504e47', 'hex'), { status: 200, headers: { 'content-type': 'image/png' } });
   const body = u.endsWith('/photos') ? { id: 'ph1', post_id: 'P1_99' } : u.endsWith('/media') ? { id: 'cont1' } : { id: 'media9' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 };
@@ -50,6 +52,8 @@ try {
   r = await callTool('luiz_registrar_arte', { id, arte_url: 'https://cdn.exemplo.com/arte2.png' });
   ok(r.conteudo.status === 'aguardando_aprovacao', 'Luiz refaz e volta para aprovação');
 
+  ok(/^https:\/\/app\.exemplo\.com\/media\/[a-f0-9]{32}$/.test(store.getContent(id).arte_url) && store.getContent(id).arte_origem.includes('arte2'), 'a arte é copiada e passa a ter link próprio e estável (links do Canva expiram)');
+
   // nenhuma ferramenta de IA aprova conteúdo
   ok(!allTools.some((t) => /aprov/.test(t.name) && /conteudo|post|pauta/.test(t.name)), 'não existe ferramenta de IA para aprovar conteúdo');
 
@@ -76,7 +80,7 @@ try {
 
   // sem data não aprova
   const n = c.createItem({ titulo: 'a', legenda: 'b', briefing_arte: 'c', canais: 'instagram' }, 'x').item;
-  c.submitArt(n.id, { arte_url: 'https://x.com/a.png' }, 'luiz');
+  await c.submitArt(n.id, { arte_url: 'https://x.com/a.png' }, 'luiz');
   ok((await c.approveItem(n.id, 'adm')).error?.includes('data'), 'não aprova sem data de publicação');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });

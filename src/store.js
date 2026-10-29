@@ -19,6 +19,7 @@ const normalize = (s) => {
   s.invites ||= [];
   s.content ||= [];
   s.brand ||= {};
+  s.media ||= {};
   return s;
 };
 
@@ -109,6 +110,8 @@ export const store = {
     return c;
   },
   saveContent() { save(); },
+  media: (id) => load().media[id],
+  setMedia(id, m) { load().media[id] = m; save(); },
   brand: () => load().brand,
   setBrand(b) { load().brand = b; save(); return b; },
 };

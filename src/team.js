@@ -29,7 +29,7 @@ export const AGENTS = [
     funcao: 'Recebe o briefing do criativo e cria a arte dentro dos padrões da marca. Registra o link da arte pronta.',
     entrega: 'Arte pronta, que sobe para aprovação humana',
     ferramentas: 'luiz_registrar_arte, marca_ver, conteudo_listar',
-    integracoes: () => [{ nome: 'Criação de imagem (Canva ou outro, via Claude)', ok: null }],
+    integracoes: () => [{ nome: 'Canva (pelo conector do Claude)', ok: null }],
   },
   {
     id: 'mariana', nome: 'Mariana', cargo: 'Agendamento (IA)', emoji: '📣',

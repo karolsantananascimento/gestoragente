@@ -213,7 +213,7 @@ app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, it
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
 app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
-app.post('/api/content/:id/art', requireUser, (req, res) => out(res, submitArt(req.params.id, req.body || {}, req.user.email)));
+app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
 // Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
 app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/changes', requireUser, requireAdmin, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
@@ -228,6 +228,13 @@ app.put('/api/brand', requireUser, requireAdmin, (req, res) => {
   store.setBrand(b);
   store.log({ type: 'brand_updated', by: req.user.email });
   res.json(b);
+});
+
+// Imagens das artes (link público e difícil de adivinhar, usado pelas redes sociais)
+app.get('/media/:id', (req, res) => {
+  const m = /^[a-f0-9]{32}$/.test(req.params.id) && store.media(req.params.id);
+  if (!m) return res.status(404).end();
+  res.set('content-type', m.type).set('cache-control', 'public, max-age=86400').send(Buffer.from(m.data, 'base64'));
 });
 
 app.use(express.static(path.join(here, '..', 'public')));

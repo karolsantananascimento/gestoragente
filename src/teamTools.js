@@ -5,7 +5,7 @@ import { createItem, submitArt, scheduleItem, listItems, cronograma, STATUS } fr
 const view = (c) => ({
   id: c.id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
   data_publicacao: c.data_publicacao, formato: c.formato, objetivo: c.objetivo,
-  legenda: c.legenda, briefing_arte: c.briefing_arte, arte_url: c.arte_url || null,
+  legenda: c.legenda, briefing_arte: c.briefing_arte, arte_url: c.arte_url || null, arte_aviso: c.arte_aviso || undefined,
   ajustes_pedidos: c.status === 'ajustes' ? c.feedback : undefined, canais_status: c.canais_status,
 });
 const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok', conteudo: view(r.item) });
@@ -54,7 +54,7 @@ export const teamTools = [
       arte_url: { type: 'string', desc: 'Link público https da arte exportada (JPG/PNG)', required: true },
       observacoes: { type: 'string', desc: 'Observações sobre a arte (opcional)' },
     },
-    handler: async ({ id, arte_url, observacoes }) => wrap(submitArt(id, { arte_url, observacoes }, 'luiz')),
+    handler: async ({ id, arte_url, observacoes }) => wrap(await submitArt(id, { arte_url, observacoes }, 'luiz')),
   },
   {
     name: 'mariana_agendar', risk: 'internal', agent: 'mariana',

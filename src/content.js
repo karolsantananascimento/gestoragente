@@ -3,6 +3,21 @@ import { config } from './config.js';
 import { store } from './store.js';
 import { adapters } from './platforms/social.js';
 
+const MAX_IMG = 4 * 1024 * 1024;
+// Links de exportação (ex.: Canva) expiram. Guardamos uma cópia da imagem e servimos por um link nosso e estável.
+async function cacheArt(url, origin) {
+  if (origin && url.startsWith(origin + '/media/')) return { url };
+  const r = await fetch(url, { redirect: 'follow' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!/^image\/(png|jpe?g|webp)$/.test(type)) throw new Error(`não é uma imagem PNG/JPG (${type || 'tipo desconhecido'})`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length > MAX_IMG) throw new Error('imagem maior que 4 MB');
+  const id = crypto.randomBytes(16).toString('hex');
+  store.setMedia(id, { type, data: buf.toString('base64'), at: new Date().toISOString() });
+  return { url: `${origin}/media/${id}` };
+}
+
 export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok'];
 export const STATUS = {
   em_arte: 'Em arte (Luiz)',
@@ -95,13 +110,20 @@ export function editItem(id, patch, by) {
 }
 
 // Luiz entrega a arte → sobe para aprovação humana.
-export function submitArt(id, { arte_url, observacoes }, by) {
+export async function submitArt(id, { arte_url, observacoes }, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe arte quando está em arte ou com ajustes.` };
   const u = String(arte_url || '').trim();
   if (!/^https:\/\//i.test(u)) return { error: 'Informe o link público (https://) da arte pronta.' };
+  it.arte_origem = u;
   it.arte_url = u;
+  it.arte_aviso = '';
+  const origin = config.publicUrl;
+  if (origin) {
+    try { it.arte_url = (await cacheArt(u, origin)).url; }
+    catch (e) { it.arte_aviso = `Não consegui guardar uma cópia da imagem (${e.message}). Se o link expirar, as redes não conseguirão baixá-la.`; }
+  }
   it.arte_nota = String(observacoes || '').slice(0, 500);
   it.status = 'aguardando_aprovacao';
   hist(it, by, 'Arte entregue. Aguardando aprovação humana.');
