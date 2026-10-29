@@ -113,6 +113,7 @@
   <button data-tab="conteudo">Conteúdo</button>
   <button data-tab="time">Time</button>
   <button data-tab="marca">Marca</button>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:6px"><small class="note">Cliente:</small><select id="clientSel" title="Área de trabalho do cliente"></select></span>
 </nav>
 <main id="v-trafego">
   <section id="chat">
@@ -137,9 +138,9 @@
 
 
 <div class="view hidden" id="v-conteudo">
-  <p class="flow">Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
+  <p class="flow">Squad de <b id="curName"></b>: Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
   <div id="weeks" class="row" style="margin:0 0 12px"></div>
-  <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar o time (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
+  <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar a squad do cliente (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
   <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Pedir ao time</h4>
     <textarea id="reqText" rows="3" style="width:100%" placeholder="Ex.: Crie um post de carrossel para a Disco sobre 3 erros comuns de site lento, para quinta às 11h."></textarea>
     <div class="row" style="margin-top:6px"><input id="reqCanais" value="instagram" style="max-width:220px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
@@ -153,9 +154,16 @@
 </div>
 
 <div class="view hidden" id="v-marca">
-  <p class="flow">Padrões da marca que o Luiz segue e o Hugo usa no tom de voz. Só administradores editam.</p>
+  <p class="flow">Registro do cliente: identidade, tom, estilo visual e de comunicação que o Hugo e o Luiz seguem <b>só</b> para este cliente. Só administradores editam. <button type="button" class="ghost" id="newClient">+ Novo cliente</button></p>
+  <div class="note" id="kitAviso"></div>
   <form class="form" id="brandForm">
-    <label>Nome da marca<input name="nome"></label>
+    <label>Nome do cliente<input name="nome"></label>
+    <label>Posts por semana (meta)<input name="meta_semanal" type="number" min="1" max="21"></label>
+    <label>Identidade da marca (quem é, essência, valores, personalidade)<textarea name="identidade" rows="5"></textarea></label>
+    <label>Estilo de comunicação (como se comunica: formato dos posts, estrutura da legenda, CTAs, emojis, hashtags)<textarea name="estilo_comunicacao" rows="5"></textarea></label>
+    <label>Estilo visual (fotos, cores em uso, composição, referências para o designer)<textarea name="estilo_visual" rows="6"></textarea></label>
+    <label>Instagram: ID da conta profissional (para publicar; vazio = não publica)<input name="ig_user_id" inputmode="numeric"></label>
+    <label>Facebook: ID da página<input name="fb_page_id" inputmode="numeric"></label>
     <label>Posicionamento<textarea name="posicionamento" rows="3"></textarea></label>
     <label>Foco do conteúdo<textarea name="objetivo_conteudo" rows="4"></textarea></label>
     <label>Frentes / unidades<textarea name="frentes" rows="4"></textarea></label>
@@ -301,13 +309,28 @@ async function loadStatus() {
 }
 
 /* ---------- sessão ---------- */
+let CLIENTS = [];
+let CUR = '';
+const qc = () => 'cliente=' + encodeURIComponent(CUR);
+async function loadClients(keep) {
+  const r = await api('/api/clients'); CLIENTS = r.clientes;
+  let saved = ''; try { saved = localStorage.getItem('cliente') || ''; } catch {}
+  CUR = [keep, CUR, saved].find((x) => x && CLIENTS.some((c) => c.id === x)) || (CLIENTS.find((c) => c.padrao) || CLIENTS[0]).id;
+  const sel = $('#clientSel'); sel.innerHTML = '';
+  for (const c of CLIENTS) { const o = document.createElement('option'); o.value = c.id; o.textContent = c.nome + (c.kit_completo ? '' : ' (kit incompleto)'); sel.appendChild(o); }
+  sel.value = CUR;
+}
+$('#clientSel').onchange = () => {
+  CUR = $('#clientSel').value; try { localStorage.setItem('cliente', CUR); } catch {}
+  const on = document.querySelector('#tabs button.on')?.dataset.tab; if (on) openTab(on);
+};
 async function boot() {
   me = await api('/api/me');
   show($('#login'), false);
   $('#who').textContent = `${me.email} · ${me.role === 'admin' ? 'administrador' : 'colaborador'}`;
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
-  await loadStatus(); await loadPending();
+  await loadClients(); await loadStatus(); await loadPending();
   if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
@@ -537,15 +560,27 @@ async function loadAgents() {
 
 /* ---------- marca ---------- */
 async function loadBrand() {
-  const b = await api('/api/brand');
+  await loadClients(CUR);
+  const c = await api('/api/clients/' + encodeURIComponent(CUR)); const b = c.marca || {};
   const f = $('#brandForm');
-  for (const el of f.elements) if (el.name) { el.value = b[el.name] || ''; el.disabled = me.role !== 'admin'; }
-  $('#brandSave').disabled = me.role !== 'admin';
+  for (const el of f.elements) if (el.name) {
+    el.value = el.name === 'meta_semanal' ? c.meta_semanal : el.name === 'ig_user_id' || el.name === 'fb_page_id' ? (c.contas?.[el.name] || '') : (b[el.name] || '');
+    el.disabled = me.role !== 'admin';
+  }
+  $('#brandSave').disabled = me.role !== 'admin'; show($('#newClient'), me.role === 'admin');
+  $('#kitAviso').textContent = c.kit_completo ? '' : '⚠ Kit incompleto: preencha identidade, tom de voz, estilo visual e estilo de comunicação. Enquanto isso o time não cria pautas nem artes para este cliente.';
 }
+$('#newClient').onclick = async () => {
+  const nome = prompt('Nome do novo cliente:'); if (!nome) return;
+  const meta = prompt('Quantos posts por semana?', '2'); if (!meta) return;
+  try { const c = await api('/api/clients', { method: 'POST', body: JSON.stringify({ nome, meta_semanal: Number(meta) }) }); await loadClients(c.id); CUR = c.id; loadBrand(); }
+  catch (e) { alert(e.message); }
+};
 $('#brandForm').onsubmit = async (e) => {
   e.preventDefault(); $('#brandErr').textContent = '';
-  const body = {}; for (const el of e.target.elements) if (el.name) body[el.name] = el.value;
-  try { await api('/api/brand', { method: 'PUT', body: JSON.stringify(body) }); $('#brandErr').textContent = 'Salvo.'; }
+  const marca = {}; let meta_semanal; const contas = {};
+  for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id') contas[el.name] = el.value; else marca[el.name] = el.value; }
+  try { await api('/api/clients/' + encodeURIComponent(CUR), { method: 'PUT', body: JSON.stringify({ marca, meta_semanal, contas }) }); await loadClients(CUR); $('#brandErr').textContent = 'Salvo.'; loadBrand(); }
   catch (err) { $('#brandErr').textContent = err.message; }
 };
 
@@ -562,7 +597,7 @@ let editing = null;
 const toLocalInput = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(iso) - 3 * 3600e3); return d.toISOString().slice(0, 16); }; // Recife = UTC-3
 
 async function loadPlan() {
-  const { semanas } = await api('/api/plan?n=3');
+  const { semanas } = await api('/api/plan?n=3&' + qc());
   const el = $('#weeks'); el.innerHTML = '';
   const d = (ymd) => ymd.slice(8) + '/' + ymd.slice(5, 7);
   for (const w of semanas) {
@@ -572,15 +607,15 @@ async function loadPlan() {
   }
   if (me.role === 'admin' && semanas[0]) {
     const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Meta semanal';
-    b.onclick = async () => { const v = prompt('Quantos posts por semana?', semanas[0].meta); if (v) { try { await api('/api/settings', { method: 'PUT', body: JSON.stringify({ meta_semanal: Number(v) }) }); loadPlan(); } catch (e) { alert(e.message); } } };
+    b.onclick = async () => { const v = prompt('Quantos posts por semana?', semanas[0].meta); if (v) { try { await api('/api/settings', { method: 'PUT', body: JSON.stringify({ meta_semanal: Number(v), cliente: CUR }) }); loadPlan(); } catch (e) { alert(e.message); } } };
     el.appendChild(b);
   }
 }
-const RUN_CMD = 'Use o conector Agente de Tráfego: chame time_proximas_tarefas e execute as tarefas do time: primeiro os pedidos da usuária e os ajustes pedidos nos criativos, depois as pautas que faltam para a Disco (Hugo) e as artes no Canva (Luiz). Deixe tudo aguardando aprovação.';
-$('#runTeam').onclick = async () => { try { await navigator.clipboard.writeText(RUN_CMD); $('#contentNote').textContent = 'Comando copiado. Cole numa conversa do Claude com o conector.'; } catch { prompt('Copie e cole no Claude:', RUN_CMD); } };
+const runCmd = (nome) => `Use o conector Agente de Tráfego: chame time_proximas_tarefas${nome ? ` com cliente="${nome}"` : ''} e execute as tarefas da squad: primeiro os pedidos e os ajustes pedidos nos criativos, depois as pautas que faltam (Hugo) e as artes no Canva (Luiz), sempre com a identidade (marca_ver) do cliente da vez. Deixe tudo aguardando aprovação.`;
+$('#runTeam').onclick = async () => { const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); $('#contentNote').textContent = `Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`; } catch { prompt('Copie e cole no Claude:', cmd); } };
 
 async function loadRequests() {
-  const r = await api('/api/requests?status=aberto'); const box = $('#reqList'); box.innerHTML = '';
+  const r = await api('/api/requests?status=aberto&' + qc()); const box = $('#reqList'); box.innerHTML = '';
   if (!r.pedidos.length) { box.textContent = 'Nenhum pedido aberto. O time atende os pedidos na próxima rodada.'; return; }
   const t = document.createElement('div'); t.textContent = `Pedidos abertos (${r.pedidos.length}) — aguardando o time rodar:`; box.appendChild(t);
   for (const p of r.pedidos) {
@@ -593,13 +628,14 @@ async function loadRequests() {
 $('#reqSend').onclick = async () => {
   $('#reqNote').textContent = '';
   try {
-    await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
+    await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
     $('#reqText').value = ''; $('#reqNote').textContent = 'Pedido enviado. Clique em "Rodar o time" para o time atender.'; loadRequests();
   } catch (e) { $('#reqNote').textContent = e.message; }
 };
 async function loadItems() {
+  $('#curName').textContent = CLIENTS.find((c) => c.id === CUR)?.nome || '';
   loadPlan().catch(() => {}); loadRequests().catch(() => {});
-  const r = await api('/api/content'); STATUS_TXT = r.status;
+  const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
   const board = $('#board'); board.innerHTML = '';
   for (const [title, sts] of COLS) {
     const col = document.createElement('div'); col.className = 'col';
@@ -644,7 +680,7 @@ const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'Link
 let apprItem = null;
 async function openApproval(it) {
   apprItem = it; $('#apprErr').textContent = '';
-  const st = await api('/api/status'); const redes = st.redes || {};
+  const st = await api('/api/status?cliente=' + encodeURIComponent(apprItem.cliente_id || CUR)); const redes = st.redes || {};
   $('#apprTitle').textContent = it.titulo;
   $('#apprWhen').textContent = it.data_publicacao ? fmt(it.data_publicacao) : '(sem data — edite a pauta)';
   const box = $('#apprCh'); box.innerHTML = '';
@@ -674,7 +710,7 @@ $('#apprForm').onsubmit = async (e) => {
 function openItem(it) {
   editing = it || null;
   const f = $('#itemForm'); f.reset(); $('#itemErr').textContent = '';
-  $('#itemTitle').textContent = it ? 'Editar pauta' : 'Nova pauta';
+  $('#itemTitle').textContent = it ? 'Editar pauta' : 'Nova pauta · ' + (CLIENTS.find((c) => c.id === CUR)?.nome || '');
   if (it) { for (const k of ['titulo', 'legenda', 'briefing_arte', 'formato']) f.elements[k].value = it[k] || ''; f.elements.canais.value = it.canais.join(', '); f.elements.data_publicacao.value = toLocalInput(it.data_publicacao); }
   show($('#itemModal'), true);
 }
@@ -684,7 +720,7 @@ $('#reloadItems').onclick = () => loadItems().catch(() => {});
 $('#itemForm').onsubmit = async (e) => {
   e.preventDefault(); $('#itemErr').textContent = '';
   const f = e.target.elements;
-  const body = { titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: f.canais.value, formato: f.formato.value, data_publicacao: f.data_publicacao.value || '' };
+  const body = { cliente: CUR, titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: f.canais.value, formato: f.formato.value, data_publicacao: f.data_publicacao.value || '' };
   try {
     if (editing) await api('/api/content/' + editing.id, { method: 'PATCH', body: JSON.stringify(body) });
     else await api('/api/content', { method: 'POST', body: JSON.stringify(body) });

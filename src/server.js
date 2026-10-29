@@ -10,7 +10,8 @@ import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
-import { createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { redesDe } from './platforms/social.js';
+import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -174,8 +175,8 @@ app.delete('/api/users/:email', requireUser, requireAdmin, (req, res) => {
 });
 
 // --- Agente e fila de aprovação ---
-app.get('/api/status', requireUser, (_req, res) =>
-  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: socialStatus(), armazenamento: store.mode(), chat: !!config.anthropicKey }));
+app.get('/api/status', requireUser, (req, res) =>
+  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey }));
 
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message } = req.body || {};
@@ -209,7 +210,7 @@ app.post('/api/reject/:id', requireUser, requireAdmin, (req, res) => res.json(re
 // --- Time, conteúdo e marca ---
 app.get('/api/team', requireUser, (_req, res) => res.json(teamInfo()));
 
-app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status) }));
+app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status, req.query.cliente) }));
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
 app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
@@ -221,25 +222,62 @@ app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
 
 // Pedidos ao time: comandos escritos no painel (criar pauta). O time os executa quando roda.
-app.get('/api/requests', requireUser, (req, res) => res.json({ pedidos: listRequests(req.query.status) }));
+app.get('/api/requests', requireUser, (req, res) => res.json({ pedidos: listRequests(req.query.status, req.query.cliente) }));
 app.post('/api/requests', requireUser, (req, res) => out(res, createRequest(req.body || {}, req.user.email)));
 app.post('/api/requests/:id/cancel', requireUser, (req, res) => out(res, cancelRequest(req.params.id, req.user.email)));
 
-app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8)) }));
-app.put('/api/settings', requireUser, requireAdmin, (req, res) => {
-  const m = Number(req.body?.meta_semanal);
-  if (!Number.isInteger(m) || m < 1 || m > 21) return res.status(400).json({ error: 'Meta semanal precisa ser um número de 1 a 21.' });
-  res.json(store.setSettings({ meta_semanal: m }));
+app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8), req.query.cliente) }));
+// --- Clientes (áreas de trabalho): kit de marca, meta semanal e contas próprias ---
+const BRAND_FIELDS = ['nome', 'identidade', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'estilo_comunicacao', 'estilo_visual', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links', 'modelo_lista_numerada', 'padrao_de_feed'];
+const clientView = (c) => ({ id: c.id, nome: c.nome, meta_semanal: c.meta_semanal, padrao: !!c.padrao, kit_completo: kitCompleto(c.marca), contas: c.contas || {} });
+app.get('/api/clients', requireUser, (_req, res) => res.json({ clientes: store.clientes().map(clientView) }));
+app.get('/api/clients/:id', requireUser, (req, res) => {
+  const c = getCliente(req.params.id);
+  return c ? res.json({ ...clientView(c), marca: c.marca }) : res.status(404).json({ error: 'Cliente não encontrado.' });
 });
-
-const BRAND_FIELDS = ['nome', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links'];
-app.get('/api/brand', requireUser, (_req, res) => res.json(store.brand()));
+const slug = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const cleanMeta = (v) => { const m = Number(v); return Number.isInteger(m) && m >= 1 && m <= 21 ? m : null; };
+const cleanContas = (c = {}) => ({ ig_user_id: String(c.ig_user_id || '').replace(/\D/g, '').slice(0, 30), fb_page_id: String(c.fb_page_id || '').replace(/\D/g, '').slice(0, 30) });
+app.post('/api/clients', requireUser, requireAdmin, (req, res) => {
+  const nome = String(req.body?.nome || '').trim().slice(0, 80);
+  if (!nome) return res.status(400).json({ error: 'Informe o nome do cliente.' });
+  if (getCliente(nome)) return res.status(400).json({ error: 'Já existe um cliente com esse nome.' });
+  const meta = cleanMeta(req.body?.meta_semanal ?? 3);
+  if (!meta) return res.status(400).json({ error: 'Meta semanal precisa ser um número de 1 a 21.' });
+  const c = store.addCliente({ id: slug(nome), nome, meta_semanal: meta, padrao: false, contas: {}, marca: { nome }, criado_em: new Date().toISOString() });
+  store.log({ type: 'cliente_criado', id: c.id, by: req.user.email });
+  res.json(clientView(c));
+});
+app.put('/api/clients/:id', requireUser, requireAdmin, (req, res) => {
+  const c = getCliente(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Cliente não encontrado.' });
+  const b = req.body || {};
+  if (b.meta_semanal !== undefined) { const m = cleanMeta(b.meta_semanal); if (!m) return res.status(400).json({ error: 'Meta semanal precisa ser um número de 1 a 21.' }); c.meta_semanal = m; }
+  if (b.contas) c.contas = cleanContas(b.contas);
+  if (b.marca) {
+    // Mescla: campos que o painel não edita (ex.: referências visuais) são preservados.
+    for (const k of BRAND_FIELDS) if (b.marca[k] !== undefined) c.marca[k] = String(b.marca[k]).slice(0, 8000);
+    if (c.marca.nome) c.nome = c.marca.nome.slice(0, 80);
+  }
+  store.saveClientes();
+  store.log({ type: 'cliente_atualizado', id: c.id, by: req.user.email });
+  res.json({ ...clientView(c), marca: c.marca });
+});
+// Compatibilidade: rotas antigas (cliente padrão ou ?cliente=)
+app.get('/api/brand', requireUser, (req, res) => res.json(store.brand(req.query.cliente)));
 app.put('/api/brand', requireUser, requireAdmin, (req, res) => {
-  const b = {};
-  for (const k of BRAND_FIELDS) if (req.body?.[k] !== undefined) b[k] = String(req.body[k]).slice(0, 8000);
-  store.setBrand(b);
-  store.log({ type: 'brand_updated', by: req.user.email });
-  res.json(b);
+  const c = getCliente(req.query.cliente);
+  if (!c) return res.status(404).json({ error: 'Cliente não encontrado.' });
+  for (const k of BRAND_FIELDS) if (req.body?.[k] !== undefined) c.marca[k] = String(req.body[k]).slice(0, 8000);
+  if (c.marca.nome) c.nome = c.marca.nome.slice(0, 80);
+  store.saveClientes(); store.log({ type: 'brand_updated', by: req.user.email });
+  res.json(c.marca);
+});
+app.put('/api/settings', requireUser, requireAdmin, (req, res) => {
+  const m = cleanMeta(req.body?.meta_semanal); const c = getCliente(req.body?.cliente);
+  if (!m || !c) return res.status(400).json({ error: 'Informe o cliente e uma meta semanal de 1 a 21.' });
+  c.meta_semanal = m; store.saveClientes();
+  res.json({ meta_semanal: m });
 });
 
 // Imagens das artes (link público e difícil de adivinhar, usado pelas redes sociais)

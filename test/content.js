@@ -35,20 +35,20 @@ try {
   ok(mk.nome === 'Disco' && /#78D600/.test(mk.cores) && /ANTON/i.test(mk.fontes) && /storytelling/i.test(mk.objetivo_conteudo) && /a gente/.test(mk.tom_de_voz) && mk.logo_url === 'https://app.exemplo.com/brand/disco-logo-branco-verde.svg', 'marca_ver entrega o kit Disco (cores, fontes, estilo, logo) ao Luiz');
 
   // fila de trabalho autônoma: Hugo vê as semanas sem pauta
-  let q = await callTool('time_proximas_tarefas', { semanas: 2 });
-  ok(q.meta_semanal === 3 && q.hugo.semanas.length >= 1 && q.hugo.semanas[0].datas_sugeridas.length > 0, 'time_proximas_tarefas diz ao Hugo quantos posts faltam e em que datas');
+  let q = (await callTool('time_proximas_tarefas', { semanas: 2, cliente: 'Disco' })).squads[0];
+  ok(q.meta_semanal === 2 && q.hugo.semanas.length >= 1 && q.hugo.semanas[0].datas_sugeridas.length > 0, 'time_proximas_tarefas diz ao Hugo quantos posts faltam e em que datas');
   const w0 = q.hugo.semanas[0];
-  for (const d of w0.datas_sugeridas) await callTool('hugo_criar_pauta', { titulo: 'Auto ' + d, legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: d });
-  const q2 = await callTool('time_proximas_tarefas', { semanas: 2 });
+  for (const d of w0.datas_sugeridas) await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Auto ' + d, legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: d });
+  const q2 = (await callTool('time_proximas_tarefas', { semanas: 2, cliente: 'Disco' })).squads[0];
   ok(!q2.hugo.semanas.some((w) => w.semana_de === w0.semana_de), 'depois de criar as pautas sugeridas a semana fica completa (sem passar da meta)');
   ok(q2.luiz.pendentes.length === w0.datas_sugeridas.length, 'as pautas aparecem na fila do Luiz');
 
   // Hugo cria pela ferramenta
-  let r = await callTool('hugo_criar_pauta', { titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
+  let r = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
   ok(r.status === 'ok' && r.conteudo.status === 'em_arte', 'Hugo cria a pauta e ela nasce em "em_arte"');
   const id = r.conteudo.id;
 
-  r = await callTool('hugo_criar_pauta', { titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'], data_publicacao: future });
+  r = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'], data_publicacao: future });
   ok(r.status === 'erro', 'canal inexistente é recusado');
 
   // Mariana não agenda sem aprovação
@@ -113,9 +113,9 @@ try {
   ok(c.createRequest({ texto: 'curto' }, 'u@x.com').error, 'pedido muito curto é recusado');
   ok(c.createRequest({ texto: 'Post sobre site lento para a Disco', canais: 'orkut' }, 'u@x.com').error, 'pedido com canal inválido é recusado');
   const rq = c.createRequest({ texto: 'Post sobre site lento para a Disco', canais: 'instagram' }, 'u@x.com').pedido;
-  const tasks = await callTool('time_proximas_tarefas', {}, 'mcp');
+  const tasks = (await callTool('time_proximas_tarefas', { cliente: 'Disco' }, 'mcp')).squads[0];
   ok(tasks.pedidos_da_usuaria?.pedidos?.some((p) => p.pedido_id === rq.id), 'pedido aparece nas tarefas do time');
-  const np = await callTool('hugo_criar_pauta', { titulo: 'Site lento', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01', pedido_id: rq.id }, 'mcp');
+  const np = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Site lento', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01', pedido_id: rq.id }, 'mcp');
   ok(np.status === 'ok' && c.listRequests('aberto').length === 0 && c.listRequests('atendido')[0]?.item_id === np.conteudo.id, 'criar pauta com pedido_id fecha o pedido');
   const rq2 = c.createRequest({ texto: 'Outro post para cancelar depois' }, 'u@x.com').pedido;
   ok(c.cancelRequest(rq2.id, 'u@x.com').pedido.status === 'cancelado', 'pedido pode ser cancelado');
@@ -134,6 +134,31 @@ try {
   const rq3 = await c.approveItem(qa.id, 'adm', { canais: ['instagram'], modo: 'agora' });
   ok(rq3.item?.canais.join() === 'instagram' && rq3.item.status === 'publicado' && rq3.item.canais_status.instagram.status === 'publicado', 'publicar agora publica só nas contas escolhidas, sem exigir data');
   ok(calls.slice(before).some((x) => x.url.endsWith('/IG1/media_publish')) && !calls.slice(before).some((x) => x.url.includes('/photos')), 'só o Instagram recebeu a publicação');
+
+  // Squads por cliente
+  const nomes = store.clientes().map((x) => `${x.nome}:${x.meta_semanal}`).join('|');
+  ok(nomes === 'Disco:2|Michie Farfan:2|Operizy:7|Senhorita Moça:3|Lumiere:2|ContraFluxo Pratas:2', 'os 6 clientes nascem com a meta semanal combinada');
+  ok(c.planoSemanas(2, 'Operizy')[1].datas_sugeridas.length === 7, 'Operizy (1 por dia) ganha 7 datas sugeridas por semana');
+  const sq = (await callTool('time_proximas_tarefas', {}, 'mcp')).squads;
+  ok(sq.length === 6 && sq.find((x) => x.cliente === 'Lumiere').aguardando_identidade && !sq.find((x) => x.cliente === 'Lumiere').hugo, 'cliente sem kit completo não recebe tarefas de criação');
+  const bloq = await callTool('hugo_criar_pauta', { cliente: 'Lumiere', titulo: 't', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
+  ok(bloq.status === 'erro' && /incompleto/.test(bloq.erro), 'Hugo recusa criar pauta para cliente com kit incompleto');
+  const m = store.cliente('Michie Farfan');
+  Object.assign(m.marca, { identidade: 'Marca X', tom_de_voz: 'caloroso', estilo_visual: 'claro e minimalista', estilo_comunicacao: 'frases curtas' });
+  ok((await callTool('marca_ver', { cliente: 'Michie Farfan' }, 'mcp')).estilo_visual === 'claro e minimalista', 'marca_ver devolve o kit do cliente pedido, não o da Disco');
+  const pm = await callTool('hugo_criar_pauta', { cliente: 'Michie Farfan', titulo: 'Post Michie', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
+  ok(pm.status === 'ok' && pm.conteudo.cliente === 'Michie Farfan', 'pauta nasce na área do cliente');
+  ok((c.listItems)('em_arte', 'Michie Farfan').length === 1 && !(c.listItems)(null, 'Michie Farfan').some((x) => x.cliente_id !== 'michie-farfan'), 'a área do cliente só lista as pautas dele');
+  await c.submitArt(pm.conteudo.id, { arte_url: 'https://x.com/m.png' }, 'luiz');
+  const antes = calls.length;
+  const am = await c.approveItem(pm.conteudo.id, 'adm', { canais: ['instagram'], modo: 'agora' });
+  ok(am.item.canais_status.instagram.status === 'sem_integracao' && !calls.slice(antes).some((x) => x.url.includes('/media')), 'cliente sem conta própria NUNCA publica no Instagram da Disco');
+  m.contas = { ig_user_id: '777', fb_page_id: '' };
+  const pm2 = c.createItem({ cliente: 'Michie Farfan', titulo: 'Post 2', legenda: 'l', briefing_arte: 'b', canais: 'instagram', data_publicacao: '2030-01-01' }, 'hugo').item;
+  await c.submitArt(pm2.id, { arte_url: 'https://x.com/m2.png' }, 'luiz');
+  const antes2 = calls.length;
+  await c.approveItem(pm2.id, 'adm', { canais: ['instagram'], modo: 'agora' });
+  ok(calls.slice(antes2).some((x) => x.url.includes('/777/media')), 'com conta própria cadastrada, publica no Instagram do cliente');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');

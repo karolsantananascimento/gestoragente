@@ -58,7 +58,16 @@ function cleanChannels(c) {
   return { list: [...new Set(list)] };
 }
 
+// Kit mínimo para o time produzir: sem identidade/tom/estilo definidos o Hugo e o Luiz não criam nada para o cliente.
+export const kitCompleto = (m = {}) => !!((m.identidade || m.posicionamento) && m.tom_de_voz && (m.estilo_visual || m.regras_visuais) && (m.estilo_comunicacao || m.tom_de_voz));
+export function getCliente(ref) {
+  const c = store.cliente(ref);
+  return c || null;
+}
+
 export function createItem(p, by) {
+  const cliente = getCliente(p.cliente || p.cliente_id);
+  if (!cliente) return { error: `Cliente não encontrado: "${p.cliente || p.cliente_id}". Clientes: ${store.clientes().map((c) => c.nome).join(', ')}.` };
   const titulo = String(p.titulo || '').trim();
   const legenda = String(p.legenda || '').trim();
   const briefing = String(p.briefing_arte || '').trim();
@@ -73,7 +82,8 @@ export function createItem(p, by) {
   const item = {
     id: crypto.randomUUID().slice(0, 8),
     titulo, legenda, briefing_arte: briefing,
-    marca: String(p.marca || store.brand().nome || '').slice(0, 80),
+    cliente_id: cliente.id,
+    marca: cliente.nome,
     formato: String(p.formato || 'feed').slice(0, 40),
     objetivo: String(p.objetivo || '').slice(0, 300),
     canais: ch.list,
@@ -90,7 +100,10 @@ export function createItem(p, by) {
   return { item };
 }
 
-export const listItems = (status) => store.content().filter((c) => !status || c.status === status);
+export const listItems = (status, cliente) => {
+  const id = cliente ? getCliente(cliente)?.id : null;
+  return store.content().filter((c) => (!status || c.status === status) && (!id || c.cliente_id === id));
+};
 
 export function editItem(id, patch, by) {
   const it = store.getContent(id);
@@ -197,7 +210,7 @@ export async function scheduleItem(id, by = 'mariana', opts = {}) {
     const cur = it.canais_status[canal]?.status;
     if (['agendado', 'na_fila', 'publicado'].includes(cur)) continue;
     const ad = adapters[canal];
-    if (!ad?.configured()) {
+    if (!ad?.configured(it)) {
       it.canais_status[canal] = { status: 'sem_integracao', detalhe: ad?.nota || `${ad?.nome || canal} não está conectado. Publique manualmente.` };
       continue;
     }
@@ -235,8 +248,9 @@ function settle(it) {
   else it.status = 'aprovado'; // nada agendado: sem integração/simulação
 }
 
-export function cronograma() {
-  return store.content()
+export function cronograma(cliente) {
+  const id = cliente ? getCliente(cliente)?.id : null;
+  return store.content().filter((c) => !id || c.cliente_id === id)
     .filter((c) => ['aprovado', 'agendado', 'erro', 'aguardando_aprovacao'].includes(c.status))
     .sort((a, b) => String(a.data_publicacao).localeCompare(String(b.data_publicacao)));
 }
@@ -273,19 +287,22 @@ export function weekStart(d) {
   return t.toISOString().slice(0, 10);
 }
 const addDays = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const SLOTS = [[0, '11:00'], [2, '11:00'], [4, '11:00']]; // seg, qua, sex (sugestão)
+// Dias da semana sugeridos conforme a meta do cliente (0 = segunda). 7 posts = todos os dias.
+const DIAS = { 1: [2], 2: [1, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
 
-export function planoSemanas(n = 3, marca) {
-  const meta = store.settings().meta_semanal;
+export function planoSemanas(n = 3, clienteRef) {
+  const cl = getCliente(clienteRef);
+  const meta = cl?.meta_semanal || 3;
+  const slots = DIAS[Math.min(Math.max(meta, 1), 7)] || DIAS[7];
   const start = weekStart(new Date());
   const weeks = [];
   for (let i = 0; i < n; i++) {
     const ini = addDays(start, i * 7);
-    const items = store.content().filter((c) => c.status !== 'cancelado' && c.data_publicacao && weekStart(new Date(c.data_publicacao)) === ini && (!marca || !c.marca || c.marca === marca));
+    const items = store.content().filter((c) => c.status !== 'cancelado' && c.cliente_id === cl?.id && c.data_publicacao && weekStart(new Date(c.data_publicacao)) === ini);
     const falta = Math.max(0, meta - items.length);
     const usados = new Set(items.map((c) => new Date(new Date(c.data_publicacao).getTime() - RECIFE).toISOString().slice(0, 10)));
-    const livres = SLOTS.map(([d, h]) => `${addDays(ini, d)}T${h}`)
-      .filter((s) => !usados.has(s.slice(0, 10)) && parseWhen(s).getTime() > Date.now() + 3600e3);
+    const livres = slots.map((d) => `${addDays(ini, d)}T11:00`)
+      .filter((x) => !usados.has(x.slice(0, 10)) && parseWhen(x).getTime() > Date.now() + 3600e3);
     // Em semana já em andamento só dá para planejar nos horários que ainda não passaram.
     const sug = livres.slice(0, falta);
     weeks.push({ semana_de: ini, semana_ate: addDays(ini, 6), meta, planejados: items.length, faltam: sug.length, datas_sugeridas: sug });
@@ -332,18 +349,23 @@ export async function importSeeds() {
 
 // --- Pedidos feitos no painel (a usuária comanda o time sem abrir o Claude) ---
 export function createRequest(p, by) {
+  const cliente = getCliente(p.cliente || p.cliente_id);
+  if (!cliente) return { error: 'Cliente não encontrado.' };
   const texto = String(p.texto || '').trim();
   if (texto.length < 8) return { error: 'Descreva o pedido (o que o post deve dizer, tema, objetivo).' };
   const ch = p.canais && p.canais.length ? cleanChannels(p.canais) : { list: ['instagram'] };
   if (ch.error) return ch;
   let data = '';
   if (p.data_publicacao) { if (!parseWhen(p.data_publicacao)) return { error: 'Data inválida. Use AAAA-MM-DD ou AAAA-MM-DDTHH:MM.' }; data = p.data_publicacao; }
-  const r = { id: crypto.randomBytes(6).toString('hex'), tipo: 'pauta', texto: texto.slice(0, 1500), canais: ch.list, data_publicacao: data, status: 'aberto', por: by, em: now() };
+  const r = { id: crypto.randomBytes(6).toString('hex'), tipo: 'pauta', cliente_id: cliente.id, texto: texto.slice(0, 1500), canais: ch.list, data_publicacao: data, status: 'aberto', por: by, em: now() };
   store.addPedido(r);
   store.log({ type: 'pedido_criado', id: r.id, by });
   return { pedido: r };
 }
-export const listRequests = (status) => store.pedidos().filter((r) => !status || r.status === status);
+export const listRequests = (status, cliente) => {
+  const id = cliente ? getCliente(cliente)?.id : null;
+  return store.pedidos().filter((r) => (!status || r.status === status) && (!id || r.cliente_id === id));
+};
 export function closeRequest(id, itemId, by) {
   const r = store.pedidos().find((x) => x.id === id);
   if (!r) return { error: 'Pedido não encontrado.' };

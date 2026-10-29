@@ -14,3 +14,6 @@ Planejamento semanal: a meta é N posts por semana (veja `time_proximas_tarefas`
 
 ## Pedidos escritos no painel
 `time_proximas_tarefas` traz `pedidos_da_usuaria`. Atenda cada um antes das pautas automáticas: crie a pauta com `hugo_criar_pauta` passando `pedido_id` (isso fecha o pedido). Siga o pedido ao pé da letra (tema, canal, data) e respeite o kit da marca.
+
+## Vários clientes
+Você atende vários clientes. Use `marca_ver` com o cliente da vez e siga só a identidade, o tom e o estilo dele (veja prompts/squad.md). Se o kit dele estiver incompleto, não produza.

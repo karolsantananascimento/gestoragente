@@ -13,6 +13,12 @@ let pool = null;
 let timer = null;
 let writing = Promise.resolve();
 
+const SEED_CLIENTS = [
+  ['disco', 'Disco', 2], ['michie-farfan', 'Michie Farfan', 2], ['operizy', 'Operizy', 7],
+  ['senhorita-moca', 'Senhorita Moça', 3], ['lumiere', 'Lumiere', 2], ['contrafluxo-pratas', 'ContraFluxo Pratas', 2],
+];
+const defaultBrand = () => { try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./brandDefault.json', import.meta.url)), 'utf8')); } catch { return {}; } };
+
 const normalize = (s) => {
   s.actions ||= [];
   s.audit ||= [];
@@ -24,6 +30,15 @@ const normalize = (s) => {
   s.settings ||= {};
   s.seeded ||= [];
   s.pedidos ||= [];
+  // Áreas de trabalho por cliente. O kit/pautas que existiam antes pertencem à Disco (cliente padrão).
+  if (!Array.isArray(s.clientes) || !s.clientes.length) {
+    s.clientes = SEED_CLIENTS.map(([id, nome, meta]) => ({
+      id, nome, meta_semanal: meta, padrao: id === 'disco', contas: {}, criado_em: new Date().toISOString(),
+      marca: id === 'disco' ? (Object.keys(s.brand).length ? s.brand : defaultBrand()) : { nome },
+    }));
+  }
+  for (const c of s.content) if (!c.cliente_id) c.cliente_id = 'disco';
+  for (const p of s.pedidos) if (!p.cliente_id) p.cliente_id = 'disco';
   return s;
 };
 
@@ -124,10 +139,16 @@ export const store = {
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
   // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).
-  brand: () => {
-    const b = load().brand;
-    if (Object.keys(b).length) return b;
-    try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./brandDefault.json', import.meta.url)), 'utf8')); } catch { return {}; }
+  clientes: () => load().clientes,
+  cliente: (idOuNome) => {
+    const k = String(idOuNome || '').trim().toLowerCase();
+    if (!k) return load().clientes.find((c) => c.padrao) || load().clientes[0];
+    const slug = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return load().clientes.find((c) => c.id === k || slug(c.nome) === slug(k) || slug(c.id) === slug(k));
   },
-  setBrand(b) { load().brand = b; save(); return b; },
+  addCliente(c) { load().clientes.push(c); save(); return c; },
+  saveClientes() { save(); },
+  // Kit de marca do cliente (sem argumento = cliente padrão).
+  brand: (idOuNome) => (store.cliente(idOuNome)?.marca) || {},
+  setBrand(b, idOuNome) { const c = store.cliente(idOuNome); if (c) { c.marca = b; save(); } return b; },
 };

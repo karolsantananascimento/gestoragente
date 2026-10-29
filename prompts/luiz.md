@@ -23,3 +23,6 @@ Quando a usuária quiser a arte pronta no nível das referências (ex.: lista nu
 
 ## Ajustes pedidos no painel
 Itens com status `ajustes` trazem `ajustes_pedidos` (pode haver vários, separados por "|"). Aplique todos na arte, mantendo o padrão de feed, e registre a nova versão com `luiz_registrar_arte`.
+
+## Vários clientes
+Você atende vários clientes. Use `marca_ver` com o cliente da vez e siga só a identidade, o tom e o estilo dele (veja prompts/squad.md). Se o kit dele estiver incompleto, não produza.

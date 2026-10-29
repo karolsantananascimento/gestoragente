@@ -9,7 +9,11 @@ import { NotConfigured } from './http.js';
 const SIZES = { retrato: '1024x1536', quadrado: '1024x1024', paisagem: '1536x1024' };
 
 // Estilo fixo da Disco, anexado a todo pedido, para as imagens saírem no padrão da marca.
-function brandPrompt(prompt, b = {}) {
+function brandPrompt(prompt, b = {}, disco = true) {
+  if (!disco) {
+    return [prompt.trim(), '', `Estilo obrigatório da marca ${b.nome}: ${b.estilo_visual || b.regras_visuais || ''}`, b.cores ? `Paleta: ${b.cores}.` : '', b.proibido ? `Proibido: ${b.proibido}` : '',
+      'NÃO escreva texto, letras, números, logotipos ou marcas d\'água na imagem. Sem rostos de pessoas reais ou celebridades. Sem elementos de outras marcas.'].filter(Boolean).join('\n');
+  }
   const cores = Array.isArray(b.cores) ? b.cores.join(', ') : (b.cores || '');
   return [
     prompt.trim(),
@@ -32,7 +36,11 @@ function referencias(b = {}) {
   return out;
 }
 
-function promptCompleto(prompt, texto, b = {}) {
+function promptCompleto(prompt, texto, b = {}, disco = true) {
+  if (!disco) {
+    return [prompt.trim(), '', `Crie uma arte final de redes sociais da marca ${b.nome} seguindo o estilo: ${b.estilo_visual || b.regras_visuais || ''}${b.cores ? ` Paleta: ${b.cores}.` : ''} Copie o padrão visual das imagens de referência anexas, se houver, sem copiar o conteúdo.`,
+      'O texto da arte deve ser EXATAMENTE este, em português, sem erros, sem acrescentar nem trocar palavras:', texto.trim(), 'Nenhuma outra frase, nenhum logotipo de outra marca, sem rostos de pessoas reais.'].join('\n');
+  }
   return [
     prompt.trim(),
     '',
@@ -44,7 +52,7 @@ function promptCompleto(prompt, texto, b = {}) {
   ].filter(Boolean).join('\n');
 }
 
-export async function gerarImagem({ prompt, formato = 'retrato', modo = 'fundo', texto = '' }) {
+export async function gerarImagem({ prompt, formato = 'retrato', modo = 'fundo', texto = '', cliente }) {
   if (!config.openaiKey) throw new NotConfigured('OPENAI_API_KEY não configurada no servidor (Render → Environment).');
   if (!String(prompt || '').trim()) return { error: 'Descreva a imagem (prompt).' };
   const completo = modo === 'arte_completa';
@@ -56,10 +64,13 @@ export async function gerarImagem({ prompt, formato = 'retrato', modo = 'fundo',
   const usadas = store.audit().filter((e) => e.type === 'imagem_gerada' && e.at.startsWith(hoje)).length;
   if (usadas >= config.imageDailyCap) return { error: `Teto diário de ${config.imageDailyCap} imagens atingido (IMAGE_DAILY_CAP). Tente amanhã ou peça à administradora para aumentar.` };
 
-  const brand = store.brand();
+  const cl = store.cliente(cliente);
+  if (!cl) return { error: `Cliente não encontrado: "${cliente}".` };
+  const brand = cl.marca || {};
+  const disco = !!cl.padrao;
   const refs = completo ? referencias(brand) : [];
   const size = config.openaiImageSizes[formato] || SIZES[formato] || SIZES.retrato;
-  const body = { model: config.openaiImageModel, prompt: completo ? promptCompleto(prompt, texto, brand) : brandPrompt(prompt, brand), size, n: 1, quality: completo ? config.openaiImageQualityFinal : config.openaiImageQuality, output_format: 'jpeg', output_compression: 90 };
+  const body = { model: config.openaiImageModel, prompt: completo ? promptCompleto(prompt, texto, brand, disco) : brandPrompt(prompt, brand, disco), size, n: 1, quality: completo ? config.openaiImageQualityFinal : config.openaiImageQuality, output_format: 'jpeg', output_compression: 90 };
   if (config.dryRun) return { status: 'simulado', aviso: 'DRY_RUN ligado: nenhuma imagem foi gerada nem cobrada.', pedido: { ...body, prompt: body.prompt.slice(0, 200) + '…' } };
 
   let r;

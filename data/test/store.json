@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "id": "6d7bc2a5",
+      "id": "a18896e0",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -13,8 +13,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:50:28.907Z",
-      "executedAt": "2026-10-29T17:50:28.907Z",
+      "createdAt": "2026-10-29T17:59:15.852Z",
+      "executedAt": "2026-10-29T17:59:15.853Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 101",
@@ -27,7 +27,7 @@
       "simulated": true
     },
     {
-      "id": "42b6fcc9",
+      "id": "d1a2c700",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -39,8 +39,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:50:28.904Z",
-      "executedAt": "2026-10-29T17:50:28.906Z",
+      "createdAt": "2026-10-29T17:59:15.851Z",
+      "executedAt": "2026-10-29T17:59:15.852Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 100",
@@ -53,7 +53,7 @@
       "simulated": true
     },
     {
-      "id": "77176c58",
+      "id": "32a72136",
       "tool": "google_criar_campanha_pesquisa",
       "platform": "google",
       "args": {
@@ -67,10 +67,10 @@
       "activation": false,
       "status": "pending",
       "source": "agent",
-      "createdAt": "2026-10-29T17:50:28.899Z"
+      "createdAt": "2026-10-29T17:59:15.848Z"
     },
     {
-      "id": "31b2f057",
+      "id": "9e06bc05",
       "tool": "google_pausar_ativar_campanha",
       "platform": "google",
       "args": {
@@ -83,8 +83,8 @@
       "activation": false,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:50:28.897Z",
-      "executedAt": "2026-10-29T17:50:28.903Z",
+      "createdAt": "2026-10-29T17:59:15.846Z",
+      "executedAt": "2026-10-29T17:59:15.849Z",
       "result": {
         "simulado": true,
         "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
@@ -100,7 +100,7 @@
   ],
   "audit": [
     {
-      "at": "2026-10-29T17:50:28.908Z",
+      "at": "2026-10-29T17:59:15.854Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -113,7 +113,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.908Z",
+      "at": "2026-10-29T17:59:15.854Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -126,9 +126,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.908Z",
+      "at": "2026-10-29T17:59:15.853Z",
       "type": "simulated",
-      "id": "6d7bc2a5",
+      "id": "a18896e0",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -146,9 +146,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:50:28.907Z",
+      "at": "2026-10-29T17:59:15.853Z",
       "type": "proposed",
-      "id": "6d7bc2a5",
+      "id": "a18896e0",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -157,9 +157,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.906Z",
+      "at": "2026-10-29T17:59:15.852Z",
       "type": "simulated",
-      "id": "42b6fcc9",
+      "id": "d1a2c700",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -177,9 +177,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:50:28.905Z",
+      "at": "2026-10-29T17:59:15.851Z",
       "type": "proposed",
-      "id": "42b6fcc9",
+      "id": "d1a2c700",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -188,9 +188,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.903Z",
+      "at": "2026-10-29T17:59:15.850Z",
       "type": "simulated",
-      "id": "31b2f057",
+      "id": "9e06bc05",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -210,7 +210,7 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:50:28.902Z",
+      "at": "2026-10-29T17:59:15.849Z",
       "type": "blocked",
       "tool": "google_criar_grupo_com_anuncio",
       "args": {
@@ -234,9 +234,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.899Z",
+      "at": "2026-10-29T17:59:15.848Z",
       "type": "proposed",
-      "id": "77176c58",
+      "id": "32a72136",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
         "customer_id": "1234567890",
@@ -247,7 +247,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.898Z",
+      "at": "2026-10-29T17:59:15.847Z",
       "type": "blocked",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
@@ -262,9 +262,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:50:28.898Z",
+      "at": "2026-10-29T17:59:15.847Z",
       "type": "proposed",
-      "id": "31b2f057",
+      "id": "9e06bc05",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -281,5 +281,90 @@
   "media": {},
   "settings": {},
   "seeded": [],
-  "pedidos": []
+  "pedidos": [],
+  "clientes": [
+    {
+      "id": "disco",
+      "nome": "Disco",
+      "meta_semanal": 2,
+      "padrao": true,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "Disco",
+        "frentes": "Hub criativo com 3 frentes:\n• Disco Criativo — conteúdo e planejamento (cor de apoio: laranja)\n• Disco Mídia — tráfego, estratégia, dados e aquisição de clientes (cor de apoio: lilás claro)\n• Disco Tech — desenvolvimento de SaaS (cor de apoio: violeta)\nAssinaturas usadas: \"Companhia criativa · Criativo · Mídia · Tech · Insights\"; \"Marketing que move o seu negócio\"; \"Criatividade, mídia e tecnologia para tirar marcas e negócios do lugar\".",
+        "tom_de_voz": "Extraído de odisco.com.br e dos posts.\n• Pessoa: \"a gente\"/\"nós\" para a Disco e \"você\" para o cliente. Informal, direto, confiante e um pouco provocador; autoridade sem arrogância.\n• Ritmo de manifesto: frases curtas, fragmentos, tríades e contrastes (\"Um problema. Um time.\", \"Não seguimos onda. Criamos caminho.\", \"Mais clientes. Mais autoridade. Mais resultados.\"). Pode abrir questionando o senso comum (\"Quando todo mundo faz igual, ninguém se destaca.\").\n• Vocabulário: movimentar, tirar do lugar, caminho, curiosidade, observar, testar, experimentar, time, resultado.\n• Verbos no imperativo nos convites: \"Experimenta.\", \"Fala com a gente.\" CTAs típicos: \"Falar com a Disco →\", \"Tem algo para movimentar? →\".\n• Storytelling: abrir com cena ou problema real do cliente, mostrar a decisão/virada e o resultado (ex.: escola com matrículas abaixo da meta → criativo + mídia + tech). Concreto em vez de abstrato.\n• Autoridade: ancorar em experiência (mais de 20 anos somando o time) e em dados reais. Não invente números, cases ou depoimentos; use só os que a Karolina confirmar. Números vistos no site e ainda não confirmados para uso em posts: +41% em matrículas (Educação, R$2M/mês), R$250 de custo por cliente (exemplo de simulador).\n• Evitar: jargão sem explicação, promessa de resultado garantido, tom corporativo engessado, exclamações em excesso, clichês de agência (\"soluções 360\", \"alavancar\").",
+        "publico": "Empresas e profissionais que precisam de crescimento e aquisição de clientes, com forte presença no nicho jurídico (escritórios de advocacia, Marketing Jurídico, eventos como Fenalaw) e também educação e outros negócios. Decisores que valorizam experiência e resultado. Ajuste conforme o cliente da pauta.",
+        "cores": "Preto base #111111 (fundo dominante)\nBranco quente #F5F3EF (títulos e textos)\nVerde Disco / movimento #78D600 (destaque principal; no logo vetorial: rgb(115,206,18) = #73CE12)\nLaranja energia #FAA51C (Disco Criativo, detalhes)\nVioleta insights #A56BE0 (Disco Tech, formas e halftone)\nLilás claro (Disco Mídia, apoio; aprox. #C9A7E8)\nProporção: ~80% preto/branco + foto P&B; verde é o destaque; laranja e violeta só em pequenas formas.",
+        "fontes": "Títulos: ANTON, sempre CAIXA-ALTA, branco quente, entrelinha apertada.\nSubtítulos e textos: SPACE GROTESK (conforme moodboard).\nTextos de apoio, legendas na arte e CTAs: monoespaçada em CAIXA-ALTA com espaçamento largo entre letras (nos posts aparece como Space Mono ou equivalente). No Canva, use Anton + Space Grotesk/Space Mono.",
+        "logo_url": "/brand/disco-logo-branco-verde.svg",
+        "regras_visuais": "LOGO: wordmark \"disco\" minúsculo; versão branca com o \"o\" final como círculo verde e ponto verde no \"i\". Fica no canto superior esquerdo; em carrossel, contador \"01/03\" em pílula com contorno no canto superior direito. Sobre fundo escuro sempre; nunca distorcer, recolorir ou aplicar efeito.\n\nESTILO GERAL: fundo preto, alto contraste, estética editorial/brutalista tech.\n• Fotos em preto e branco dessaturado, alto contraste, recortes de arquitetura de concreto, estátuas (ex.: Justiça), pessoas de costas ou em plano contra-plongée, objetos (notebook, caneta, cubo de vidro). Fotografia recortada com formas geométricas e sombras.\n• Formas gráficas: círculos sólidos (verde, violeta, laranja) parcialmente atrás/sobre a foto; órbitas (elipses e círculos com linha tracejada fina); texturas halftone (pontos em violeta ou verde); grid técnico de pontos; cruzes \"+\"; pequenos pontos de cor como acento.\n• Título: Anton, caixa-alta, branco quente, com leve textura de papel/granulado; palavra-chave destacada em VERDE; ponto final do título em quadrado ou círculo verde.\n• Textos de apoio em mono caixa-alta, cinza-claro, espaçamento largo, às vezes com sublinhado verde fino em palavras-chave.\n• CTA: botão pílula com contorno branco fino, texto mono caixa-alta e seta →; fica no canto inferior esquerdo.\n• Ícones: linha fina branca dentro de círculos com contorno.\n• Divisores: linhas verticais/horizontais finas.\n\nLAYOUT: logo e assinatura no topo; título grande alinhado à esquerda ocupando 35–50% da altura; foto recortada à direita ou ao fundo; bloco de apoio e CTA na base. Respiro generoso e margens consistentes. Formatos: feed 1080x1350 (4:5), story/reels 1080x1920 (9:16), carrossel numerado 01/03.\n\nVARIAÇÃO POR FRENTE: Criativo = acento laranja; Mídia = acento lilás claro/verde (performance, dados); Tech = acento violeta. Aplique o acento só em detalhes. Grade fixa 1080x1350: margem lateral 70 px; topo com logo DISC (40-46 px) à esquerda e tag em caixa alta à direita (20 px, bold, espaçada); título em Anton, caixa alta, 86-150 px, máximo 2 cores (branco + 1 acento), sem palavra órfã na última linha; filete de 80x6 px do acento acima do texto de apoio; texto de apoio em Space Grotesk 32-38 px; CTA fixo no rodapé (topo 1236-1251), mono caixa alta 24 px com espaçamento; círculo decorativo no canto inferior direito na cor do acento; um acento por peça (verde, laranja ou lilás), fundo #0B0B0B. PADRÃO DO MOODBOARD (obrigatório): fotografia P&B de alto contraste, granulada, de arquitetura brutalista/concreto, esferas de pedra, cubo de vidro, notebook e objetos em recorte, sobre preto; grandes círculos chapados (verde #78D600, laranja #FAA51C, violeta #A56BE0) atrás ou sobre o recorte; manchas de halftone (pontos) em violeta ou verde; círculo vazado (contorno branco) e grade técnica discreta; título em Anton, caixa alta, branco, com PONTO FINAL VERDE; texto de apoio em fonte mono caixa alta espaçada; CTA em pílula com contorno branco e seta (→), ex.: 'VAMOS CONVERSAR? →'; tag em pílula no topo (ex.: 'CRIATIVIDADE COM DIREÇÃO •'); logo 'disco' minúsculo com o 'o' verde no topo esquerdo. Formatos: feed 4:5 e story 9:16. Cores por frente: Time = verde, Criativo = laranja, Mídia = lilás claro, Tech = violeta, Insights = contorno branco. Paleta: preto #111111, branco quente #F5F3EF, verde #78D600, laranja #FAA51C, violeta #A56BE0.",
+        "proibido": "Fundo branco ou claro; fotos coloridas ou saturadas; novas cores fora da paleta; outras fontes (serifadas, script, arredondadas); sombras, brilhos, gradientes chamativos ou efeitos no logo; textos longos na arte; excesso de elementos (poucas formas por peça); stock genérico sorrindo; promessas de resultado garantido; erros de ortografia na arte (revise cada palavra).",
+        "links": "Canva: kit de marca \"Disco Mídia\" (id kAHVxV_gqbI). Logo SVG: /brand/disco-logo-branco-verde.svg. Moodboard e posts de referência: no Canva/pasta da Disco (não armazenados aqui).",
+        "posicionamento": "Disco: agência de marketing, conteúdo e tecnologia (companhia criativa: Criativo · Mídia · Tech). Slogan do site: \"Criamos para movimentar.\" Profissionais com mais de 20 anos de experiência e cases de resultado. Ideia central: não seguir onda, criar caminho; um problema, um time.",
+        "objetivo_conteudo": "Foco do conteúdo: (1) informar com AUTORIDADE sobre marketing (mídia, conteúdo, dados, tecnologia, IA) e (2) ATRAIR CLIENTES COM STORYTELLING. Todo post deve ensinar ou revelar algo útil, ou contar uma história (desafio → virada → resultado) que mostre o jeito de pensar da Disco. Autoridade vem de experiência e resultado real; nunca de promessa vazia. Fechar com convite natural à conversa.",
+        "referencias_visuais": [
+          "/brand/ref/lista-5-sinais.png",
+          "/brand/ref/feed-atual.jpg"
+        ],
+        "modelo_lista_numerada": "MODELO 'LISTA NUMERADA' (referência aprovada: /brand/ref/lista-5-sinais.png, 4:5): logo 'disco' minúsculo grande com o 'o' verde + linha mono 'CRIATIVO · MÍDIA · TECH · INSIGHTS' no topo esquerdo; título com número gigante em verde (Anton) ao lado de 'SINAIS PARA RENOVAR SEU SITE' em branco; recortes de concreto/esferas de pedra P&B no canto superior e lateral direita sobre círculos verde e violeta, com círculo laranja, pontilhado orbital, cruz e grade técnica finas; manchas de halftone violeta e verde; lista de 5 itens separados por filetes finos, cada um com ícone de linha dentro de círculo de contorno, número em Anton (cores alternando verde, violeta, laranja, violeta, verde) com barra vertical fina, título em Space Grotesk bold branco e descrição em Space Grotesk regular cinza claro; fechamento em caixa com filete verde e seta: pergunta curta em Anton branco + frase de impacto em Anton verde ('2 OU MAIS? VOCÊ PODE ESTAR PERDENDO CLIENTES.'); CTA em pílula com contorno violeta, texto mono caixa alta espaçada e seta (→).",
+        "padrao_de_feed": "PADRÃO DE FEED (obrigatório em toda capa de post): o grid alterna fundo preto e fundo cinza-claro; verde #78D600 sempre domina; título curto e enorme em Anton (2 a 4 linhas, palavra de impacto em verde) ocupando metade do quadro; UMA imagem forte (pessoa da equipe, objeto 3D em verde/vidro, vinil, concreto P&B) em recorte sobre círculo verde; no máximo uma linha de apoio e um selo discreto; marca 'disco' com 'o' verde ou 'd.' no canto; violeta e laranja só como detalhe pequeno. Listas, ícones e textos longos vão nos slides internos do carrossel, nunca na capa. Contador '01 / 06' no topo do carrossel."
+      }
+    },
+    {
+      "id": "michie-farfan",
+      "nome": "Michie Farfan",
+      "meta_semanal": 2,
+      "padrao": false,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "Michie Farfan"
+      }
+    },
+    {
+      "id": "operizy",
+      "nome": "Operizy",
+      "meta_semanal": 7,
+      "padrao": false,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "Operizy"
+      }
+    },
+    {
+      "id": "senhorita-moca",
+      "nome": "Senhorita Moça",
+      "meta_semanal": 3,
+      "padrao": false,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "Senhorita Moça"
+      }
+    },
+    {
+      "id": "lumiere",
+      "nome": "Lumiere",
+      "meta_semanal": 2,
+      "padrao": false,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "Lumiere"
+      }
+    },
+    {
+      "id": "contrafluxo-pratas",
+      "nome": "ContraFluxo Pratas",
+      "meta_semanal": 2,
+      "padrao": false,
+      "contas": {},
+      "criado_em": "2026-10-29T17:59:15.847Z",
+      "marca": {
+        "nome": "ContraFluxo Pratas"
+      }
+    }
+  ]
 }
