@@ -36,10 +36,12 @@ const requireUser = (req, res, next) => {
 const requireAdmin = (req, res, next) =>
   req.user.role === 'admin' ? next() : res.status(403).json({ error: 'Somente administradores podem fazer isso.' });
 
+// Aceita a chave no cabeçalho Authorization: Bearer ... (Claude Code, API) ou no próprio endereço
+// /mcp/<chave> (conector personalizado do claude.ai, que não permite cabeçalhos).
 const requireMcp = (req, res, next) => {
   if (!config.mcpToken) return res.status(503).json({ error: 'MCP_TOKEN não configurado no servidor.' });
   const bearer = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
-  if (!safeEq(bearer, config.mcpToken)) return res.status(401).json({ error: 'Token inválido.' });
+  if (!safeEq(bearer || req.params.key, config.mcpToken)) return res.status(401).json({ error: 'Chave inválida.' });
   next();
 };
 
@@ -61,7 +63,7 @@ const fail = (key) => {
 app.get('/health', (_req, res) => res.json({ ok: true, modo: config.dryRun ? 'dry-run' : 'real' }));
 
 // --- MCP (conectar no Claude como conector personalizado) ---
-app.post('/mcp', requireMcp, async (req, res) => {
+app.post(['/mcp', '/mcp/:key'], requireMcp, async (req, res) => {
   const server = buildMcpServer();
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on('close', () => { transport.close(); server.close(); });
@@ -73,7 +75,7 @@ app.post('/mcp', requireMcp, async (req, res) => {
     if (!res.headersSent) res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Erro interno' }, id: null });
   }
 });
-app.all('/mcp', requireMcp, (_req, res) => res.status(405).json({ error: 'Use POST.' }));
+app.all(['/mcp', '/mcp/:key'], requireMcp, (_req, res) => res.status(405).json({ error: 'Use POST.' }));
 
 // --- Login, convites e conta ---
 app.get('/api/config', (_req, res) =>

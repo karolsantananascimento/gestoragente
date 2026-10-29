@@ -92,6 +92,13 @@ try {
   // MCP independente
   const m = await fetch(BASE + '/mcp', { method: 'POST', headers: { authorization: 'Bearer tok', 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
   ok(m.status === 200, 'endpoint MCP continua funcionando com MCP_TOKEN');
+  const mh = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' };
+  const init = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 't', version: '1' } } });
+  const viaPath = await fetch(BASE + '/mcp/tok', { method: 'POST', headers: mh, body: init });
+  const txt = await viaPath.text();
+  ok(viaPath.status === 200 && txt.includes('gestora de tráfego'), 'conector por endereço (/mcp/<chave>) funciona e entrega o prompt mestre');
+  const bad = await fetch(BASE + '/mcp/errada', { method: 'POST', headers: mh, body: init });
+  ok(bad.status === 401, 'chave errada no endereço é recusada');
 } catch (e) {
   console.error('ERRO NO TESTE:', e);
   fails++;
