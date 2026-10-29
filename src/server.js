@@ -10,6 +10,7 @@ import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
+import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
 import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
@@ -281,6 +282,11 @@ app.put('/api/clients/:id', requireUser, requireAdmin, (req, res) => {
   store.log({ type: 'cliente_atualizado', id: c.id, by: req.user.email });
   res.json({ ...clientView(c), marca: c.marca });
 });
+// Fontes de pauta (links de Google Docs/Sheets)
+app.get('/api/clients/:id/sources', requireUser, (req, res) => res.json({ fontes: listSources(req.params.id) }));
+app.post('/api/clients/:id/sources', requireUser, async (req, res) => out(res, await addSource(req.params.id, req.body || {}, req.user.email)));
+app.post('/api/clients/:id/sources/:sid/refresh', requireUser, async (req, res) => out(res, await refreshSource(req.params.id, req.params.sid)));
+app.delete('/api/clients/:id/sources/:sid', requireUser, (req, res) => out(res, removeSource(req.params.id, req.params.sid)));
 // Compatibilidade: rotas antigas (cliente padrão ou ?cliente=)
 app.get('/api/brand', requireUser, (req, res) => res.json(store.brand(req.query.cliente)));
 app.put('/api/brand', requireUser, requireAdmin, (req, res) => {

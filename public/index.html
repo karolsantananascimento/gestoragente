@@ -142,6 +142,11 @@
   <p class="flow">Squad de <b id="curName"></b>: Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
   <div id="weeks" class="row" style="margin:0 0 12px"></div>
   <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar a squad do cliente (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
+  <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Fontes de pauta (Google Docs ou Sheets)</h4>
+    <div class="note">Cole o link de um documento ou planilha com recomendações de conteúdo. O Hugo lê e cria as pautas a partir dele. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link" (leitor).</div>
+    <div class="row" style="margin-top:6px"><input id="srcUrl" class="grow" placeholder="https://docs.google.com/document/d/... ou /spreadsheets/d/..."><input id="srcTitle" placeholder="Nome (opcional)" style="max-width:200px"><button id="srcAdd">Adicionar e pedir pautas</button></div>
+    <div class="err" id="srcErr"></div>
+    <div id="srcList" class="meta" style="margin-top:6px"></div></div>
   <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Pedir ao time</h4>
     <textarea id="reqText" rows="3" style="width:100%" placeholder="Ex.: Crie um post de carrossel para a Disco sobre 3 erros comuns de site lento, para quinta às 11h."></textarea>
     <div class="row" style="margin-top:6px"><input id="reqCanais" value="instagram" style="max-width:220px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
@@ -651,6 +656,26 @@ async function loadPlan() {
 const runCmd = (nome) => `Use o conector Agente de Tráfego: chame time_proximas_tarefas${nome ? ` com cliente="${nome}"` : ''} e execute as tarefas da squad: primeiro os pedidos e os ajustes pedidos nos criativos, depois as pautas que faltam (Hugo) e as artes no Canva (Luiz), sempre com a identidade (marca_ver) do cliente da vez. Deixe tudo aguardando aprovação.`;
 $('#runTeam').onclick = async () => { const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); $('#contentNote').textContent = `Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`; } catch { prompt('Copie e cole no Claude:', cmd); } };
 
+async function loadSources() {
+  const r = await api(`/api/clients/${encodeURIComponent(CUR)}/sources`); const box = $('#srcList'); box.innerHTML = '';
+  if (!r.fontes.length) { box.textContent = 'Nenhuma fonte adicionada para este cliente.'; return; }
+  for (const f of r.fontes) {
+    const d = document.createElement('div'); d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap';
+    const a = document.createElement('a'); a.href = f.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = `${f.tipo === 'doc' ? '📄' : '📊'} ${f.titulo}`;
+    const info = document.createElement('span'); info.className = 'note'; info.style.flex = '1'; info.textContent = `${f.caracteres} caracteres${f.cortado ? ' (cortado)' : ''} · lido ${fmt(f.lido_em)}${f.erro ? ' · ' + f.erro : ''}`;
+    const rf = document.createElement('button'); rf.className = 'ghost'; rf.textContent = 'Reler'; rf.onclick = async () => { rf.disabled = true; try { await api(`/api/clients/${encodeURIComponent(CUR)}/sources/${f.id}/refresh`, { method: 'POST' }); } catch (e) { alert(e.message); } loadSources(); };
+    const rm = document.createElement('button'); rm.className = 'no'; rm.textContent = 'Remover'; rm.onclick = async () => { if (confirm('Remover esta fonte?')) { await api(`/api/clients/${encodeURIComponent(CUR)}/sources/${f.id}`, { method: 'DELETE' }); loadSources(); } };
+    d.append(a, info, rf, rm); box.appendChild(d);
+  }
+}
+$('#srcAdd').onclick = async () => {
+  $('#srcErr').textContent = ''; $('#srcAdd').disabled = true;
+  try {
+    const r = await api(`/api/clients/${encodeURIComponent(CUR)}/sources`, { method: 'POST', body: JSON.stringify({ url: $('#srcUrl').value, titulo: $('#srcTitle').value, criar_pedido: true }) });
+    $('#srcUrl').value = ''; $('#srcTitle').value = ''; $('#srcErr').textContent = 'Fonte lida. Pedido criado: clique em "Rodar a squad" para o Hugo criar as pautas.'; loadSources(); loadRequests();
+  } catch (e) { $('#srcErr').textContent = e.message; }
+  $('#srcAdd').disabled = false;
+};
 async function loadRequests() {
   const r = await api('/api/requests?status=aberto&' + qc()); const box = $('#reqList'); box.innerHTML = '';
   if (!r.pedidos.length) { box.textContent = 'Nenhum pedido aberto. O time atende os pedidos na próxima rodada.'; return; }
@@ -671,7 +696,7 @@ $('#reqSend').onclick = async () => {
 };
 async function loadItems() {
   $('#curName').textContent = CLIENTS.find((c) => c.id === CUR)?.nome || '';
-  loadPlan().catch(() => {}); loadRequests().catch(() => {});
+  loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {});
   const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
   const board = $('#board'); board.innerHTML = '';
   for (const [title, sts] of COLS) {
