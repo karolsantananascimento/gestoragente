@@ -34,7 +34,7 @@ function system() {
 
 export async function chat(sessionId, userMessage, who = 'chat') {
   if (!config.anthropicKey) {
-    return { reply: 'ANTHROPIC_API_KEY não configurada no servidor. Configure a variável de ambiente para usar o chat.', pending: pendingActions() };
+    return { reply: 'O chat com IA deste painel é opcional e precisa da variável ANTHROPIC_API_KEY. Enquanto ela não existir, use os botões acima do campo de texto (Contas, Campanhas e Desempenho do Meta) ou converse com o agente dentro do Claude, pelo conector "Agente de Tráfego".', pending: pendingActions() };
   }
   const history = sessions.get(sessionId) || [];
   history.push({ role: 'user', content: userMessage });

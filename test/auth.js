@@ -76,6 +76,16 @@ try {
   r = await call('/api/me', { token: member });
   ok(r.status === 401, 'sessão da colaboradora removida deixa de valer na hora');
 
+  // consultas diretas do painel: só leitura
+  r = await call('/api/tool', { method: 'POST', token: admin, body: { name: 'meta_listar_contas', args: {} } });
+  ok(r.status === 200 && r.data.status === 'nao_configurado', 'botão de contas responde sem IA (aqui: Meta sem token no teste)');
+  r = await call('/api/tool', { method: 'POST', token: admin, body: { name: 'meta_pausar_ativar', args: { id: '1', status: 'ACTIVE' } } });
+  ok(r.status === 400, 'rota do painel recusa ferramentas de escrita');
+  r = await call('/api/tool', { method: 'POST', token: admin, body: { name: 'aprovar_acao', args: { id: 'x', pin: '1' } } });
+  ok(r.status === 400, 'rota do painel recusa aprovar_acao');
+  r = await call('/api/tool', { method: 'POST', body: { name: 'meta_listar_contas' } });
+  ok(r.status === 401, 'rota do painel exige login');
+
   // troca de senha do admin
   r = await call('/api/password', { method: 'POST', token: admin, body: { current: 'senha-do-admin-1', next: 'nova-senha-admin-2' } });
   ok(r.status === 200, 'admin troca a própria senha');

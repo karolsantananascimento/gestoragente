@@ -8,6 +8,7 @@ import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
+import { allTools, callTool } from './tools.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -185,6 +186,15 @@ app.post('/api/chat', requireUser, async (req, res) => {
   }
 });
 app.post('/api/reset', requireUser, (req, res) => { resetSession(`${req.user.email}:${req.body?.sessionId || 'default'}`); res.json({ ok: true }); });
+
+// Consultas diretas (sem IA) para os botões do painel. Somente ferramentas de leitura.
+const NO_PANEL = new Set(['aprovar_acao', 'rejeitar_acao']);
+app.post('/api/tool', requireUser, async (req, res) => {
+  const { name, args } = req.body || {};
+  const t = allTools.find((x) => x.name === name);
+  if (!t || t.risk !== 'read' || t.mcpOnly || NO_PANEL.has(name)) return res.status(400).json({ error: 'Ferramenta não disponível neste painel.' });
+  res.json(await callTool(name, args && typeof args === 'object' ? args : {}, `painel:${req.user.email}`));
+});
 
 app.get('/api/pending', requireUser, (_req, res) => res.json(pendingActions()));
 app.get('/api/actions', requireUser, (_req, res) => res.json(store.actions().slice(0, 50)));

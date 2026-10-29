@@ -50,6 +50,12 @@
   th { color:var(--muted); font-weight:500; font-size:12px; }
   .link { word-break:break-all; font-size:13px; padding:8px; border:1px dashed var(--line); border-radius:8px; }
   .grow { flex:1; min-width:160px; }
+  #quick { display:flex; gap:8px; padding:8px 16px 0; background:var(--panel); border-top:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+  #quick .lbl { font-size:12px; color:var(--muted); }
+  .msg.wide { max-width:100%; white-space:normal; }
+  .tbl { overflow:auto; max-width:100%; margin-top:6px; }
+  .tbl table { font-size:13px; white-space:nowrap; }
+  .tbl button { padding:3px 9px; font-size:12px; margin-right:4px; }
 </style>
 </head>
 <body>
@@ -81,6 +87,12 @@
 <main>
   <section id="chat">
     <div id="log"></div>
+    <div id="quick">
+      <span class="lbl">Consultar agora (sem IA):</span>
+      <button type="button" class="ghost" data-q="contas">Contas do Meta</button>
+      <button type="button" class="ghost" data-q="campanhas">Campanhas do Meta</button>
+      <button type="button" class="ghost" data-q="desempenho">Desempenho 7 dias</button>
+    </div>
     <form id="form">
       <textarea id="input" rows="2" placeholder="Ex.: analisa a conta do Google 123-456-7890 dos últimos 7 dias e propõe as otimizações"></textarea>
       <button id="send">Enviar</button>
@@ -269,6 +281,66 @@ $('#form').onsubmit = async (e) => {
 };
 $('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#form').requestSubmit(); } });
 $('#reset').onclick = async () => { await api('/api/reset', { method: 'POST', body: JSON.stringify({ sessionId: sid }) }); $('#log').innerHTML = ''; add('ai', 'Conversa reiniciada.'); };
+
+/* ---------- consultas diretas (sem IA) ---------- */
+const QUERIES = {
+  contas: { tool: 'meta_listar_contas', title: 'Contas de anúncio do Meta', needsAccount: false },
+  campanhas: { tool: 'meta_listar_campanhas', title: 'Campanhas do Meta', needsAccount: true },
+  desempenho: { tool: 'meta_desempenho', title: 'Desempenho do Meta · últimos 7 dias', needsAccount: true, args: { nivel: 'campaign', periodo: 'last_7d' } },
+};
+const flatInsight = (r) => ({
+  campanha: r.campaign_name, gasto: r.spend, impressões: r.impressions, cliques: r.clicks, CTR: r.ctr ? Number(r.ctr).toFixed(2) + '%' : '', CPC: r.cpc ? Number(r.cpc).toFixed(2) : '',
+  resultados: (r.actions || []).filter((a) => /lead|registration|purchase|contact|link_click/.test(a.action_type)).slice(0, 3).map((a) => `${a.action_type}: ${a.value}`).join(' · '),
+});
+function tableEl(rows, onAccount) {
+  const wrap = document.createElement('div'); wrap.className = 'tbl';
+  const t = document.createElement('table');
+  const cols = Object.keys(rows[0]);
+  const head = document.createElement('tr');
+  for (const c of cols) { const th = document.createElement('th'); th.textContent = c.replace(/_/g, ' '); head.appendChild(th); }
+  if (onAccount) head.appendChild(document.createElement('th'));
+  t.appendChild(head);
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    for (const c of cols) { const td = document.createElement('td'); const v = row[c]; td.textContent = v === null || v === undefined ? '' : String(v); tr.appendChild(td); }
+    if (onAccount) {
+      const td = document.createElement('td');
+      for (const [label, key] of [['Campanhas', 'campanhas'], ['Desempenho 7d', 'desempenho']]) {
+        const b = document.createElement('button'); b.className = 'ghost'; b.textContent = label; b.onclick = () => runQuery(key, row.id); td.appendChild(b);
+      }
+      tr.appendChild(td);
+    }
+    t.appendChild(tr);
+  }
+  wrap.appendChild(t); return wrap;
+}
+async function runQuery(key, accountId) {
+  const q = QUERIES[key];
+  const el = add('ai', 'Consultando o Meta…'); el.classList.add('wide');
+  const call = (args) => api('/api/tool', { method: 'POST', body: JSON.stringify({ name: q.tool, args }) });
+  try {
+    let r = await call({ ...(q.args || {}), ...(accountId ? { ad_account_id: accountId } : {}) });
+    // Sem conta padrão: descobre as contas e deixa você escolher (ou usa a única existente)
+    if (q.needsAccount && !accountId && r?.status === 'nao_configurado') {
+      const accs = await api('/api/tool', { method: 'POST', body: JSON.stringify({ name: 'meta_listar_contas', args: {} }) });
+      if (Array.isArray(accs) && accs.length === 1) return el.remove(), runQuery(key, accs[0].id);
+      if (Array.isArray(accs) && accs.length > 1) {
+        el.textContent = 'Escolha a conta de anúncio:'; el.appendChild(tableEl(accs, true)); return;
+      }
+      r = accs;
+    }
+    el.textContent = q.title + (accountId ? ` · ${accountId}` : '');
+    if (Array.isArray(r)) {
+      if (!r.length) { el.append(document.createElement('br'), 'Nenhum resultado. ' + (key === 'contas' ? 'O token não enxerga contas: em Configurações da empresa, atribua as contas de anúncio ao usuário do sistema com controle total.' : '')); return; }
+      const rows = key === 'desempenho' ? r.map(flatInsight) : r;
+      el.appendChild(tableEl(rows, key === 'contas'));
+    } else {
+      el.append(document.createElement('br'), r?.erro || r?.error || JSON.stringify(r));
+    }
+  } catch (err) { el.textContent = 'Erro: ' + err.message; }
+  $('#log').scrollTop = 1e9;
+}
+for (const b of document.querySelectorAll('#quick [data-q]')) b.onclick = () => runQuery(b.dataset.q);
 
 /* ---------- alterar senha ---------- */
 $('#pwBtn').onclick = () => { $('#pwErr').textContent = ''; $('#pwForm').reset(); show($('#pwModal'), true); };
