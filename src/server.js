@@ -220,7 +220,7 @@ app.post('/api/content/:id/changes', requireUser, requireAdmin, (req, res) => ou
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
 
-const BRAND_FIELDS = ['nome', 'frentes', 'tom_de_voz', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links'];
+const BRAND_FIELDS = ['nome', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links'];
 app.get('/api/brand', requireUser, (_req, res) => res.json(store.brand()));
 app.put('/api/brand', requireUser, requireAdmin, (req, res) => {
   const b = {};
