@@ -12,6 +12,14 @@ Agente que cria e otimiza campanhas (Google, Meta, LinkedIn) a partir de texto. 
 - **Papéis:** *Colaborador* conversa com o agente e propõe ações. *Administrador* também aprova/rejeita ações, vê a auditoria e gerencia a equipe.
 - **Atenção:** no plano gratuito do Render o disco é efêmero, então colaboradores, fila e histórico somem a cada reinício ou deploy. Para manter a equipe, use o plano Starter com disco (`render.yaml`). Enquanto isso, a administradora sempre consegue entrar com `APP_PASSWORD`.
 
+## Entrar com Google
+
+1. Google Cloud Console → **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth** → tipo **Aplicativo da Web**.
+2. Em **Origens JavaScript autorizadas**, adicione a URL do painel (ex.: `https://gestoragente.onrender.com`). Não precisa de URI de redirecionamento.
+3. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`; não é segredo) e coloque em `GOOGLE_LOGIN_CLIENT_ID` no Render.
+4. Pronto: aparece o botão **Continuar com Google**. Entra quem tem acesso (administradora ou convidado). Convidados também podem aceitar o convite pelo Google, desde que a conta seja a do e-mail convidado.
+5. Quando estiver tudo funcionando, defina `DISABLE_PASSWORD_LOGIN=true` para aceitar **somente** Google. Faça isso só depois de testar o seu login, para não se trancar para fora.
+
 ## Segurança em camadas
 
 1. **DRY_RUN=true por padrão**: simula tudo, não toca nas contas.

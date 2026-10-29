@@ -51,6 +51,14 @@ export function authenticate(email, password) {
   return getUser(e);
 }
 
+export function loginByVerifiedEmail(email) {
+  const e = norm(email);
+  const user = getUser(e);
+  if (!user) return null;
+  if (store.users().some((u) => u.email === e)) store.updateUser(e, { lastLoginAt: new Date().toISOString() });
+  return user;
+}
+
 export function listUsers() {
   const list = store.users().map((u) => ({
     email: u.email,
@@ -139,14 +147,23 @@ export function inviteInfo(token) {
   return i ? { email: i.email, role: i.role, by: i.by } : null;
 }
 
-export function acceptInvite(token, password) {
+export function acceptInvite(token, password, verifiedEmail) {
   const i = findInvite(token);
   if (!i) return { error: 'Convite inválido, expirado ou já usado.' };
-  if (String(password || '').length < 8) return { error: 'A senha precisa ter ao menos 8 caracteres.' };
+  if (verifiedEmail) {
+    // Entrada pelo Google: o e-mail da conta precisa ser exatamente o do convite.
+    if (norm(verifiedEmail) !== i.email) return { error: `Este convite é para ${i.email}. Entre com essa conta Google.` };
+  } else if (String(password || '').length < 8) {
+    return { error: 'A senha precisa ter ao menos 8 caracteres.' };
+  }
   if (store.users().some((u) => u.email === i.email)) return { error: 'Este e-mail já tem acesso.' };
-  store.addUser({ email: i.email, role: i.role, passwordHash: hashPassword(password), createdAt: new Date().toISOString(), invitedBy: i.by });
+  store.addUser({
+    email: i.email, role: i.role,
+    ...(verifiedEmail ? { auth: 'google' } : { passwordHash: hashPassword(password) }),
+    createdAt: new Date().toISOString(), invitedBy: i.by,
+  });
   store.updateInvite(i.id, { status: 'accepted', acceptedAt: new Date().toISOString() });
-  store.log({ type: 'invite_accepted', email: i.email, role: i.role });
+  store.log({ type: 'invite_accepted', email: i.email, role: i.role, via: verifiedEmail ? 'google' : 'senha' });
   return { user: getUser(i.email) };
 }
 

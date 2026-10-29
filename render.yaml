@@ -32,6 +32,10 @@ services:
         value: knasck@gmail.com
       - key: APP_PASSWORD
         sync: false
+      - key: GOOGLE_LOGIN_CLIENT_ID
+        sync: false
+      - key: DISABLE_PASSWORD_LOGIN
+        value: "false"
       - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM

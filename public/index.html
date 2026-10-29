@@ -63,6 +63,8 @@
     <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" required>
     <div class="err" id="loginErr"></div>
     <button id="loginBtn">Entrar</button>
+    <div class="note hidden" id="gDiv" style="text-align:center">ou</div>
+    <div id="gBtn" class="hidden" style="display:flex;justify-content:center"></div>
   </form>
 </div>
 
@@ -198,7 +200,7 @@ async function setSession(r) { token = r.token; sessionStorage.setItem('tk', tok
 
 if (inviteToken) {
   $('#loginTitle').textContent = 'Você foi convidado(a)';
-  $('#loginNote').textContent = 'Crie uma senha (mínimo 8 caracteres) para entrar.';
+  $('#loginNote').textContent = 'Crie uma senha (mínimo 8 caracteres) ou entre com a conta Google do mesmo e-mail.';
   $('#loginBtn').textContent = 'Criar senha e entrar';
   $('#pw').autocomplete = 'new-password'; $('#pw').minLength = 8; $('#pw').placeholder = 'Crie sua senha';
   $('#email').readOnly = true;
@@ -218,6 +220,39 @@ $('#loginForm').onsubmit = async (e) => {
   $('#loginBtn').disabled = false;
 };
 $('#logout').onclick = logout;
+
+/* ---------- entrar com Google ---------- */
+let gClient = '';
+async function onGoogle(resp) {
+  $('#loginErr').textContent = '';
+  try {
+    const r = inviteToken
+      ? await api('/api/accept-invite-google', { method: 'POST', body: JSON.stringify({ token: inviteToken, credential: resp.credential }) })
+      : await api('/api/login/google', { method: 'POST', body: JSON.stringify({ credential: resp.credential }) });
+    await setSession(r);
+  } catch (err) { $('#loginErr').textContent = err.message; }
+}
+function initGoogle() {
+  if (!gClient || !window.google?.accounts?.id) return;
+  google.accounts.id.initialize({ client_id: gClient, callback: onGoogle });
+  const b = $('#gBtn'); show(b, true); b.style.display = 'flex';
+  google.accounts.id.renderButton(b, { theme: 'outline', size: 'large', text: 'continue_with', locale: 'pt-BR', width: 300 });
+  show($('#gDiv'), true);
+}
+fetch('/api/config').then((r) => r.json()).then((c) => {
+  if (!c.passwordLogin) {
+    // Só Google: esconde senha e botão de entrar por senha
+    for (const sel of ['#pw', '#loginBtn', '#email', '#pwBtn']) show($(sel), false);
+    $('#loginNote').textContent = inviteToken ? 'Entre com a conta Google do e-mail convidado.' : 'Entre com sua conta Google.';
+    $('#gDiv').remove();
+  }
+  gClient = c.googleClientId || '';
+  if (gClient) {
+    const sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = initGoogle;
+    document.head.appendChild(sc);
+  }
+}).catch(() => {});
 
 /* ---------- chat ---------- */
 $('#form').onsubmit = async (e) => {

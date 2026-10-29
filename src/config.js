@@ -13,6 +13,10 @@ export const config = {
   // Envio opcional de e-mail de convite (Resend). Sem isso, o painel mostra o link para você copiar.
   resendKey: process.env.RESEND_API_KEY || '',
   mailFrom: process.env.MAIL_FROM || '',
+  // "Entrar com Google": Client ID OAuth (tipo Web). Não é segredo. Sem ele, o botão não aparece.
+  googleLoginClientId: (process.env.GOOGLE_LOGIN_CLIENT_ID || '').trim(),
+  // Quando o Google estiver funcionando, defina DISABLE_PASSWORD_LOGIN=true para aceitar só Google.
+  disablePasswordLogin: process.env.DISABLE_PASSWORD_LOGIN === 'true',
   mcpToken: process.env.MCP_TOKEN || '',
   approvalPin: process.env.APPROVAL_PIN || '',
   anthropicKey: process.env.ANTHROPIC_API_KEY || '',

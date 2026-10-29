@@ -7,9 +7,10 @@ import { config, platformStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { chat, resetSession } from './agent.js';
+import { verifyGoogleIdToken } from './googleAuth.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
-  authenticate, signSession, readSession, changePassword,
+  authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
   listUsers, removeUser, createInvite, inviteInfo, acceptInvite, revokeInvite, pendingInvites, sendInviteEmail,
 } from './users.js';
 
@@ -75,7 +76,42 @@ app.post('/mcp', requireMcp, async (req, res) => {
 app.all('/mcp', requireMcp, (_req, res) => res.status(405).json({ error: 'Use POST.' }));
 
 // --- Login, convites e conta ---
+app.get('/api/config', (_req, res) =>
+  res.json({ googleClientId: config.googleLoginClientId || null, passwordLogin: !config.disablePasswordLogin }));
+
+app.post('/api/login/google', async (req, res) => {
+  const key = `${req.ip}|google`;
+  if (limited(key)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
+  try {
+    const g = await verifyGoogleIdToken(req.body?.credential);
+    const user = loginByVerifiedEmail(g.email);
+    if (!user) {
+      fail(key);
+      store.log({ type: 'login_denied', email: g.email, via: 'google' });
+      return res.status(403).json({ error: `${g.email} não tem acesso. Peça um convite para a administradora.` });
+    }
+    attempts.delete(key);
+    store.log({ type: 'login', email: user.email, via: 'google' });
+    res.json({ token: signSession(user), user: { email: user.email, role: user.role } });
+  } catch (e) {
+    fail(key);
+    res.status(401).json({ error: e.message });
+  }
+});
+
+app.post('/api/accept-invite-google', async (req, res) => {
+  try {
+    const g = await verifyGoogleIdToken(req.body?.credential);
+    const r = acceptInvite(req.body?.token, null, g.email);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ token: signSession(r.user), user: { email: r.user.email, role: r.user.role } });
+  } catch (e) {
+    res.status(401).json({ error: e.message });
+  }
+});
+
 app.post('/api/login', (req, res) => {
+  if (config.disablePasswordLogin) return res.status(403).json({ error: 'Login por senha desativado. Use "Continuar com Google".' });
   const { email, password } = req.body || {};
   const key = `${req.ip}|${String(email || '').toLowerCase()}`;
   if (limited(key)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
@@ -92,6 +128,7 @@ app.get('/api/invite-info', (req, res) => {
 });
 
 app.post('/api/accept-invite', (req, res) => {
+  if (config.disablePasswordLogin) return res.status(403).json({ error: 'Cadastro por senha desativado. Use "Continuar com Google".' });
   const { token, password } = req.body || {};
   const r = acceptInvite(token, password);
   if (r.error) return res.status(400).json({ error: r.error });

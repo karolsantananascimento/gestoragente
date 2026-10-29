@@ -22,6 +22,12 @@ const call = async (path, { method = 'GET', body, token } = {}) => {
 try {
   for (let i = 0; i < 40; i++) { try { if ((await fetch(BASE + '/health')).ok) break; } catch {} await new Promise((r) => setTimeout(r, 250)); }
 
+  // Google (sem Client ID configurado no teste: recusa com mensagem clara, sem quebrar)
+  let g = await call('/api/config');
+  ok(g.status === 200 && g.data.googleClientId === null && g.data.passwordLogin === true, 'config pública informa que o Google ainda não está configurado');
+  g = await call('/api/login/google', { method: 'POST', body: { credential: 'qualquer' } });
+  ok(g.status === 401, 'login Google sem configuração é recusado');
+
   // login admin
   let r = await call('/api/login', { method: 'POST', body: { email: 'knasck@gmail.com', password: 'errada' } });
   ok(r.status === 401, 'senha errada é recusada');
