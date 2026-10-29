@@ -209,7 +209,8 @@ try {
   globalThis.fetch = f0;
   ok(ar.status === 'ok' && ar.criadas === 1 && c.listRequests('atendido', 'Disco').some((x) => x.id === pedidoAuto.id), 'automação: o Hugo cria a pauta e fecha o pedido sozinho');
   const { atenderPedidos: at2 } = await import('../src/agent.js');
-  ok((await at2('operizy')).status === 'bloqueado', 'automação não roda para cliente com kit incompleto');
+  ok(c.kitCompleto(store.cliente('operizy').marca) && /#FF6B35/.test(store.cliente('operizy').marca.cores), 'kit padrão do Operizy já vem preenchido no cliente');
+  ok((await at2('lumiere')).status === 'bloqueado', 'automação não roda para cliente com kit incompleto');
   config.anthropicKey = '';
   ok((await at2('disco')).status === 'sem_chave', 'sem chave da Anthropic a automação avisa em vez de falhar');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }

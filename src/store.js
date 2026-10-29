@@ -19,6 +19,9 @@ const SEED_CLIENTS = [
 ];
 const defaultBrand = () => { try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./brandDefault.json', import.meta.url)), 'utf8')); } catch { return {}; } };
 
+// Kits de marca entregues junto com o código (src/kits/<id-do-cliente>.json). Só preenchem campos vazios: o que a administradora editar no painel nunca é sobrescrito.
+const kitPadrao = (id) => { try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL(`./kits/${id}.json`, import.meta.url)), 'utf8')); } catch { return null; } };
+
 const normalize = (s) => {
   s.actions ||= [];
   s.audit ||= [];
@@ -36,6 +39,10 @@ const normalize = (s) => {
       id, nome, meta_semanal: meta, padrao: id === 'disco', contas: {}, criado_em: new Date().toISOString(),
       marca: id === 'disco' ? (Object.keys(s.brand).length ? s.brand : defaultBrand()) : { nome },
     }));
+  }
+  for (const c of s.clientes) {
+    const kit = kitPadrao(c.id);
+    if (kit) { c.marca ||= {}; for (const [k, v] of Object.entries(kit)) if (!c.marca[k] || (k === 'nome' && Object.keys(c.marca).length === 1)) c.marca[k] = v; }
   }
   for (const c of s.content) if (!c.cliente_id) c.cliente_id = 'disco';
   for (const p of s.pedidos) if (!p.cliente_id) p.cliente_id = 'disco';

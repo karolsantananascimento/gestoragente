@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "id": "4dd79f86",
+      "id": "99227f34",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -13,8 +13,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T18:32:34.300Z",
-      "executedAt": "2026-10-29T18:32:34.301Z",
+      "createdAt": "2026-10-29T18:36:55.866Z",
+      "executedAt": "2026-10-29T18:36:55.867Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 101",
@@ -27,7 +27,7 @@
       "simulated": true
     },
     {
-      "id": "60df9f90",
+      "id": "428e544f",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -39,8 +39,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T18:32:34.298Z",
-      "executedAt": "2026-10-29T18:32:34.299Z",
+      "createdAt": "2026-10-29T18:36:55.864Z",
+      "executedAt": "2026-10-29T18:36:55.865Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 100",
@@ -53,7 +53,7 @@
       "simulated": true
     },
     {
-      "id": "11d2e959",
+      "id": "197654c2",
       "tool": "google_criar_campanha_pesquisa",
       "platform": "google",
       "args": {
@@ -67,10 +67,10 @@
       "activation": false,
       "status": "pending",
       "source": "agent",
-      "createdAt": "2026-10-29T18:32:34.295Z"
+      "createdAt": "2026-10-29T18:36:55.860Z"
     },
     {
-      "id": "b76bd425",
+      "id": "1edcbf91",
       "tool": "google_pausar_ativar_campanha",
       "platform": "google",
       "args": {
@@ -83,8 +83,8 @@
       "activation": false,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T18:32:34.292Z",
-      "executedAt": "2026-10-29T18:32:34.297Z",
+      "createdAt": "2026-10-29T18:36:55.857Z",
+      "executedAt": "2026-10-29T18:36:55.862Z",
       "result": {
         "simulado": true,
         "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
@@ -100,7 +100,7 @@
   ],
   "audit": [
     {
-      "at": "2026-10-29T18:32:34.302Z",
+      "at": "2026-10-29T18:36:55.868Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -113,7 +113,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.302Z",
+      "at": "2026-10-29T18:36:55.868Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -126,9 +126,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.302Z",
+      "at": "2026-10-29T18:36:55.867Z",
       "type": "simulated",
-      "id": "4dd79f86",
+      "id": "99227f34",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -146,9 +146,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T18:32:34.301Z",
+      "at": "2026-10-29T18:36:55.866Z",
       "type": "proposed",
-      "id": "4dd79f86",
+      "id": "99227f34",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -157,9 +157,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.300Z",
+      "at": "2026-10-29T18:36:55.865Z",
       "type": "simulated",
-      "id": "60df9f90",
+      "id": "428e544f",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -177,9 +177,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T18:32:34.299Z",
+      "at": "2026-10-29T18:36:55.864Z",
       "type": "proposed",
-      "id": "60df9f90",
+      "id": "428e544f",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -188,9 +188,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.297Z",
+      "at": "2026-10-29T18:36:55.863Z",
       "type": "simulated",
-      "id": "b76bd425",
+      "id": "1edcbf91",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -210,7 +210,7 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T18:32:34.296Z",
+      "at": "2026-10-29T18:36:55.861Z",
       "type": "blocked",
       "tool": "google_criar_grupo_com_anuncio",
       "args": {
@@ -234,9 +234,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.295Z",
+      "at": "2026-10-29T18:36:55.860Z",
       "type": "proposed",
-      "id": "11d2e959",
+      "id": "197654c2",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
         "customer_id": "1234567890",
@@ -247,7 +247,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.294Z",
+      "at": "2026-10-29T18:36:55.859Z",
       "type": "blocked",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
@@ -262,9 +262,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T18:32:34.293Z",
+      "at": "2026-10-29T18:36:55.858Z",
       "type": "proposed",
-      "id": "b76bd425",
+      "id": "1edcbf91",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -289,7 +289,7 @@
       "meta_semanal": 2,
       "padrao": true,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
         "nome": "Disco",
         "frentes": "Hub criativo com 3 frentes:\n• Disco Criativo — conteúdo e planejamento (cor de apoio: laranja)\n• Disco Mídia — tráfego, estratégia, dados e aquisição de clientes (cor de apoio: lilás claro)\n• Disco Tech — desenvolvimento de SaaS (cor de apoio: violeta)\nAssinaturas usadas: \"Companhia criativa · Criativo · Mídia · Tech · Insights\"; \"Marketing que move o seu negócio\"; \"Criatividade, mídia e tecnologia para tirar marcas e negócios do lugar\".",
@@ -317,7 +317,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
         "nome": "Michie Farfan"
       }
@@ -328,9 +328,21 @@
       "meta_semanal": 7,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
-        "nome": "Operizy"
+        "nome": "Operizy",
+        "identidade": "Operizy é uma plataforma brasileira de loja virtual para varejo e atacado (operada pela GWC Tecnologia, Jaboatão dos Guararapes, PE). Promessa central: sua loja inteira, em um lugar só: loja, atendimento, automações e canais de venda no mesmo painel, sem apps de terceiros, sem código e sem depender de agência. Personalidade: direta, confiante, prática e levemente provocadora; fala de igual para igual com o lojista. Valores: simplicidade, autonomia do lojista, tudo em um só lugar, venda que não espera por você.\nDiferenciais que o site defende: atacado e varejo na mesma loja (um catálogo, um estoque, um painel); Izy, a IA da plataforma (analisa a loja, cria produto a partir de foto, monta promoções, prevê estoque, atende 24h); 41+ automações prontas por WhatsApp e e-mail; mais de 30 apps nativos incluídos; dropshipping e Trade (rede de revenda); um fornecedor, uma fatura, um suporte; 7 dias grátis sem cartão.",
+        "posicionamento": "Loja virtual para varejo e atacado, tudo em um painel, para o lojista que não quer depender de agência nem de uma pilha de assinaturas.",
+        "objetivo_conteudo": "Educar e converter lojistas: (1) dicas práticas de venda online, estoque, atacado, recuperação de carrinho e automação; (2) mostrar a plataforma em uso (Izy, editor de loja, automações, atendimento unificado); (3) histórias e situações reais do dia a dia do lojista; (4) convite para testar 7 dias grátis. Todo post deve ensinar algo útil ou mostrar um recurso resolvendo um problema concreto. Não inventar números, cases nem depoimentos: usar só os que a Karolina confirmar.",
+        "publico": "Lojistas de varejo e de atacado no Brasil (pequenas e médias lojas, quem vende por Instagram/WhatsApp e quer profissionalizar), donos de loja que querem sair de agência e de desenvolvedor, quem quer vender sem estoque (dropshipping) ou abastecer revendedores (Trade), e agências parceiras e indicadores.",
+        "tom_de_voz": "- Português do Brasil informal, tratando por \"você\". Frases curtas, diretas e com ritmo. Leve humor, sem forçar.\n- Frases do próprio site que mostram o jeito: \"Sua loja não precisa parar quando você para.\" · \"Zero código, zero agência.\" · \"Nem toda venda precisa esperar por você.\" · \"Desconto todo mundo dá.\"\n- Abrir com um problema ou cena do lojista, mostrar a virada e fechar com convite natural.\n- Concreto em vez de abstrato; benefício antes de recurso.\n- Evitar: jargão técnico sem explicar, promessa de resultado garantido, tom corporativo engessado, exagero de exclamações e emojis, comparação direta com concorrentes pelo nome, números que não foram confirmados.",
+        "estilo_comunicacao": "- Estrutura da legenda: gancho de 1 linha (problema ou frase de impacto) → 2 a 4 linhas de desenvolvimento → CTA.\n- CTAs usados no site: \"Criar minha loja\", \"Começar agora\", \"Testar 7 dias grátis\", \"Ver planos\", \"Navegue em uma loja real\", \"Migre sua loja\".\n- Formatos: carrossel educativo (dicas e passo a passo), post único com frase forte, demonstração do produto (print do painel/Izy), bastidores e novidades. 1 post por dia: alternar educação, produto, prova/uso e convite para teste.\n- Hashtags com moderação (3 a 5): #lojavirtual #ecommerce #atacado #varejo #vendasonline.\n- Emojis: poucos e funcionais.\n- Izy (a IA) pode aparecer como personagem/mascote: referência a \"a Izy analisa, sugere e faz\".",
+        "estilo_visual": "Visual claro, quente e editorial-tech: fundo creme, bastante respiro, textos grandes e escuros, um acento laranja vibrante; blocos escuros para contraste. Títulos grandes e pesados (Archivo Black/ExtraBold), texto em Inter, pequenos rótulos em JetBrains Mono (caixa alta, espaçados). Imagens: capturas do painel e das lojas-modelo (moda, ótica, esporte, tech, perfumaria), mockups de conversas (WhatsApp, Instagram, Messenger), fotos de produto e um \"mural\" de lojas em grade. Izy como mascote em balão de chat. Um destaque de cor por peça; evitar excesso de elementos.",
+        "cores": "Fundo creme #F6F2ED\nBranco #FFFFFF\nTexto principal (quase preto quente) #1C1917\nTexto secundário #57534E\nBloco escuro #241F1C\nAcento laranja (CTAs e destaques) #FF6B35\nLaranja queimado (detalhes de texto) #C2410C\nVerde (confirmação, \"ok\", números positivos) #0E7A4F\nProporção sugerida: ~70% creme/branco + ~20% escuro + ~10% laranja.",
+        "fontes": "Títulos: Archivo (peso 900/ExtraBold), caixa normal ou alta, entrelinha apertada.\nTexto: Inter.\nRótulos e detalhes técnicos: JetBrains Mono, caixa alta, espaçada.",
+        "regras_visuais": "Logo \"Operizy\" no topo ou no rodapé, sem distorcer nem recolorir. Formato feed 1080x1350 (4:5), story 1080x1920 (9:16), carrossel numerado. Título curto e enorme ocupando cerca de metade do quadro; uma palavra de impacto em laranja. Um elemento principal por peça (print do painel, mockup de conversa, produto ou a Izy). CTA em botão/pílula laranja. Mesma grade e margens em toda a série, para o feed ficar consistente.",
+        "proibido": "Fundo escuro em toda a peça (o escuro é só para blocos de contraste); novas cores fora da paleta; outras fontes; promessas de resultado garantido; números, preços de plano ou taxas sem confirmar; depoimentos e cases inventados; textos longos dentro da arte; erros de ortografia na arte. Só citar preços de plano, taxas, números e cases depois de confirmados pela Karolina.",
+        "links": "Site: https://operizy.com/ · Instagram: https://www.instagram.com/operizy\nLogo (verificar versão para fundo escuro): https://operizy.com/operizy-logo.png"
       }
     },
     {
@@ -339,7 +351,7 @@
       "meta_semanal": 3,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
         "nome": "Senhorita Moça"
       }
@@ -350,7 +362,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
         "nome": "Lumiere"
       }
@@ -361,7 +373,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-29T18:32:34.293Z",
+      "criado_em": "2026-10-29T18:36:55.858Z",
       "marca": {
         "nome": "ContraFluxo Pratas"
       }
