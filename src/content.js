@@ -284,7 +284,20 @@ export function importSeeds() {
     const when = parseWhen(sd.data_publicacao);
     if (!when || when.getTime() < Date.now()) continue;
     const r = createItem(sd, 'hugo');
-    if (r.item) { store.markSeeded(sd.seed_id); n++; }
+    if (r.item) { r.item.seed_id = sd.seed_id; store.saveContent(); store.markSeeded(sd.seed_id); n++; }
+  }
+  // Links das artes (Canva) entregues junto com o código: entram só em pautas ainda "em arte".
+  for (const sd of seeds) {
+    if (!sd.arte_url) continue;
+    const it = store.content().find((c) => c.seed_id === sd.seed_id || (!c.seed_id && c.titulo === sd.titulo));
+    if (!it || it.status !== 'em_arte') continue;
+    it.seed_id = sd.seed_id;
+    it.arte_origem = it.arte_url = sd.arte_url;
+    it.arte_aviso = 'Link de edição do Canva (não é imagem). Exporte em PNG e use "Registrar arte" para as redes publicarem.';
+    it.arte_nota = 'Arte criada pelo Luiz no Canva com o kit Disco.';
+    it.status = 'aguardando_aprovacao';
+    hist(it, 'luiz', 'Arte entregue (link do Canva). Aguardando aprovação humana.');
+    store.saveContent(); n++;
   }
   return n;
 }
