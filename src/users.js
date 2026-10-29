@@ -35,7 +35,8 @@ export function verifyPassword(pw, stored) {
 export function getUser(email) {
   const e = norm(email);
   const stored = store.users().find((u) => u.email === e);
-  if (stored) return { email: e, role: e === config.adminEmail ? 'admin' : stored.role, createdAt: stored.createdAt, lastLoginAt: stored.lastLoginAt };
+  if (stored?.status === 'pendente') return null; // cadastro ainda não liberado: sem acesso
+  if (stored) return { email: e, nome: stored.nome, role: e === config.adminEmail ? 'admin' : stored.role, createdAt: stored.createdAt, lastLoginAt: stored.lastLoginAt };
   if (e === config.adminEmail) return { email: e, role: 'admin', virtual: true };
   return null;
 }
@@ -47,6 +48,7 @@ export function authenticate(email, password) {
   if (stored?.passwordHash) ok = verifyPassword(password, stored.passwordHash);
   else if (e === config.adminEmail && config.appPassword) ok = safeEq(password, config.appPassword);
   if (!ok) return null;
+  if (stored?.status === 'pendente') return { pendente: true };
   const now = new Date().toISOString();
   if (stored) store.updateUser(e, { lastLoginAt: now });
   return getUser(e);
@@ -61,8 +63,8 @@ export function loginByVerifiedEmail(email) {
 }
 
 export function listUsers() {
-  const list = store.users().map((u) => ({
-    email: u.email,
+  const list = store.users().filter((u) => u.status !== 'pendente').map((u) => ({
+    email: u.email, nome: u.nome || '',
     role: u.email === config.adminEmail ? 'admin' : u.role,
     createdAt: u.createdAt,
     lastLoginAt: u.lastLoginAt || null,
@@ -115,11 +117,36 @@ export function readSession(token) {
   }
 }
 
+// --- cadastro aberto pelo link: só e-mail, nome e senha; o acesso só vale depois que uma administradora libera ---
+export function signup({ email, nome, password }) {
+  const e = norm(email);
+  const n = String(nome || '').trim().slice(0, 80);
+  if (!EMAIL_RE.test(e)) return { error: 'E-mail inválido.' };
+  if (n.length < 2) return { error: 'Informe seu nome.' };
+  if (String(password || '').length < 8) return { error: 'A senha precisa ter ao menos 8 caracteres.' };
+  if (e === config.adminEmail || store.users().some((u) => u.email === e)) return { error: 'Este e-mail já tem cadastro.' };
+  if (store.users().filter((u) => u.status === 'pendente').length >= 50) return { error: 'Há muitos cadastros aguardando liberação. Fale com a administradora.' };
+  store.addUser({ email: e, nome: n, role: 'member', status: 'pendente', passwordHash: hashPassword(password), createdAt: new Date().toISOString() });
+  store.log({ type: 'signup', email: e });
+  return { ok: true };
+}
+export const pendingSignups = () => store.users().filter((u) => u.status === 'pendente').map((u) => ({ email: u.email, nome: u.nome || '', createdAt: u.createdAt }));
+export function approveSignup(email, role = 'member', by) {
+  const e = norm(email);
+  if (!ROLES.includes(role)) return { error: 'Papel inválido.' };
+  const u = store.users().find((x) => x.email === e && x.status === 'pendente');
+  if (!u) return { error: 'Cadastro pendente não encontrado.' };
+  store.updateUser(e, { status: 'ativo', role, approvedBy: norm(by), approvedAt: new Date().toISOString() });
+  store.log({ type: 'signup_approved', email: e, role, by });
+  return { ok: true };
+}
+
 // --- convites ---
 export function createInvite({ email, role = 'member', by }) {
   const e = norm(email);
   if (!EMAIL_RE.test(e)) return { error: 'E-mail inválido.' };
   if (!ROLES.includes(role)) return { error: 'Papel inválido.' };
+  if (store.users().some((u) => u.email === e && u.status === 'pendente')) return { error: 'Este e-mail já fez cadastro: libere-o em "Cadastros aguardando liberação".' };
   if (getUser(e) && !getUser(e).virtual) return { error: 'Este e-mail já tem acesso.' };
   if (e === config.adminEmail) return { error: 'Este e-mail já é o administrador principal.' };
   for (const i of store.invites()) if (i.email === e && i.status === 'pending') store.updateInvite(i.id, { status: 'revoked' });

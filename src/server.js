@@ -16,6 +16,7 @@ import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
   listUsers, removeUser, createInvite, inviteInfo, acceptInvite, revokeInvite, pendingInvites, sendInviteEmail,
+  signup, pendingSignups, approveSignup,
 } from './users.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -122,9 +123,20 @@ app.post('/api/login', (req, res) => {
   const key = `${req.ip}|${String(email || '').toLowerCase()}`;
   if (limited(key)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
   const user = authenticate(email, password);
+  if (user?.pendente) return res.status(403).json({ error: 'Seu cadastro foi recebido e está aguardando a liberação da administradora.' });
   if (!user) { fail(key); store.log({ type: 'login_failed', email: String(email || '').slice(0, 120) }); return res.status(401).json({ error: 'E-mail ou senha inválidos.' }); }
   attempts.delete(key);
   res.json({ token: signSession(user, !!req.body?.remember), user: { email: user.email, role: user.role } });
+});
+
+app.post('/api/signup', (req, res) => {
+  if (config.disablePasswordLogin) return res.status(403).json({ error: 'Cadastro por senha desativado.' });
+  const key = `${req.ip}|signup`;
+  if (limited(key)) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
+  fail(key);
+  const r = signup(req.body || {});
+  if (r.error) return res.status(400).json({ error: r.error });
+  res.json({ ok: true });
 });
 
 app.get('/api/invite-info', (req, res) => {
@@ -150,7 +162,7 @@ app.post('/api/password', requireUser, (req, res) => {
 });
 
 // --- Equipe (somente admin) ---
-app.get('/api/users', requireUser, requireAdmin, (_req, res) => res.json({ users: listUsers(), invites: pendingInvites() }));
+app.get('/api/users', requireUser, requireAdmin, (req, res) => res.json({ users: listUsers(), invites: pendingInvites(), cadastros: pendingSignups(), link_cadastro: `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/?cadastro=1` }));
 
 app.post('/api/invites', requireUser, requireAdmin, async (req, res) => {
   const { email, role } = req.body || {};
@@ -165,6 +177,12 @@ app.post('/api/invites', requireUser, requireAdmin, async (req, res) => {
 app.delete('/api/invites/:id', requireUser, requireAdmin, (req, res) => {
   const r = revokeInvite(req.params.id, req.user.email);
   if (r.error) return res.status(404).json({ error: r.error });
+  res.json(r);
+});
+
+app.post('/api/users/:email/approve', requireUser, requireAdmin, (req, res) => {
+  const r = approveSignup(req.params.email, req.body?.role || 'member', req.user.email);
+  if (r.error) return res.status(400).json({ error: r.error });
   res.json(r);
 });
 

@@ -88,6 +88,7 @@
   <form class="box" id="loginForm">
     <h1 id="loginTitle">Agente de Tráfego</h1>
     <div class="note" id="loginNote">Entre com seu e-mail e senha.</div>
+    <input id="nome" class="hidden" placeholder="Seu nome" autocomplete="name" maxlength="80">
     <input id="email" type="email" placeholder="E-mail" autocomplete="username" required>
     <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" required>
     <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="remember" checked style="padding:0"> Manter conectado neste navegador (30 dias)</label>
@@ -225,6 +226,11 @@
     <div class="err" id="invErr"></div>
     <div id="invResult" class="hidden card"></div>
     <div class="note">Colaboradores conversam com o agente e propõem ações. Só administradores aprovam, rejeitam e convidam.</div>
+    <h2 style="margin-top:10px">Link de cadastro</h2>
+    <div class="note">Envie este link: a pessoa informa nome, e-mail e senha e fica aguardando a sua liberação abaixo.</div>
+    <div class="row"><div class="link grow" id="signupLink"></div><button class="ghost" type="button" id="signupCopy">Copiar</button></div>
+    <h2 style="margin-top:10px">Cadastros aguardando liberação</h2>
+    <div id="signupsBox" class="note">Nenhum.</div>
     <h2 style="margin-top:10px">Pessoas com acesso</h2>
     <table id="usersTbl"></table>
     <h2 style="margin-top:10px">Convites pendentes</h2>
@@ -255,6 +261,7 @@ let me = null;
 const sid = sessionStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 sessionStorage.setItem('sid', sid);
 const inviteToken = new URLSearchParams(location.search).get('invite');
+const signupMode = !!new URLSearchParams(location.search).get('cadastro') && !inviteToken;
 
 async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) } });
@@ -346,8 +353,24 @@ if (inviteToken) {
     .catch((e) => { $('#loginErr').textContent = e.message; $('#loginBtn').disabled = true; });
 }
 
+if (signupMode) {
+  $('#loginTitle').textContent = 'Criar cadastro';
+  $('#loginNote').textContent = 'Informe nome, e-mail e uma senha (mínimo 8 caracteres). O acesso é liberado depois pela administradora.';
+  $('#loginBtn').textContent = 'Criar cadastro';
+  show($('#nome'), true); $('#nome').required = true;
+  $('#pw').autocomplete = 'new-password'; $('#pw').minLength = 8; $('#pw').placeholder = 'Crie sua senha';
+  show($('#remember').parentElement, false);
+}
+
 $('#loginForm').onsubmit = async (e) => {
   e.preventDefault(); $('#loginErr').textContent = ''; $('#loginBtn').disabled = true;
+  if (signupMode) {
+    try {
+      await api('/api/signup', { method: 'POST', body: JSON.stringify({ nome: $('#nome').value, email: $('#email').value, password: $('#pw').value }) });
+      $('#loginForm').innerHTML = '<h1>Cadastro recebido ✔</h1><div class="note">Pronto! Assim que a administradora liberar seu acesso, entre com o e-mail e a senha que você acabou de criar.</div>';
+    } catch (err) { $('#loginErr').textContent = err.message; $('#loginBtn').disabled = false; }
+    return;
+  }
   try {
     const r = inviteToken
       ? await api('/api/accept-invite', { method: 'POST', body: JSON.stringify({ token: inviteToken, password: $('#pw').value, remember: $('#remember').checked }) })
@@ -379,7 +402,7 @@ function initGoogle() {
 fetch('/api/config').then((r) => r.json()).then((c) => {
   if (!c.passwordLogin) {
     // Só Google: esconde senha e botão de entrar por senha
-    for (const sel of ['#pw', '#loginBtn', '#email', '#pwBtn']) show($(sel), false);
+    for (const sel of ['#pw', '#loginBtn', '#email', '#nome', '#pwBtn']) show($(sel), false);
     $('#loginNote').textContent = inviteToken ? 'Entre com a conta Google do e-mail convidado.' : 'Entre com sua conta Google.';
     $('#gDiv').remove();
   }
@@ -486,12 +509,25 @@ $('#pwForm').onsubmit = async (e) => {
 /* ---------- equipe ---------- */
 const fmt = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 async function loadTeam() {
-  const { users, invites } = await api('/api/users');
+  const { users, invites, cadastros, link_cadastro } = await api('/api/users');
+  $('#signupLink').textContent = link_cadastro;
+  const sb = $('#signupsBox'); sb.innerHTML = '';
+  if (!cadastros.length) sb.textContent = 'Nenhum.';
+  for (const c of cadastros) {
+    const row = document.createElement('div'); row.className = 'row';
+    const sp = document.createElement('span'); sp.className = 'grow'; sp.textContent = `${c.nome} · ${c.email} · ${fmt(c.createdAt)}`;
+    const mkb = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.onclick = async () => { try { await fn(); loadTeam(); } catch (e) { alert(e.message); } }; return b; };
+    row.append(sp,
+      mkb('Liberar como colaborador', 'big', () => api(`/api/users/${encodeURIComponent(c.email)}/approve`, { method: 'POST', body: JSON.stringify({ role: 'member' }) })),
+      mkb('Liberar como administrador', 'ghost', () => api(`/api/users/${encodeURIComponent(c.email)}/approve`, { method: 'POST', body: JSON.stringify({ role: 'admin' }) })),
+      mkb('Recusar', 'danger', async () => { if (confirm(`Recusar o cadastro de ${c.email}?`)) await api('/api/users/' + encodeURIComponent(c.email), { method: 'DELETE' }); }));
+    sb.appendChild(row);
+  }
   const t = $('#usersTbl');
-  t.innerHTML = '<tr><th>E-mail</th><th>Papel</th><th>Último acesso</th><th></th></tr>';
+  t.innerHTML = '<tr><th>Pessoa</th><th>Papel</th><th>Último acesso</th><th></th></tr>';
   for (const u of users) {
     const tr = document.createElement('tr');
-    const tds = [u.email + (u.owner ? ' (principal)' : ''), u.role === 'admin' ? 'Administrador' : 'Colaborador', fmt(u.lastLoginAt)];
+    const tds = [(u.nome ? u.nome + ' · ' : '') + u.email + (u.owner ? ' (principal)' : ''), u.role === 'admin' ? 'Administrador' : 'Colaborador', fmt(u.lastLoginAt)];
     for (const v of tds) { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }
     const td = document.createElement('td');
     if (!u.owner && u.email !== me.email) {
@@ -513,6 +549,7 @@ async function loadTeam() {
   }
 }
 $('#teamBtn').onclick = async () => { $('#invErr').textContent = ''; show($('#invResult'), false); show($('#teamModal'), true); try { await loadTeam(); } catch (e) { $('#invErr').textContent = e.message; } };
+$('#signupCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#signupLink').textContent); $('#signupCopy').textContent = 'Copiado'; } catch { prompt('Copie o link:', $('#signupLink').textContent); } };
 $('#teamClose').onclick = () => show($('#teamModal'), false);
 $('#inviteForm').onsubmit = async (e) => {
   e.preventDefault(); $('#invErr').textContent = ''; show($('#invResult'), false);
@@ -730,7 +767,7 @@ $('#itemForm').onsubmit = async (e) => {
 
 /* ---------- init ---------- */
 setInterval(() => { if (me) { loadPending().catch(() => {}); if (!$('#v-conteudo').classList.contains('hidden')) loadItems().catch(() => {}); } }, 15000);
-if (token && !inviteToken) boot().catch(() => logout());
+if (token && !inviteToken && !signupMode) boot().catch(() => logout());
 </script>
 </body>
 </html>

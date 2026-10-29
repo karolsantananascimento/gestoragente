@@ -141,6 +141,22 @@ try {
   const tl = await fetch(BASE + '/mcp/tok', { method: 'POST', headers: mh, body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/list' }) });
   const tlTxt = await tl.text();
   ok(['hugo_criar_pauta', 'luiz_registrar_arte', 'mariana_agendar', 'marca_ver'].every((n) => tlTxt.includes(n)), 'conector expõe as ferramentas de Hugo, Luiz e Mariana');
+
+  // cadastro por link: só e-mail, nome e senha; acesso depois da liberação
+  r = await call('/api/signup', { method: 'POST', body: { email: 'nova@x.com', nome: 'Nova Pessoa', password: 'curta' } });
+  ok(r.status === 400, 'cadastro com senha curta é recusado');
+  r = await call('/api/signup', { method: 'POST', body: { email: 'nova@x.com', nome: 'Nova Pessoa', password: 'senha-da-nova-1' } });
+  ok(r.status === 200, 'cadastro pelo link é aceito');
+  r = await call('/api/login', { method: 'POST', body: { email: 'nova@x.com', password: 'senha-da-nova-1' } });
+  ok(r.status === 403 && /aguardando/.test(r.data.error), 'cadastro não liberado não entra');
+  r = await call('/api/users', { token: admin });
+  ok(r.data.cadastros.some((c) => c.email === 'nova@x.com' && c.nome === 'Nova Pessoa') && !r.data.users.some((u) => u.email === 'nova@x.com') && /cadastro=1/.test(r.data.link_cadastro), 'administradora vê o cadastro pendente e o link');
+  r = await call('/api/users/nova%40x.com/approve', { method: 'POST', token: member2, body: { role: 'member' } });
+  ok(r.status === 401 || r.status === 403, 'colaboradora (ou sessão inválida) não libera cadastro');
+  r = await call('/api/users/nova%40x.com/approve', { method: 'POST', token: admin, body: { role: 'member' } });
+  ok(r.status === 200, 'administradora libera o cadastro');
+  r = await call('/api/login', { method: 'POST', body: { email: 'nova@x.com', password: 'senha-da-nova-1' } });
+  ok(r.status === 200 && r.data.user.role === 'member', 'depois de liberada a pessoa entra como colaboradora');
 } catch (e) {
   console.error('ERRO NO TESTE:', e);
   fails++;
