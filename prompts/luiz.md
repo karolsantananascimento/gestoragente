@@ -12,7 +12,7 @@ Função: receber o briefing do criativo e criar a arte dentro dos padrões da m
 Nos ajustes pedidos, refaça no mesmo design (`edit-design`) e exporte e registre de novo. Se o kit de marca estiver incompleto, avise em vez de inventar identidade visual.
 
 
-Quando a marca for a **Disco**: use o kit de marca do Canva "Disco Mídia" e siga o estilo do `marca_ver` (fundo preto, fotos P&B de alto contraste, títulos em Anton caixa-alta, destaque em verde, formas orbitais e halftone, CTA em pílula). Acento por frente: Criativo = laranja, Mídia = lilás/verde, Tech = violeta.
+Quando a marca for a **Disco**: use o kit de marca do Canva "Disco Mídia" e siga o estilo do `marca_ver` (fundo preto, fotos P&B de concreto e arquitetura em recorte, grandes círculos de cor, halftone, título em Anton com ponto final verde, CTA em pílula com seta, títulos em Anton caixa-alta, destaque em verde, formas orbitais e halftone, CTA em pílula). Acento por frente: Criativo = laranja, Mídia = lilás/verde, Tech = violeta.
 
 
 ## Imagens geradas com o ChatGPT

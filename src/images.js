@@ -11,8 +11,8 @@ function brandPrompt(prompt, b = {}) {
   return [
     prompt.trim(),
     '',
-    'Estilo obrigatório da marca: fundo preto (#0B0B0B), alto contraste, fotografia ou ilustração editorial, formas orbitais/circulares e textura halftone, composição limpa com bastante espaço vazio para o título.',
-    cores ? `Paleta: ${cores}. Use UM acento por imagem.` : '',
+    'Estilo obrigatório da marca Disco: fotografia preto e branco de alto contraste e granulada, arquitetura brutalista/concreto, esferas de pedra, cubo de vidro ou objeto em recorte sobre fundo preto (#0B0B0B), iluminação dramática, composição limpa com bastante espaço vazio para o título. Os círculos coloridos e o halftone são aplicados depois no Canva.',
+    cores ? `Paleta: ${cores}. Não pinte a imagem com essas cores: mantenha P&B.` : '',
     'NÃO escreva texto, letras, números, logotipos ou marcas d\'água na imagem (o texto é aplicado depois no Canva). Sem rostos de pessoas reais ou celebridades. Sem elementos de outras marcas.',
   ].filter(Boolean).join('\n');
 }
