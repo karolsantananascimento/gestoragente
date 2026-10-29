@@ -2,6 +2,7 @@ import { config, platformStatus } from './config.js';
 import { platformTools } from './registry.js';
 import { proposeAction, approveAction, rejectAction, pendingActions } from './guardrails.js';
 import { NotConfigured } from './http.js';
+import { teamTools } from './teamTools.js';
 
 // Ferramentas de administração do fluxo de aprovação.
 const adminTools = [
@@ -48,7 +49,9 @@ const adminTools = [
   },
 ];
 
-export const allTools = [...platformTools, ...adminTools];
+// Camila é a dona das ferramentas de anúncios.
+for (const t of platformTools) t.agent ||= 'camila';
+export const allTools = [...platformTools, ...teamTools, ...adminTools];
 
 // Ferramentas visíveis para o chat web (sem aprovar_acao).
 export const agentTools = allTools.filter((t) => !t.mcpOnly);

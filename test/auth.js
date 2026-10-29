@@ -76,6 +76,28 @@ try {
   r = await call('/api/me', { token: member });
   ok(r.status === 401, 'sessão da colaboradora removida deixa de valer na hora');
 
+  // conteúdo: colaboradora cria e entrega arte, mas só administradora aprova
+  r = await call('/api/invites', { method: 'POST', token: admin, body: { email: 'colega2@x.com', role: 'member' } });
+  const inv2 = new URL(r.data.link).searchParams.get('invite');
+  r = await call('/api/accept-invite', { method: 'POST', body: { token: inv2, password: 'senha-da-colega-2' } });
+  const member2 = r.data.token;
+  r = await call('/api/content', { method: 'POST', token: member2, body: { titulo: 'Post', legenda: 'Leg', briefing_arte: 'Brief', canais: 'instagram', data_publicacao: '2030-01-10T10:00' } });
+  ok(r.status === 200 && r.data.item.status === 'em_arte', 'colaboradora cria pauta');
+  const cid = r.data.item.id;
+  r = await call(`/api/content/${cid}/art`, { method: 'POST', token: member2, body: { arte_url: 'https://x.com/a.png' } });
+  ok(r.status === 200 && r.data.item.status === 'aguardando_aprovacao', 'colaboradora registra a arte');
+  r = await call(`/api/content/${cid}/approve`, { method: 'POST', token: member2 });
+  ok(r.status === 403, 'colaboradora NÃO aprova conteúdo');
+  r = await call(`/api/content/${cid}/approve`, { method: 'POST', token: admin });
+  ok(r.status === 200 && ['aprovado', 'agendado'].includes(r.data.item.status), 'administradora aprova pelo botão');
+  r = await call('/api/brand', { method: 'PUT', token: member2, body: { nome: 'x' } });
+  ok(r.status === 403, 'colaboradora não edita a marca');
+  r = await call('/api/brand', { method: 'PUT', token: admin, body: { nome: 'Minha Marca', cores: '#7C5CFF' } });
+  ok(r.status === 200 && r.data.nome === 'Minha Marca', 'administradora salva o kit da marca');
+  r = await call('/api/team', { token: member2 });
+  ok(r.status === 200 && r.data.map((a) => a.nome).join() === 'Camila,Hugo,Luiz,Mariana', 'painel lista o time');
+  r = await call('/api/users/colega2%40x.com', { method: 'DELETE', token: admin });
+
   // consultas diretas do painel: só leitura
   r = await call('/api/tool', { method: 'POST', token: admin, body: { name: 'meta_listar_contas', args: {} } });
   ok(r.status === 200 && r.data.status === 'nao_configurado', 'botão de contas responde sem IA (aqui: Meta sem token no teste)');
@@ -109,6 +131,9 @@ try {
   ok(viaPath.status === 200 && txt.includes('gestora de tráfego'), 'conector por endereço (/mcp/<chave>) funciona e entrega o prompt mestre');
   const bad = await fetch(BASE + '/mcp/errada', { method: 'POST', headers: mh, body: init });
   ok(bad.status === 401, 'chave errada no endereço é recusada');
+  const tl = await fetch(BASE + '/mcp/tok', { method: 'POST', headers: mh, body: JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/list' }) });
+  const tlTxt = await tl.text();
+  ok(['hugo_criar_pauta', 'luiz_registrar_arte', 'mariana_agendar', 'marca_ver'].every((n) => tlTxt.includes(n)), 'conector expõe as ferramentas de Hugo, Luiz e Mariana');
 } catch (e) {
   console.error('ERRO NO TESTE:', e);
   fails++;

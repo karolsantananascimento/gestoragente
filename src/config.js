@@ -22,6 +22,17 @@ export const config = {
   anthropicKey: process.env.ANTHROPIC_API_KEY || '',
   model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   dataDir: process.env.DATA_DIR || './data',
+  // Opcional: Postgres para os dados não se perderem em reinícios (Render, Supabase, Neon...).
+  databaseUrl: process.env.DATABASE_URL || '',
+  // Redes sociais (Mariana). Todas opcionais; sem credencial o canal fica como "sem integração".
+  social: {
+    fbPageId: process.env.META_PAGE_ID || '',
+    fbPageToken: process.env.META_PAGE_ACCESS_TOKEN || '',
+    igUserId: process.env.INSTAGRAM_USER_ID || '',
+    linkedinToken: process.env.LINKEDIN_ACCESS_TOKEN || '',
+    linkedinAuthor: process.env.LINKEDIN_AUTHOR_URN || '', // urn:li:organization:123 ou urn:li:person:abc
+    tiktokToken: process.env.TIKTOK_ACCESS_TOKEN || '',
+  },
   caps: {
     maxDailyBudgetBRL: num(process.env.MAX_DAILY_BUDGET_BRL, 300),
     maxBudgetIncreasePct: num(process.env.MAX_BUDGET_INCREASE_PCT, 20),
@@ -46,6 +57,16 @@ export const config = {
     version: process.env.LINKEDIN_API_VERSION || '202510',
   },
 };
+
+export function socialStatus() {
+  const s = config.social;
+  return {
+    facebook: !!(s.fbPageId && s.fbPageToken),
+    instagram: !!(s.igUserId && (s.fbPageToken || config.meta.token)),
+    linkedin: !!(s.linkedinToken && s.linkedinAuthor),
+    tiktok: false, // exige app aprovado pelo TikTok; ainda não implementado
+  };
+}
 
 export function platformStatus() {
   const g = config.google, m = config.meta, l = config.linkedin;

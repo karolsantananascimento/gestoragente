@@ -8,7 +8,8 @@ import { toJsonSchema } from './schema.js';
 import { pendingActions } from './guardrails.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const masterPrompt = () => fs.readFileSync(path.join(here, '..', 'prompts', 'master.md'), 'utf8');
+const prompt = (n) => fs.readFileSync(path.join(here, '..', 'prompts', `${n}.md`), 'utf8');
+const masterPrompt = () => `${prompt('master')}\n\n---\n${prompt('time')}`;
 
 const sessions = new Map(); // sessionId -> messages[]
 const MAX_TURNS = 10;       // iterações de ferramenta por mensagem

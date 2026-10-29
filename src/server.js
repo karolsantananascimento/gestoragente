@@ -3,12 +3,14 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { config, platformStatus } from './config.js';
+import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
+import { teamInfo } from './team.js';
+import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -173,7 +175,7 @@ app.delete('/api/users/:email', requireUser, requireAdmin, (req, res) => {
 
 // --- Agente e fila de aprovação ---
 app.get('/api/status', requireUser, (_req, res) =>
-  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), chat: !!config.anthropicKey }));
+  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: socialStatus(), armazenamento: store.mode(), chat: !!config.anthropicKey }));
 
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message } = req.body || {};
@@ -203,7 +205,36 @@ app.get('/api/audit', requireUser, requireAdmin, (_req, res) => res.json(store.a
 app.post('/api/approve/:id', requireUser, requireAdmin, async (req, res) => res.json(await approveAction(req.params.id, req.user.email)));
 app.post('/api/reject/:id', requireUser, requireAdmin, (req, res) => res.json(rejectAction(req.params.id, req.user.email)));
 
+
+// --- Time, conteúdo e marca ---
+app.get('/api/team', requireUser, (_req, res) => res.json(teamInfo()));
+
+app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status) }));
+const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
+app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
+app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
+app.post('/api/content/:id/art', requireUser, (req, res) => out(res, submitArt(req.params.id, req.body || {}, req.user.email)));
+// Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
+app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email)));
+app.post('/api/content/:id/changes', requireUser, requireAdmin, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
+app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
+app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
+
+const BRAND_FIELDS = ['nome', 'tom_de_voz', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links'];
+app.get('/api/brand', requireUser, (_req, res) => res.json(store.brand()));
+app.put('/api/brand', requireUser, requireAdmin, (req, res) => {
+  const b = {};
+  for (const k of BRAND_FIELDS) if (req.body?.[k] !== undefined) b[k] = String(req.body[k]).slice(0, 2000);
+  store.setBrand(b);
+  store.log({ type: 'brand_updated', by: req.user.email });
+  res.json(b);
+});
+
 app.use(express.static(path.join(here, '..', 'public')));
+
+await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
+setInterval(() => tick().catch((e) => console.error('[agendador]', e.message)), 60_000).unref();
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => store.flush().finally(() => process.exit(0)));
 
 app.listen(config.port, () => {
   console.log(`traffic-agent na porta ${config.port} · modo ${config.dryRun ? 'SIMULAÇÃO (dry-run)' : 'REAL'} · admin ${config.adminEmail}`);

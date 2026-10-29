@@ -101,3 +101,21 @@ Com `DRY_RUN=true` e credenciais preenchidas, as **leituras são reais** (listar
 2. Alertas de saldo e anomalia (CPA, gasto) por e-mail/WhatsApp.
 3. Criação completa no Meta (conjunto + criativo) e LinkedIn.
 4. Edite `prompts/master.md` com a sua metodologia: é o que faz o agente pensar como você.
+
+
+## O time (Camila, Hugo, Luiz e Mariana)
+
+- **Camila** · gestora de tráfego (Google e Meta Ads) — as ferramentas `google_*` e `meta_*`.
+- **Hugo** · pauta de conteúdo (legenda + briefing da arte) — `hugo_criar_pauta`.
+- **Luiz** · designer, segue o kit da aba **Marca** — `luiz_registrar_arte`.
+- **Mariana** · agenda depois da aprovação — `mariana_agendar`, `mariana_cronograma`.
+
+Fluxo: Hugo → Luiz → **botão Aprovar (só administrador, aba Conteúdo)** → Mariana. Nenhuma ferramenta de IA aprova conteúdo.
+
+Integrações da Mariana (variáveis no Render, todas opcionais):
+- Facebook: `META_PAGE_ID` + `META_PAGE_ACCESS_TOKEN` (permissões pages_manage_posts, pages_read_engagement). Agendado dentro do Facebook.
+- Instagram: `INSTAGRAM_USER_ID` (conta profissional ligada à página). O servidor publica na hora marcada.
+- LinkedIn e TikTok: espaço reservado, ainda não implementado. Aparecem como "sem integração" e você publica manualmente.
+- A arte precisa ser um link público https (JPG/PNG).
+
+Persistência: sem `DATABASE_URL` os dados ficam em arquivo e somem a cada reinício no plano gratuito. Com `DATABASE_URL` (Postgres) equipe, conteúdo e marca ficam salvos.

@@ -1,0 +1,84 @@
+// Testa o fluxo Hugo → Luiz → aprovação humana → Mariana, sem rede (fetch simulado).
+import fs from 'node:fs';
+process.env.DATA_DIR = './data/content-test';
+process.env.DRY_RUN = 'false';
+process.env.META_ACCESS_TOKEN = 'tk';
+process.env.META_PAGE_ID = 'P1';
+process.env.META_PAGE_ACCESS_TOKEN = 'pt';
+process.env.INSTAGRAM_USER_ID = 'IG1';
+fs.rmSync('./data/content-test', { recursive: true, force: true });
+
+const calls = [];
+globalThis.fetch = async (url, opts = {}) => {
+  calls.push({ url: String(url), body: String(opts.body || '') });
+  const u = String(url);
+  const body = u.endsWith('/photos') ? { id: 'ph1', post_id: 'P1_99' } : u.endsWith('/media') ? { id: 'cont1' } : { id: 'media9' };
+  return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+};
+
+const { store } = await import('../src/store.js');
+const c = await import('../src/content.js');
+const { callTool, allTools } = await import('../src/tools.js');
+
+let fails = 0;
+const ok = (cond, msg) => { console.log(`${cond ? 'OK  ' : 'FALHA'} ${msg}`); if (!cond) fails++; };
+const future = new Date(Date.now() + 3 * 86400e3).toISOString();
+
+try {
+  // Hugo cria pela ferramenta
+  let r = await callTool('hugo_criar_pauta', { titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
+  ok(r.status === 'ok' && r.conteudo.status === 'em_arte', 'Hugo cria a pauta e ela nasce em "em_arte"');
+  const id = r.conteudo.id;
+
+  r = await callTool('hugo_criar_pauta', { titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'], data_publicacao: future });
+  ok(r.status === 'erro', 'canal inexistente é recusado');
+
+  // Mariana não agenda sem aprovação
+  r = await callTool('mariana_agendar', { id });
+  ok(r.status === 'erro' && /aprovado/.test(r.erro), 'Mariana recusa conteúdo não aprovado por humano');
+  ok((await c.approveItem(id, 'adm@x.com')).error, 'não dá para aprovar antes de existir arte');
+
+  // Luiz entrega
+  r = await callTool('luiz_registrar_arte', { id, arte_url: 'http://inseguro/arte.png' });
+  ok(r.status === 'erro', 'link de arte sem https é recusado');
+  r = await callTool('luiz_registrar_arte', { id, arte_url: 'https://cdn.exemplo.com/arte.png' });
+  ok(r.conteudo.status === 'aguardando_aprovacao', 'Luiz entrega e o conteúdo vai para aprovação humana');
+
+  // pedir ajustes e reentregar
+  c.requestChanges(id, 'logo maior', 'adm@x.com');
+  ok(store.getContent(id).status === 'ajustes', 'administradora pede ajustes');
+  r = await callTool('luiz_registrar_arte', { id, arte_url: 'https://cdn.exemplo.com/arte2.png' });
+  ok(r.conteudo.status === 'aguardando_aprovacao', 'Luiz refaz e volta para aprovação');
+
+  // nenhuma ferramenta de IA aprova conteúdo
+  ok(!allTools.some((t) => /aprov/.test(t.name) && /conteudo|post|pauta/.test(t.name)), 'não existe ferramenta de IA para aprovar conteúdo');
+
+  // aprovação humana → Mariana agenda
+  const a = await c.approveItem(id, 'adm@x.com');
+  const it = a.item;
+  ok(it.status === 'agendado', 'aprovação humana dispara o agendamento');
+  ok(it.canais_status.facebook.status === 'agendado' && it.canais_status.facebook.externalId === 'P1_99', 'Facebook agendado dentro da rede');
+  ok(it.canais_status.instagram.status === 'na_fila', 'Instagram fica na fila do agendador');
+  ok(it.canais_status.linkedin.status === 'sem_integracao', 'LinkedIn sem integração é dito com clareza');
+  const fb = calls.find((x) => x.url.endsWith('/P1/photos'));
+  ok(fb && fb.body.includes('published=false') && fb.body.includes('scheduled_publish_time='), 'chamada do Facebook usa published=false + scheduled_publish_time');
+  ok(!calls.some((x) => x.url.endsWith('/IG1/media_publish')), 'Instagram ainda não foi publicado antes da hora');
+
+  // chega a hora
+  store.updateContent(id, { data_publicacao: new Date(Date.now() - 60000).toISOString() });
+  await c.tick();
+  const done = store.getContent(id);
+  ok(calls.some((x) => x.url.endsWith('/IG1/media_publish')), 'na hora marcada o agendador publica no Instagram');
+  ok(done.canais_status.instagram.status === 'publicado' && done.status === 'publicado', 'conteúdo termina como publicado');
+
+  // data sem fuso = Recife
+  ok(c.parseWhen('2026-11-03T10:00').toISOString() === '2026-11-03T13:00:00.000Z', 'datas sem fuso valem em horário de Recife (UTC-3)');
+
+  // sem data não aprova
+  const n = c.createItem({ titulo: 'a', legenda: 'b', briefing_arte: 'c', canais: 'instagram' }, 'x').item;
+  c.submitArt(n.id, { arte_url: 'https://x.com/a.png' }, 'luiz');
+  ok((await c.approveItem(n.id, 'adm')).error?.includes('data'), 'não aprova sem data de publicação');
+} catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
+fs.rmSync('./data/content-test', { recursive: true, force: true });
+console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
+process.exit(fails ? 1 : 0);

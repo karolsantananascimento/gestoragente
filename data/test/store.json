@@ -1,0 +1,281 @@
+{
+  "actions": [
+    {
+      "id": "f75cd4ce",
+      "tool": "meta_pausar_ativar",
+      "platform": "meta",
+      "args": {
+        "id": "101",
+        "status": "ACTIVE"
+      },
+      "summary": "Meta: ATIVAR objeto 101",
+      "warnings": [],
+      "activation": true,
+      "status": "executed",
+      "source": "agent",
+      "createdAt": "2026-10-29T16:10:42.720Z",
+      "executedAt": "2026-10-29T16:10:42.720Z",
+      "result": {
+        "simulado": true,
+        "aconteceria": "Meta: ATIVAR objeto 101",
+        "ferramenta": "meta_pausar_ativar",
+        "args": {
+          "id": "101",
+          "status": "ACTIVE"
+        }
+      },
+      "simulated": true
+    },
+    {
+      "id": "124b00d8",
+      "tool": "meta_pausar_ativar",
+      "platform": "meta",
+      "args": {
+        "id": "100",
+        "status": "ACTIVE"
+      },
+      "summary": "Meta: ATIVAR objeto 100",
+      "warnings": [],
+      "activation": true,
+      "status": "executed",
+      "source": "agent",
+      "createdAt": "2026-10-29T16:10:42.718Z",
+      "executedAt": "2026-10-29T16:10:42.719Z",
+      "result": {
+        "simulado": true,
+        "aconteceria": "Meta: ATIVAR objeto 100",
+        "ferramenta": "meta_pausar_ativar",
+        "args": {
+          "id": "100",
+          "status": "ACTIVE"
+        }
+      },
+      "simulated": true
+    },
+    {
+      "id": "7d9ec898",
+      "tool": "google_criar_campanha_pesquisa",
+      "platform": "google",
+      "args": {
+        "customer_id": "1234567890",
+        "nome": "Teste",
+        "orcamento_diario_brl": 100,
+        "estrategia": "MAXIMIZE_CONVERSIONS"
+      },
+      "summary": "Google: CRIAR campanha de pesquisa \"Teste\" (pausada), R$ 100/dia, MAXIMIZE_CONVERSIONS",
+      "warnings": [],
+      "activation": false,
+      "status": "pending",
+      "source": "agent",
+      "createdAt": "2026-10-29T16:10:42.715Z"
+    },
+    {
+      "id": "bd7d2a36",
+      "tool": "google_pausar_ativar_campanha",
+      "platform": "google",
+      "args": {
+        "customer_id": "1234567890",
+        "campaign_id": "99",
+        "status": "PAUSED"
+      },
+      "summary": "Google: PAUSAR campanha 99 (conta 1234567890)",
+      "warnings": [],
+      "activation": false,
+      "status": "executed",
+      "source": "agent",
+      "createdAt": "2026-10-29T16:10:42.711Z",
+      "executedAt": "2026-10-29T16:10:42.717Z",
+      "result": {
+        "simulado": true,
+        "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
+        "ferramenta": "google_pausar_ativar_campanha",
+        "args": {
+          "customer_id": "1234567890",
+          "campaign_id": "99",
+          "status": "PAUSED"
+        }
+      },
+      "simulated": true
+    }
+  ],
+  "audit": [
+    {
+      "at": "2026-10-29T16:10:42.721Z",
+      "type": "blocked",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "999",
+        "status": "ACTIVE"
+      },
+      "errors": [
+        "Limite de 2 ativações por dia atingido."
+      ],
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.721Z",
+      "type": "blocked",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "102",
+        "status": "ACTIVE"
+      },
+      "errors": [
+        "Limite de 2 ativações por dia atingido."
+      ],
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.721Z",
+      "type": "simulated",
+      "id": "f75cd4ce",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "101",
+        "status": "ACTIVE"
+      },
+      "result": {
+        "simulado": true,
+        "aconteceria": "Meta: ATIVAR objeto 101",
+        "ferramenta": "meta_pausar_ativar",
+        "args": {
+          "id": "101",
+          "status": "ACTIVE"
+        }
+      },
+      "by": "teste"
+    },
+    {
+      "at": "2026-10-29T16:10:42.720Z",
+      "type": "proposed",
+      "id": "f75cd4ce",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "101",
+        "status": "ACTIVE"
+      },
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.719Z",
+      "type": "simulated",
+      "id": "124b00d8",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "100",
+        "status": "ACTIVE"
+      },
+      "result": {
+        "simulado": true,
+        "aconteceria": "Meta: ATIVAR objeto 100",
+        "ferramenta": "meta_pausar_ativar",
+        "args": {
+          "id": "100",
+          "status": "ACTIVE"
+        }
+      },
+      "by": "teste"
+    },
+    {
+      "at": "2026-10-29T16:10:42.719Z",
+      "type": "proposed",
+      "id": "124b00d8",
+      "tool": "meta_pausar_ativar",
+      "args": {
+        "id": "100",
+        "status": "ACTIVE"
+      },
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.717Z",
+      "type": "simulated",
+      "id": "bd7d2a36",
+      "tool": "google_pausar_ativar_campanha",
+      "args": {
+        "customer_id": "1234567890",
+        "campaign_id": "99",
+        "status": "PAUSED"
+      },
+      "result": {
+        "simulado": true,
+        "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
+        "ferramenta": "google_pausar_ativar_campanha",
+        "args": {
+          "customer_id": "1234567890",
+          "campaign_id": "99",
+          "status": "PAUSED"
+        }
+      },
+      "by": "teste"
+    },
+    {
+      "at": "2026-10-29T16:10:42.716Z",
+      "type": "blocked",
+      "tool": "google_criar_grupo_com_anuncio",
+      "args": {
+        "customer_id": "1234567890",
+        "campaign_id": "1",
+        "nome_grupo": "G",
+        "titulos": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "b",
+          "c"
+        ],
+        "descricoes": [
+          "d",
+          "e"
+        ],
+        "url_final": "https://x.com"
+      },
+      "errors": [
+        "RSA inválido: título >30: \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+      ],
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.715Z",
+      "type": "proposed",
+      "id": "7d9ec898",
+      "tool": "google_criar_campanha_pesquisa",
+      "args": {
+        "customer_id": "1234567890",
+        "nome": "Teste",
+        "orcamento_diario_brl": 100,
+        "estrategia": "MAXIMIZE_CONVERSIONS"
+      },
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.714Z",
+      "type": "blocked",
+      "tool": "google_criar_campanha_pesquisa",
+      "args": {
+        "customer_id": "1234567890",
+        "nome": "Teste",
+        "orcamento_diario_brl": 5000,
+        "estrategia": "MAXIMIZE_CONVERSIONS"
+      },
+      "errors": [
+        "Orçamento diário R$ 5000 acima do teto de R$ 300."
+      ],
+      "source": "agent"
+    },
+    {
+      "at": "2026-10-29T16:10:42.714Z",
+      "type": "proposed",
+      "id": "bd7d2a36",
+      "tool": "google_pausar_ativar_campanha",
+      "args": {
+        "customer_id": "1234567890",
+        "campaign_id": "99",
+        "status": "PAUSED"
+      },
+      "source": "agent"
+    }
+  ],
+  "users": [],
+  "invites": [],
+  "content": [],
+  "brand": {}
+}
