@@ -253,6 +253,7 @@ app.use(express.static(path.join(here, '..', 'public')));
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
+setTimeout(() => tick().catch((e) => console.error('[agendador]', e.message)), 10_000).unref(); // recupera posts vencidos após reinício
 setInterval(() => tick().catch((e) => console.error('[agendador]', e.message)), 60_000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => store.flush().finally(() => process.exit(0)));
 

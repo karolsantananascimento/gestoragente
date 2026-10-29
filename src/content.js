@@ -249,7 +249,8 @@ export async function tick() {
     for (const canal of it.canais) {
       const cs = it.canais_status?.[canal];
       if (cs?.status === 'na_fila') {
-        try { const r = await adapters[canal].publicar(it); it.canais_status[canal] = { status: 'publicado', detalhe: 'Publicado.', externalId: r.id }; }
+        const atraso = Math.round((t - Date.parse(it.data_publicacao)) / 60000);
+        try { const r = await adapters[canal].publicar(it); it.canais_status[canal] = { status: 'publicado', detalhe: atraso > 5 ? `Publicado com ${atraso} min de atraso (o servidor estava fora do ar).` : 'Publicado.', externalId: r.id }; }
         catch (e) { it.canais_status[canal] = { status: 'erro', detalhe: e.message }; }
         store.log({ type: 'content_published', id: it.id, canal, status: it.canais_status[canal].status });
       } else if (cs?.status === 'agendado') {

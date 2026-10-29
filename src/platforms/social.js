@@ -14,7 +14,10 @@ export const adapters = {
     nome: 'Facebook',
     configured: () => socialStatus().facebook,
     // O Facebook agenda sozinho (de 10 min a 30 dias à frente).
+    // Fora dessa janela (menos de 11 min ou mais de 29 dias) o servidor publica na hora marcada.
     async agendar(item, quando) {
+      const ahead = quando.getTime() - Date.now();
+      if (ahead < 11 * 60e3 || ahead > 29 * 86400e3) return { modo: 'fila' };
       const r = await httpJson(`${G()}/${config.social.fbPageId}/photos`, {
         method: 'POST',
         form: {
