@@ -208,6 +208,16 @@ try {
   const ar = await atenderPedidos('disco');
   globalThis.fetch = f0;
   ok(ar.status === 'ok' && ar.criadas === 1 && c.listRequests('atendido', 'Disco').some((x) => x.id === pedidoAuto.id), 'automação: o Hugo cria a pauta e fecha o pedido sozinho');
+  // Rascunho automático (sem IA): o pedido vira pauta na hora, marcada para refino
+  const { criarRascunhoDoPedido, montarRascunho } = await import('../src/rascunho.js');
+  const pr = c.createRequest({ cliente: 'Operizy', texto: 'Crie um post de carrossel sobre 3 erros comuns ao montar uma loja virtual para o Operizy na quinta no instagram', canais: ['instagram'] }, 'u').pedido;
+  const rr = criarRascunhoDoPedido(pr);
+  ok(rr.item?.rascunho_auto && rr.item.cliente_id === 'operizy' && rr.item.formato === 'carrossel' && /3 erros comuns ao montar uma loja virtual/i.test(rr.item.titulo) && !/Operizy na quinta/i.test(rr.item.titulo), 'pedido vira pauta na hora, com título limpo e formato detectado');
+  ok(/#FF6B35/.test(rr.item.briefing_arte) && /Fale|Criar minha loja|Começar|Testar/.test(rr.item.legenda) && c.listRequests('atendido', 'Operizy').some((x) => x.id === pr.id), 'rascunho usa o kit do cliente (cores, CTA) e fecha o pedido');
+  ok(!!rr.item.data_publicacao, 'rascunho já sai com data sugerida da meta semanal');
+  ok(criarRascunhoDoPedido(c.createRequest({ cliente: 'Lumiere', texto: 'Post sobre bastidores do ateliê' }, 'u').pedido).error?.includes('incompleto'), 'cliente com kit incompleto não recebe rascunho');
+  const hu = await callTool('hugo_atualizar_pauta', { id: rr.item.id, legenda: 'Legenda final escrita pelo Hugo' }, 'mcp');
+  ok(hu.status === 'ok' && !store.getContent(rr.item.id).rascunho_auto && hu.conteudo.legenda.startsWith('Legenda final'), 'Hugo com IA reescreve o rascunho e a marca de rascunho sai');
   const { atenderPedidos: at2 } = await import('../src/agent.js');
   ok(c.kitCompleto(store.cliente('operizy').marca) && /#FF6B35/.test(store.cliente('operizy').marca.cores), 'kit padrão do Operizy já vem preenchido no cliente');
   ok((await at2('lumiere')).status === 'bloqueado', 'automação não roda para cliente com kit incompleto');

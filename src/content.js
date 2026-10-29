@@ -110,6 +110,7 @@ export function editItem(id, patch, by) {
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!EDITABLE.includes(it.status)) return { error: `Não dá para editar um conteúdo "${STATUS[it.status]}".` };
   for (const k of ['titulo', 'legenda', 'briefing_arte', 'formato', 'objetivo']) if (patch[k] !== undefined) it[k] = String(patch[k]).trim();
+  if (it.rascunho_auto && (patch.legenda !== undefined || patch.briefing_arte !== undefined)) it.rascunho_auto = false; // alguém revisou o texto
   if (patch.canais !== undefined) { const ch = cleanChannels(patch.canais); if (ch.error) return ch; it.canais = ch.list; }
   if (patch.data_publicacao !== undefined) {
     if (!patch.data_publicacao) it.data_publicacao = null;

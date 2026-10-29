@@ -8,6 +8,7 @@ import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
+import { criarRascunhoDoPedido } from './rascunho.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
@@ -206,10 +207,7 @@ app.post('/api/chat', requireUser, async (req, res) => {
     const cmd = runCommand({ texto: message, cliente, by: req.user.email });
     if (cmd.handled) {
       let reply = cmd.reply;
-      if (cmd.pedido) {
-        if (autoDisponivel()) { atenderPedidos(cmd.cliente_id).catch(() => {}); reply += ' O Hugo já está escrevendo a pauta: ela aparece em "Pauta pronta · Em arte" em até 1–2 minutos.'; }
-        else reply += ' Para o time executar, clique em "Rodar a squad" na aba Conteúdo e cole o comando no Claude (ou configure ANTHROPIC_API_KEY no Render para o Hugo executar sozinho).';
-      }
+      if (cmd.pedido) reply += ' ' + dispararPedido(cmd.pedido).texto;
       store.log({ type: 'comando', by: req.user.email, cliente: cmd.cliente_id || null });
       return res.json({ reply, pending: pendingActions(), comando: true });
     }
@@ -252,11 +250,21 @@ app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, request
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
 
+// Cada pedido é atendido na hora: com IA (chave da Anthropic) o Hugo escreve; sem IA o sistema cria um rascunho marcado, que o Hugo com IA refina depois.
+function dispararPedido(pedido) {
+  const cl = getCliente(pedido.cliente_id);
+  if (cl && !kitCompleto(cl.marca)) return { modo: 'bloqueado', texto: `O kit de marca de ${cl.nome} está incompleto: preencha a aba Marca para o time criar a pauta.` };
+  if (autoDisponivel()) { atenderPedidos(pedido.cliente_id).catch(() => {}); return { modo: 'ia', texto: 'O Hugo já está escrevendo a pauta: ela aparece em "Pauta pronta · Em arte" em até 1–2 minutos.' }; }
+  const r = criarRascunhoDoPedido(pedido);
+  if (r.error) return { modo: 'erro', texto: r.error };
+  return { modo: 'rascunho', item: r.item, texto: `Pauta criada agora em "Pauta pronta · Em arte" (rascunho automático${r.data ? `, data ${r.data.split('T')[0].split('-').reverse().join('/')}` : ''}). Revise e edite o texto; o Hugo com IA pode refinar depois.` };
+}
+
 // Pedidos ao time: comandos escritos no painel (criar pauta). O time os executa quando roda.
 app.get('/api/requests', requireUser, (req, res) => res.json({ pedidos: listRequests(req.query.status, req.query.cliente) }));
 app.post('/api/requests', requireUser, (req, res) => {
   const r = createRequest(req.body || {}, req.user.email);
-  if (r.pedido && autoDisponivel()) { atenderPedidos(r.pedido.cliente_id).catch(() => {}); r.automatico = true; }
+  if (r.pedido) { const d = dispararPedido(r.pedido); r.automatico = d.modo; r.mensagem = d.texto; if (d.item) r.item = d.item; }
   out(res, r);
 });
 app.post('/api/requests/:id/cancel', requireUser, (req, res) => out(res, cancelRequest(req.params.id, req.user.email)));

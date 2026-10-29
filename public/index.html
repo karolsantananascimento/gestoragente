@@ -707,7 +707,7 @@ $('#reqSend').onclick = async () => {
   $('#reqNote').textContent = '';
   try {
     const r = await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
-    $('#reqText').value = ''; $('#reqNote').textContent = r.automatico ? 'Pedido enviado. O Hugo já está criando a pauta (1–2 min).' : 'Pedido enviado. Clique em "Rodar a squad" para o time atender.'; loadRequests();
+    $('#reqText').value = ''; $('#reqNote').textContent = r.mensagem || 'Pedido enviado.'; loadRequests(); loadItems();
   } catch (e) { $('#reqNote').textContent = e.message; }
 };
 async function loadItems() {
@@ -729,6 +729,7 @@ function itemCard(it) {
   c.append(mk('h4', it.titulo), mk('div', `${it.marca ? it.marca + ' · ' : ''}${STATUS_TXT[it.status] || it.status} · ${it.canais.join(', ')} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
   const cap = mk('div', it.legenda, 'cap'); cap.onclick = () => cap.classList.toggle('open'); c.appendChild(cap);
   const br = mk('div', 'Briefing: ' + it.briefing_arte, 'meta'); br.style.marginTop = '6px'; c.appendChild(br);
+  if (it.rascunho_auto) c.appendChild(mk('div', 'Rascunho automático: revise a legenda e o briefing (Editar) ou rode a squad para o Hugo com IA refinar.', 'warn'));
   if (it.status === 'ajustes' && it.feedback) c.appendChild(mk('div', 'Ajustes pedidos: ' + it.feedback, 'warn'));
   if (it.arte_url) {
     const img = document.createElement('img'); img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.replaceWith(mk('div', 'Não foi possível exibir a prévia da arte (o link precisa ser público).', 'warn'));

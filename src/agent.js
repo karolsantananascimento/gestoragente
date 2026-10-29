@@ -37,7 +37,7 @@ function system(clienteNome = '') {
 
 // Automação: o Hugo (IA do próprio servidor) atende os pedidos abertos de um cliente criando as pautas.
 // Só usa ferramentas de equipe (nada de anúncios, nada de aprovação). A arte continua com o Luiz no Canva (conector do Claude).
-const TEAM_AUTO = ['pedidos_listar', 'marca_ver', 'fontes_listar', 'conteudo_listar', 'hugo_criar_pauta', 'time_proximas_tarefas'];
+const TEAM_AUTO = ['hugo_atualizar_pauta', 'pedidos_listar', 'marca_ver', 'fontes_listar', 'conteudo_listar', 'hugo_criar_pauta', 'time_proximas_tarefas'];
 const autoDefs = toolDefs.filter((t) => TEAM_AUTO.includes(t.name));
 const running = new Set();
 export const autoDisponivel = () => !!config.anthropicKey;

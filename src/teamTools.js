@@ -3,13 +3,13 @@ import { sourcesForTeam, listSources } from './sources.js';
 import { gerarImagem } from './images.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
-import { createItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, listRequests, closeRequest, kitCompleto, getCliente, STATUS } from './content.js';
+import { createItem, editItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, listRequests, closeRequest, kitCompleto, getCliente, STATUS } from './content.js';
 
 const view = (c) => ({
   id: c.id, cliente: c.marca, cliente_id: c.cliente_id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
   data_publicacao: c.data_publicacao, formato: c.formato, objetivo: c.objetivo,
   legenda: c.legenda, briefing_arte: c.briefing_arte, arte_url: c.arte_url || null, arte_aviso: c.arte_aviso || undefined,
-  ajustes_pedidos: c.status === 'ajustes' ? c.feedback : undefined, canais_status: c.canais_status,
+  rascunho_automatico: c.rascunho_auto || undefined, ajustes_pedidos: c.status === 'ajustes' ? c.feedback : undefined, canais_status: c.canais_status,
 });
 const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok', conteudo: view(r.item) });
 
@@ -38,6 +38,7 @@ export const teamTools = [
         return {
           ...base,
           pedidos_da_usuaria: pedidos.length ? { tarefa: 'PRIORIDADE: pedidos escritos no painel. Hugo cria uma pauta para cada um com hugo_criar_pauta (cliente + pedido_id, que fecha o pedido). Depois o Luiz faz a arte.', pedidos } : undefined,
+          ...(listItems(null, cl.id).some((c) => c.rascunho_auto) ? { rascunhos_automaticos: { tarefa: 'O sistema criou rascunhos automáticos para estes pedidos. Reescreva cada um no nível final com hugo_atualizar_pauta (legenda no tom do cliente, briefing de arte detalhado).', itens: listItems(null, cl.id).filter((c) => c.rascunho_auto).map((c) => ({ id: c.id, titulo: c.titulo })) } } : {}),
           hugo: { tarefa: `Criar as pautas que faltam para ${cl.nome} com hugo_criar_pauta (cliente="${cl.nome}"), legenda + briefing da arte, nas datas sugeridas. Use marca_ver e conteudo_listar (deste cliente) para não repetir temas.`, semanas: plano.filter((w) => w.faltam > 0) },
           luiz: { tarefa: `Criar a arte de cada item de ${cl.nome} no padrão visual DELE e registrar com luiz_registrar_arte.`, pendentes: [...por('em_arte'), ...por('ajustes')] },
           mariana: { tarefa: 'Reagendar com mariana_agendar os itens abaixo (aprovados que não foram agendados ou deram erro).', pendentes: [...por('aprovado'), ...por('erro')] },
@@ -103,6 +104,21 @@ export const teamTools = [
       const r = createItem(a, 'hugo');
       if (!r.error && a.pedido_id) closeRequest(a.pedido_id, r.item.id, 'hugo');
       return wrap(r);
+    },
+  },
+  {
+    name: 'hugo_atualizar_pauta', risk: 'internal', agent: 'hugo',
+    description: 'HUGO reescreve uma pauta que ainda não foi aprovada (ex.: um RASCUNHO AUTOMÁTICO criado pelo sistema): novo título, legenda e/ou briefing da arte. Use nos itens com rascunho_automatico=true para deixá-los no nível final, no tom do cliente. Não altera status nem aprova.',
+    params: {
+      id: { type: 'string', desc: 'ID do conteúdo', required: true },
+      titulo: { type: 'string', desc: 'Novo título (opcional)' },
+      legenda: { type: 'string', desc: 'Nova legenda completa (opcional)' },
+      briefing_arte: { type: 'string', desc: 'Novo briefing da arte (opcional)' },
+    },
+    handler: async ({ id, titulo, legenda, briefing_arte }) => {
+      const it = listItems().find((c) => c.id === id);
+      if (it) it.rascunho_auto = false;
+      return wrap(editItem(id, { titulo, legenda, briefing_arte }, 'hugo'));
     },
   },
   {
