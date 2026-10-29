@@ -126,3 +126,6 @@ Persistência: sem `DATABASE_URL` os dados ficam em arquivo e somem a cada rein�
 2. Opcional: `OPENAI_IMAGE_MODEL` (padrão `gpt-image-1`), `OPENAI_IMAGE_QUALITY` (`low`, `medium`, `high`; padrão `medium`) e `IMAGE_DAILY_CAP` (teto de imagens por dia; padrão 20).
 3. O Luiz usa a ferramenta `luiz_gerar_imagem` para criar o fundo/ilustração (sem texto), envia ao Canva e compõe título em Anton, logo e CTA lá. Com `DRY_RUN=true` nada é gerado nem cobrado.
 4. `modo: arte_completa` gera a arte final com texto, usando as imagens de referência da marca (`public/brand/ref/`). Qualidade padrão `high` (`OPENAI_IMAGE_QUALITY_FINAL`). Tamanho: 1024x1536 por padrão; se a sua conta tiver modelo com proporção 4:5, defina `OPENAI_SIZE_RETRATO` (ex.: 1024x1280). O Instagram só aceita feed entre 4:5 e 1.91:1, então confira o formato antes de aprovar.
+
+## Execução automática do time (opcional, recomendada)
+Defina `ANTHROPIC_API_KEY` no Render. Com ela o Hugo cria as pautas sozinho: na hora de cada pedido (caixa de diálogo ou "Pedir ao time"), no botão "Rodar agora" e todo dia às 07h (Recife) para completar a meta semanal de cada cliente (`AUTO_TEAM_DAILY=false` desliga a rotina diária). Só roda para clientes com kit de marca completo. A arte continua com o Luiz no Canva (conector do Claude).

@@ -6,7 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
-import { chat, resetSession, atenderPedidos, autoDisponivel } from './agent.js';
+import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
@@ -196,7 +196,7 @@ app.delete('/api/users/:email', requireUser, requireAdmin, (req, res) => {
 
 // --- Agente e fila de aprovação ---
 app.get('/api/status', requireUser, (req, res) =>
-  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey }));
+  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey, automacao: autoDisponivel(), rodando: autoRodando(store.cliente(req.query.cliente)?.id) }));
 
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message, cliente } = req.body || {};
@@ -260,6 +260,17 @@ app.post('/api/requests', requireUser, (req, res) => {
   out(res, r);
 });
 app.post('/api/requests/:id/cancel', requireUser, (req, res) => out(res, cancelRequest(req.params.id, req.user.email)));
+
+// Botão "Rodar agora": o Hugo atende os pedidos e completa a meta do cliente (precisa de ANTHROPIC_API_KEY)
+app.post('/api/team/run', requireUser, async (req, res) => {
+  const cl = getCliente(req.body?.cliente);
+  if (!cl) return res.status(404).json({ error: 'Cliente não encontrado.' });
+  if (!autoDisponivel()) return res.status(400).json({ status: 'sem_chave', error: 'A execução automática precisa de ANTHROPIC_API_KEY no Render.' });
+  if (!kitCompleto(cl.marca)) return res.status(400).json({ status: 'bloqueado', error: `O kit de marca de ${cl.nome} está incompleto. Preencha identidade, tom de voz, estilo visual e estilo de comunicação na aba Marca.` });
+  if (autoRodando(cl.id)) return res.json({ status: 'ja_rodando' });
+  atenderPedidos(cl.id, { completarMeta: true }).catch(() => {});
+  res.json({ status: 'iniciado' });
+});
 
 app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8), req.query.cliente) }));
 // --- Clientes (áreas de trabalho): kit de marca, meta semanal e contas próprias ---
@@ -331,6 +342,16 @@ app.use(express.static(path.join(here, '..', 'public')));
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
+if (autoDisponivel()) {
+  // Chave presente: atende no início os pedidos que ficaram abertos e, todo dia às 07h (Recife), completa a meta de cada cliente.
+  setTimeout(() => rodarTodos({ completarMeta: false }).catch(() => {}), 20_000).unref();
+  let ultimo = '';
+  setInterval(() => {
+    const r = new Date(Date.now() - 3 * 3600e3);
+    const dia = r.toISOString().slice(0, 10);
+    if (r.getUTCHours() === 7 && ultimo !== dia && process.env.AUTO_TEAM_DAILY !== 'false') { ultimo = dia; rodarTodos({ completarMeta: true }).catch(() => {}); }
+  }, 60_000).unref();
+}
 setTimeout(() => tick().catch((e) => console.error('[agendador]', e.message)), 10_000).unref(); // recupera posts vencidos após reinício
 setInterval(() => tick().catch((e) => console.error('[agendador]', e.message)), 60_000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => store.flush().finally(() => process.exit(0)));

@@ -142,6 +142,7 @@
   <p class="flow">Squad de <b id="curName"></b>: Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
   <div id="weeks" class="row" style="margin:0 0 12px"></div>
   <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar a squad do cliente (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
+  <div class="note" id="autoNote" style="margin:0 0 10px"></div>
   <div class="item" style="margin:0 0 12px"><h4 style="margin:0 0 6px">Fontes de pauta (Google Docs ou Sheets)</h4>
     <div class="note">Cole o link de um documento ou planilha com recomendações de conteúdo. O Hugo lê e cria as pautas a partir dele. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link" (leitor).</div>
     <div class="row" style="margin-top:6px"><input id="srcUrl" class="grow" placeholder="https://docs.google.com/document/d/... ou /spreadsheets/d/..."><input id="srcTitle" placeholder="Nome (opcional)" style="max-width:200px"><button id="srcAdd">Adicionar e pedir pautas</button></div>
@@ -654,7 +655,22 @@ async function loadPlan() {
   }
 }
 const runCmd = (nome) => `Use o conector Agente de Tráfego: chame time_proximas_tarefas${nome ? ` com cliente="${nome}"` : ''} e execute as tarefas da squad: primeiro os pedidos e os ajustes pedidos nos criativos, depois as pautas que faltam (Hugo) e as artes no Canva (Luiz), sempre com a identidade (marca_ver) do cliente da vez. Deixe tudo aguardando aprovação.`;
-$('#runTeam').onclick = async () => { const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); $('#contentNote').textContent = `Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`; } catch { prompt('Copie e cole no Claude:', cmd); } };
+async function loadAuto() {
+  const st = await api('/api/status?' + qc()); const cl = CLIENTS.find((c) => c.id === CUR);
+  const n = $('#autoNote'); const parts = [];
+  if (!st.automacao) parts.push('⚠ Execução automática desligada: o servidor não tem IA (falta ANTHROPIC_API_KEY no Render). Os pedidos ficam na fila até alguém rodar a squad no Claude.');
+  if (cl && !cl.kit_completo) parts.push(`⚠ ${cl.nome} está com kit de marca incompleto: o time não cria pautas até você preencher a aba Marca (identidade, tom de voz, estilo visual e de comunicação).`);
+  if (st.rodando) parts.push('⏳ O Hugo está trabalhando neste cliente agora; as pautas aparecem em instantes.');
+  n.textContent = parts.join('  ');
+  const b = $('#runTeam'); b.dataset.auto = st.automacao ? '1' : '';
+  b.textContent = st.automacao ? '▶ Rodar agora (Hugo cria as pautas)' : '▶ Rodar a squad do cliente (copiar comando)';
+}
+$('#runTeam').onclick = async () => {
+  if ($('#runTeam').dataset.auto) {
+    try { const r = await api('/api/team/run', { method: 'POST', body: JSON.stringify({ cliente: CUR }) }); $('#contentNote').textContent = r.status === 'ja_rodando' ? 'O Hugo já está trabalhando neste cliente.' : 'Hugo iniciou: as pautas aparecem em "Pauta pronta · Em arte" em 1–2 minutos.'; setTimeout(() => loadItems().catch(() => {}), 20000); loadAuto(); }
+    catch (e) { $('#contentNote').textContent = e.message; }
+    return;
+  } const nome = CLIENTS.find((c) => c.id === CUR)?.nome; const cmd = runCmd(nome); try { await navigator.clipboard.writeText(cmd); $('#contentNote').textContent = `Comando copiado (squad ${nome}). Cole numa conversa do Claude com o conector.`; } catch { prompt('Copie e cole no Claude:', cmd); } };
 
 async function loadSources() {
   const r = await api(`/api/clients/${encodeURIComponent(CUR)}/sources`); const box = $('#srcList'); box.innerHTML = '';
@@ -696,7 +712,7 @@ $('#reqSend').onclick = async () => {
 };
 async function loadItems() {
   $('#curName').textContent = CLIENTS.find((c) => c.id === CUR)?.nome || '';
-  loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {});
+  loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {}); loadAuto().catch(() => {});
   const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
   const board = $('#board'); board.innerHTML = '';
   for (const [title, sts] of COLS) {

@@ -208,7 +208,10 @@ try {
   const ar = await atenderPedidos('disco');
   globalThis.fetch = f0;
   ok(ar.status === 'ok' && ar.criadas === 1 && c.listRequests('atendido', 'Disco').some((x) => x.id === pedidoAuto.id), 'automação: o Hugo cria a pauta e fecha o pedido sozinho');
+  const { atenderPedidos: at2 } = await import('../src/agent.js');
+  ok((await at2('operizy')).status === 'bloqueado', 'automação não roda para cliente com kit incompleto');
   config.anthropicKey = '';
+  ok((await at2('disco')).status === 'sem_chave', 'sem chave da Anthropic a automação avisa em vez de falhar');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
