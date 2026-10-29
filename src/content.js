@@ -68,6 +68,19 @@ export function getCliente(ref) {
   return c || null;
 }
 
+// Roteiro do carrossel: até 10 lâminas, cada uma com título e texto curto. Aceita lista de objetos, textos "Título | texto" ou um bloco com uma lâmina por linha.
+export function cleanSlides(raw) {
+  if (raw === undefined || raw === null || raw === '') return { list: [] };
+  const arr = Array.isArray(raw) ? raw : String(raw).split(/\n+/);
+  const list = arr.map((x) => {
+    if (x && typeof x === 'object') return { titulo: String(x.titulo || '').trim().slice(0, 120), texto: String(x.texto || '').trim().slice(0, 600) };
+    const [t, ...r] = String(x).replace(/^\s*(?:slide|lâmina|lamina)?\s*\d+\s*[:.)-]\s*/i, '').split('|');
+    return { titulo: t.trim().slice(0, 120), texto: r.join('|').trim().slice(0, 600) };
+  }).filter((x) => x.titulo || x.texto);
+  if (list.length > 10) return { error: 'O Instagram aceita no máximo 10 lâminas por carrossel.' };
+  return { list };
+}
+
 export function createItem(p, by) {
   const cliente = getCliente(p.cliente || p.cliente_id);
   if (!cliente) return { error: `Cliente não encontrado: "${p.cliente || p.cliente_id}". Clientes: ${store.clientes().map((c) => c.nome).join(', ')}.` };
@@ -82,12 +95,17 @@ export function createItem(p, by) {
     when = parseWhen(p.data_publicacao);
     if (!when) return { error: 'Data inválida. Use AAAA-MM-DD ou AAAA-MM-DDTHH:MM.' };
   }
+  const sl = cleanSlides(p.slides);
+  if (sl.error) return sl;
+  let formato = String(p.formato || '').trim().toLowerCase();
+  if (!formato) formato = sl.list.length > 1 ? 'carrossel' : 'feed';
   const item = {
     id: crypto.randomUUID().slice(0, 8),
     titulo, legenda, briefing_arte: briefing,
+    slides: sl.list,
     cliente_id: cliente.id,
     marca: cliente.nome,
-    formato: String(p.formato || 'feed').slice(0, 40),
+    formato: formato.slice(0, 40),
     objetivo: String(p.objetivo || '').slice(0, 300),
     canais: ch.list,
     data_publicacao: when ? when.toISOString() : null,
@@ -113,6 +131,7 @@ export function editItem(id, patch, by) {
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!EDITABLE.includes(it.status)) return { error: `Não dá para editar um conteúdo "${STATUS[it.status]}".` };
   for (const k of ['titulo', 'legenda', 'briefing_arte', 'formato', 'objetivo']) if (patch[k] !== undefined) it[k] = String(patch[k]).trim();
+  if (patch.slides !== undefined) { const sl = cleanSlides(patch.slides); if (sl.error) return sl; it.slides = sl.list; if (sl.list.length > 1 && !patch.formato) it.formato = 'carrossel'; }
   if (it.rascunho_auto && (patch.legenda !== undefined || patch.briefing_arte !== undefined)) it.rascunho_auto = false; // alguém revisou o texto
   if (patch.canais !== undefined) { const ch = cleanChannels(patch.canais); if (ch.error) return ch; it.canais = ch.list; }
   if (patch.data_publicacao !== undefined) {
@@ -151,6 +170,10 @@ export async function submitArt(id, { arte_url, arte_urls, observacoes }, by) {
     for (const x of lista) { try { it.arte_urls.push(origin ? (await cacheArt(x, origin)).url : x); } catch { it.arte_urls.push(x); } }
     it.arte_url = it.arte_urls[0];
   }
+  const nImg = it.arte_urls.length || 1;
+  if (/carrossel/i.test(it.formato || '') && nImg < 2) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + 'Este conteúdo é um carrossel, mas só uma imagem foi registrada: será publicado como post de feed. Envie todas as lâminas para publicar o carrossel.').trim();
+  else if (nImg > 1 && it.slides?.length && it.slides.length !== nImg) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + `O roteiro tem ${it.slides.length} lâminas e foram registradas ${nImg} imagens. Confira a ordem e a quantidade.`).trim();
+  if (nImg > 1 && it.formato !== 'carrossel') it.formato = 'carrossel';
   it.arte_nota = String(observacoes || '').slice(0, 500);
   it.status = 'aguardando_aprovacao';
   hist(it, by, 'Arte entregue. Aguardando aprovação humana.');
@@ -389,4 +412,30 @@ export function cancelRequest(id, by) {
   if (r.status !== 'aberto') return { error: 'Este pedido já foi atendido ou cancelado.' };
   store.updatePedido(id, { status: 'cancelado', atendido_por: by, atendido_em: now() });
   return { pedido: store.pedidos().find((x) => x.id === id) };
+}
+
+// Envio das lâminas direto do painel: imagens (data URL) viram JPEG, ficam no nosso servidor e seguem para aprovação como arte do carrossel.
+export async function uploadSlides(id, files, observacoes, by) {
+  const it = store.getContent(id);
+  if (!it) return { error: 'Conteúdo não encontrado.' };
+  if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe arte quando está em arte ou com ajustes.` };
+  const origin = config.publicUrl;
+  if (!origin) return { error: 'PUBLIC_URL não está configurada: não há como guardar as imagens enviadas.' };
+  const arr = Array.isArray(files) ? files : [];
+  if (!arr.length) return { error: 'Envie ao menos uma imagem.' };
+  if (arr.length > 10) return { error: 'No máximo 10 imagens por carrossel.' };
+  const sharp = (await import('sharp')).default;
+  const urls = [];
+  for (const [i, f] of arr.entries()) {
+    const m = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(f || ''));
+    if (!m) return { error: `A imagem ${i + 1} não é PNG, JPG ou WebP válida.` };
+    let buf;
+    try { buf = await sharp(Buffer.from(m[2], 'base64')).flatten({ background: '#ffffff' }).jpeg({ quality: 92, mozjpeg: true }).toBuffer(); }
+    catch { return { error: `Não consegui ler a imagem ${i + 1}.` }; }
+    if (buf.length > MAX_IMG) return { error: `A imagem ${i + 1} passa de 4 MB depois de otimizar. Reduza o tamanho.` };
+    const mid = crypto.randomBytes(16).toString('hex');
+    store.setMedia(mid, { type: 'image/jpeg', data: buf.toString('base64'), at: new Date().toISOString() });
+    urls.push(`${origin}/media/${mid}`);
+  }
+  return submitArt(id, { arte_url: urls[0], arte_urls: urls, observacoes }, by);
 }

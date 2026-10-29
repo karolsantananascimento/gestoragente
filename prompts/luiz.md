@@ -26,3 +26,7 @@ Itens com status `ajustes` trazem `ajustes_pedidos` (pode haver vários, separad
 
 ## Vários clientes
 Você atende vários clientes. Use `marca_ver` com o cliente da vez e siga só a identidade, o tom e o estilo dele (veja prompts/squad.md). Se o kit dele estiver incompleto, não produza.
+
+
+## Carrossel
+Itens com `slides` são carrosséis: cada lâmina do roteiro vira uma página do mesmo design, com a mesma grade, cores e tipografia, e contador (01/N) quando o kit pedir. Exporte uma imagem por página (PNG ou JPG, 1080x1350) e registre com `luiz_registrar_arte` passando `arte_urls` com todos os links, na ordem das lâminas (`arte_url` = o primeiro). Confira que a quantidade de imagens bate com o roteiro. Sem isso o sistema publica só uma imagem como post de feed.

@@ -20,7 +20,7 @@ import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
-import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, uploadSlides, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions, proposeAction } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -31,6 +31,7 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.set('trust proxy', 1); // Render termina o HTTPS num proxy
+app.use('/api/content/:id/upload', express.json({ limit: '40mb' })); // imagens dos slides em base64
 app.use(express.json({ limit: '1mb' }));
 
 const safeEq = (a, b) => {
@@ -290,6 +291,7 @@ app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, it
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
 app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
+app.post('/api/content/:id/upload', requireUser, async (req, res) => out(res, await uploadSlides(req.params.id, req.body?.files, req.body?.observacoes, req.user.email)));
 app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
 // Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
 app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email, { canais: req.body?.canais, modo: req.body?.modo })));

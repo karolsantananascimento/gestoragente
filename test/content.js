@@ -226,8 +226,6 @@ try {
   ok((await at2('disco')).status === 'sem_chave', 'sem chave da Anthropic a automação avisa em vez de falhar');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
-console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
-process.exit(fails ? 1 : 0);
 
 // ---- planilha da agência
 {
@@ -250,3 +248,27 @@ process.exit(fails ? 1 : 0);
   if (!bom.ok) throw new Error('revisão acusou legenda boa: ' + JSON.stringify(bom.alertas));
   console.log('ok revisão de marca');
 }
+
+// ---- carrossel: roteiro por lâmina + envio das imagens
+{
+  const c = await import('../src/content.js');
+  const sharp = (await import('sharp')).default;
+  const mkImg = async (rgb) => 'data:image/png;base64,' + (await sharp({ create: { width: 540, height: 675, channels: 3, background: rgb } }).png().toBuffer()).toString('base64');
+  const r = c.createItem({ cliente: 'Disco', titulo: 'Carrossel', legenda: 'Salve e comente. Veja.', briefing_arte: 'b', canais: 'instagram', slides: ['Capa | 5 erros', 'Erro 1 | texto', { titulo: 'CTA', texto: 'Comente' }] }, 'x');
+  if (r.error || r.item.formato !== 'carrossel' || r.item.slides.length !== 3 || r.item.slides[1].texto !== 'texto') throw new Error('createItem não montou o roteiro: ' + JSON.stringify(r));
+  if (!c.createItem({ cliente: 'Disco', titulo: 'a', legenda: 'b', briefing_arte: 'c', canais: 'instagram', slides: Array.from({ length: 11 }, (_, i) => 'S' + i) }, 'x').error) throw new Error('aceitou mais de 10 lâminas');
+  if (!(await c.uploadSlides(r.item.id, [], '', 'u')).error) throw new Error('aceitou upload vazio');
+  if (!(await c.uploadSlides(r.item.id, ['data:text/html;base64,AAAA'], '', 'u')).error) throw new Error('aceitou arquivo que não é imagem');
+  const up = await c.uploadSlides(r.item.id, [await mkImg('#f00'), await mkImg('#0f0'), await mkImg('#00f')], '', 'u');
+  if (up.error || up.item.arte_urls.length !== 3 || up.item.status !== 'aguardando_aprovacao' || up.item.arte_aviso) throw new Error('upload do carrossel falhou: ' + JSON.stringify(up));
+  if (!up.item.arte_urls.every((u) => /^https:\/\/app\.exemplo\.com\/media\/[a-f0-9]{32}$/.test(u))) throw new Error('links das lâminas incorretos');
+  const solo = c.createItem({ cliente: 'Disco', titulo: 's', legenda: 'b', briefing_arte: 'c', canais: 'instagram', formato: 'carrossel' }, 'x').item;
+  const u1 = await c.uploadSlides(solo.id, [await mkImg('#888')], '', 'u');
+  if (!/só uma imagem/.test(u1.item.arte_aviso || '')) throw new Error('não avisou carrossel com 1 imagem');
+  const { revisar } = await import('../src/revisao.js');
+  if (!revisar(u1.item).alertas.some((a) => a.tema === 'Carrossel')) throw new Error('revisão não alertou carrossel de 1 imagem');
+  console.log('ok carrossel');
+}
+
+console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
+process.exit(fails ? 1 : 0);

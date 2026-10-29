@@ -34,6 +34,12 @@ export function revisar(item) {
   if (txt.trim().length < 40) add('média', 'Conteúdo', 'Legenda muito curta.');
   const primeira = txt.trim().split('\n')[0] || ''; if (primeira.length > 160) add('baixa', 'Gancho', 'A 1ª linha é longa: o gancho precisa caber antes do "ver mais".');
   if (!/(comente|salve|compartilh|marque|clique|acesse|teste|conhe[cç]a|veja|baixe|fale|link na bio|criar|agende|responda|conte|quer|participe|mande|chame|assine)/i.test(txt)) add('média', 'CTA', 'Não encontrei uma chamada para ação clara.');
+  if (/carrossel/i.test(item.formato || '')) {
+    const n = item.arte_urls?.length || (item.arte_url ? 1 : 0);
+    if (item.arte_url && n < 2) add('média', 'Carrossel', 'Formato carrossel, mas só uma imagem foi registrada: vai sair como post de feed. Envie todas as lâminas.');
+    if (!(item.slides?.length >= 2) && !item.arte_url) add('baixa', 'Carrossel', 'Sem roteiro por lâmina. Defina capa, desenvolvimento e CTA final (2 a 10 lâminas).');
+    if (item.slides?.length && item.arte_urls?.length > 1 && item.slides.length !== item.arte_urls.length) add('média', 'Carrossel', `Roteiro com ${item.slides.length} lâminas e ${item.arte_urls.length} imagens registradas.`);
+  }
   const ordem = { alta: 0, 'média': 1, baixa: 2 };
   f.sort((a, b) => ordem[a.sev] - ordem[b.sev]);
   return { alertas: f, altas: f.filter((x) => x.sev === 'alta').length, medias: f.filter((x) => x.sev === 'média').length, ok: !f.some((x) => x.sev !== 'baixa') };

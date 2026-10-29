@@ -9,7 +9,7 @@ import { createItem, editItem, submitArt, scheduleItem, listItems, cronograma, p
 const view = (c) => ({
   id: c.id, cliente: c.marca, cliente_id: c.cliente_id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
   data_publicacao: c.data_publicacao, formato: c.formato, objetivo: c.objetivo,
-  legenda: c.legenda, briefing_arte: c.briefing_arte, arte_url: c.arte_url || null, arte_aviso: c.arte_aviso || undefined,
+  legenda: c.legenda, briefing_arte: c.briefing_arte, slides: c.slides?.length ? c.slides : undefined, lâminas_registradas: c.arte_urls?.length || undefined, arte_url: c.arte_url || null, arte_aviso: c.arte_aviso || undefined,
   rascunho_automatico: c.rascunho_auto || undefined, ajustes_pedidos: c.status === 'ajustes' ? c.feedback : undefined, canais_status: c.canais_status,
 });
 const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok', conteudo: view(r.item) });
@@ -93,7 +93,8 @@ export const teamTools = [
       briefing_arte: { type: 'string', desc: 'Briefing para o designer: mensagem central, texto na arte, estilo, formato, referências', required: true },
       canais: { type: 'string[]', desc: 'Canais: instagram, facebook, linkedin, tiktok', required: true },
       data_publicacao: { type: 'string', desc: 'Quando publicar, AAAA-MM-DD ou AAAA-MM-DDTHH:MM (horário de Recife)', required: true },
-      formato: { type: 'string', desc: 'feed, carrossel, story, reels (padrão feed)' },
+      formato: { type: 'string', desc: 'feed, carrossel, story, reels (padrão feed; vira carrossel se houver 2+ slides)' },
+      slides: { type: 'string[]', desc: 'CARROSSEL: roteiro lâmina por lâmina, na ordem (2 a 10). Cada item no formato "Título da lâmina | texto curto". 1ª = capa (gancho), última = CTA.' },
       objetivo: { type: 'string', desc: 'Objetivo do post' },
       cliente: { type: 'string', desc: 'Cliente do post (nome ou id). Obrigatório.', required: true },
       pedido_id: { type: 'string', desc: 'ID do pedido do painel que esta pauta atende (fecha o pedido)' },
@@ -121,11 +122,12 @@ export const teamTools = [
       titulo: { type: 'string', desc: 'Novo título (opcional)' },
       legenda: { type: 'string', desc: 'Nova legenda completa (opcional)' },
       briefing_arte: { type: 'string', desc: 'Novo briefing da arte (opcional)' },
+      slides: { type: 'string[]', desc: 'Novo roteiro do carrossel, "Título | texto" por lâmina (opcional)' },
     },
-    handler: async ({ id, titulo, legenda, briefing_arte }) => {
+    handler: async ({ id, titulo, legenda, briefing_arte, slides }) => {
       const it = listItems().find((c) => c.id === id);
       if (it) it.rascunho_auto = false;
-      return wrap(editItem(id, { titulo, legenda, briefing_arte }, 'hugo'));
+      return wrap(editItem(id, { titulo, legenda, briefing_arte, slides }, 'hugo'));
     },
   },
   {
