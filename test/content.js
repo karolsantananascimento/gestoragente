@@ -20,6 +20,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (u.startsWith('https://docs.google.com/')) return new Response('<html>login</html>', { status: 200, headers: { 'content-type': 'text/html' } });
   if (u.startsWith('https://cdn.exemplo.com')) return new Response(Buffer.from('89504e47', 'hex'), { status: 200, headers: { 'content-type': 'image/png' } });
   if (u.includes('api.openai.com/v1/images')) return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('jpg').toString('base64') }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+  if (u.includes('fields=status_code')) return new Response(JSON.stringify({ status_code: 'FINISHED' }), { status: 200, headers: { 'content-type': 'application/json' } });
   const body = u.endsWith('/photos') ? { id: 'ph1', post_id: 'P1_99' } : u.endsWith('/media') ? { id: 'cont1' } : { id: 'media9' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 };

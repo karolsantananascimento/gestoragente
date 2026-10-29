@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
+import { diagnostico } from './platforms/social.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
@@ -199,6 +200,8 @@ app.delete('/api/users/:email', requireUser, requireAdmin, (req, res) => {
 // --- Agente e fila de aprovação ---
 app.get('/api/status', requireUser, (req, res) =>
   res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey, automacao: autoDisponivel(), rodando: autoRodando(store.cliente(req.query.cliente)?.id) }));
+
+app.get('/api/social/check', requireUser, requireAdmin, async (req, res) => { try { res.json(await diagnostico(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
 
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message, cliente } = req.body || {};

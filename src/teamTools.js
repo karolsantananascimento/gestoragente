@@ -127,9 +127,10 @@ export const teamTools = [
     params: {
       id: { type: 'string', desc: 'ID do conteúdo', required: true },
       arte_url: { type: 'string', desc: 'Link público https da arte exportada (JPG/PNG)', required: true },
+      arte_urls: { type: 'string[]', desc: 'Carrossel: links https de todos os slides, na ordem (opcional; arte_url = o primeiro)' },
       observacoes: { type: 'string', desc: 'Observações sobre a arte (opcional)' },
     },
-    handler: async ({ id, arte_url, observacoes }) => wrap(await submitArt(id, { arte_url, observacoes }, 'luiz')),
+    handler: async ({ id, arte_url, arte_urls, observacoes }) => wrap(await submitArt(id, { arte_url, arte_urls, observacoes }, 'luiz')),
   },
   {
     name: 'luiz_gerar_imagem', risk: 'internal', agent: 'luiz',

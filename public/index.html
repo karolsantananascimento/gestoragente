@@ -276,6 +276,8 @@
     <div class="sec"><h3>Publicação e links</h3><div class="sub">Contas onde o Mariana publica. Vazio = não publica.</div>
       <div class="grid2"><label>Instagram: ID da conta profissional<input name="ig_user_id" inputmode="numeric"></label>
       <label>Facebook: ID da página<input name="fb_page_id" inputmode="numeric"></label></div>
+      <div class="row" style="margin:0"><button type="button" class="ghost" id="socialCheck">🔎 Verificar conexão e buscar contas</button><span class="note">Mostra as páginas e Instagrams que o token do Meta enxerga e preenche os IDs para você.</span></div>
+      <div id="socialOut" class="meta" style="margin-top:6px"></div>
       <label>Outros links (manual da marca, pasta de assets)<textarea name="links" rows="3"></textarea></label></div>
     <div class="savebar"><button id="brandSave" style="padding:10px 28px">Salvar marca</button><span class="err" id="brandErr"></span></div>
   </form>
@@ -761,6 +763,25 @@ function kitCheck() {
   for (const [n, ok] of itens) { const c = document.createElement('span'); c.className = 'chip ' + (ok ? 'okk' : 'no2'); c.textContent = (ok ? '✓ ' : '○ ') + n; $('#kitCheck').appendChild(c); }
 }
 $('#brandForm').addEventListener('input', kitCheck);
+$('#socialCheck').onclick = async () => {
+  const out = $('#socialOut'); out.textContent = 'Consultando o Meta…'; $('#socialCheck').disabled = true;
+  try {
+    const r = await api('/api/social/check?' + qc()); out.innerHTML = '';
+    const mk = (tag, txt, cls) => { const x = document.createElement(tag); x.textContent = txt; if (cls) x.className = cls; return x; };
+    out.append(mk('div', r.token.ok ? `✓ Token válido (${r.token.nome})` : `✗ Token com problema: ${r.token.erro || 'ausente'}`, r.token.ok ? 'ok' : 'err'));
+    if (r.permissoes.concedidas.length) out.append(mk('div', r.permissoes.faltam.length ? `○ Permissões que faltam: ${r.permissoes.faltam.join(', ')}` : '✓ Permissões de publicação concedidas', r.permissoes.faltam.length ? 'warn' : 'ok'));
+    for (const d of r.dicas) out.append(mk('div', '→ ' + d, 'warn'));
+    if (r.paginas.length) out.append(mk('div', 'Contas que o token enxerga (clique em Usar e depois em Salvar marca):', 'lbl2'));
+    for (const p of r.paginas) {
+      const d = document.createElement('div'); d.className = 'row'; d.style.marginTop = '4px';
+      d.append(mk('span', `${p.nome} · página ${p.id}${p.ig ? ` · Instagram @${p.ig.usuario} (${p.ig.id})` : ' · sem Instagram vinculado'}`, 'grow'));
+      const b = mk('button', 'Usar para ' + (CLIENTS.find((c) => c.id === CUR)?.nome || 'este cliente'), 'ghost'); b.type = 'button';
+      b.onclick = () => { const f = $('#brandForm').elements; f.fb_page_id.value = p.id; if (p.ig) f.ig_user_id.value = p.ig.id; toast('IDs preenchidos. Clique em "Salvar marca".', 'ok'); };
+      d.append(b); out.append(d);
+    }
+  } catch (e) { out.textContent = e.message; }
+  $('#socialCheck').disabled = false;
+};
 $('#newClient').onclick = async () => {
   const nome = await ask('Novo cliente', 'Nome do cliente', { multiline: false }); if (!nome) return;
   const meta = await ask('Novo cliente', 'Quantos posts por semana?', { value: '2', multiline: false }); if (!meta) return;
@@ -920,7 +941,7 @@ function itemCard(it, full, color) {
   if (it.status === 'aguardando_aprovacao' && admin) btn('Aprovar…', async () => { await openApproval(it); }, 'big');
   else if (it.status === 'aguardando_aprovacao' && full) row.appendChild(mk('small', 'Aguardando um administrador aprovar.', 'note'));
   if (full) {
-    if (emArte) btn('Registrar arte', async () => { const u = await ask('Registrar arte', 'Link público (https) da arte pronta', { multiline: false }); if (u) await post('art', { arte_url: u }); }, 'no');
+    if (emArte) btn('Registrar arte', async () => { const u = await ask('Registrar arte', 'Link público (https) da arte. Para carrossel, cole um link por linha (um por slide).'); if (u) { const l = u.split(/[\s,]+/).filter(Boolean); await post('art', { arte_url: l[0], arte_urls: l }); } }, 'no');
     if (emArte || it.status === 'aguardando_aprovacao') btn('Editar', async () => { $('#viewClose').click(); openItem(it); }, 'no');
     if (emArte || it.status === 'aguardando_aprovacao') btn('Pedir ajuste', async () => { const n = await ask('Pedir ajuste', 'O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');
     if (admin && ['aprovado', 'erro'].includes(it.status)) btn('Tentar agendar de novo', () => post('schedule'), 'no');

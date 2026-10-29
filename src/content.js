@@ -13,10 +13,13 @@ async function cacheArt(url, origin) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const type = (r.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
   if (!/^image\/(png|jpe?g|webp)$/.test(type)) throw new Error(`não é uma imagem PNG/JPG (${type || 'tipo desconhecido'})`);
-  const buf = Buffer.from(await r.arrayBuffer());
-  if (buf.length > MAX_IMG) throw new Error('imagem maior que 4 MB');
+  let buf = Buffer.from(await r.arrayBuffer()); let outType = type;
+  if (buf.length > 12 * 1024 * 1024) throw new Error('imagem maior que 12 MB');
+  // O Instagram só aceita JPEG: converte PNG/WebP (e reduz o peso) antes de guardar.
+  try { const sharp = (await import('sharp')).default; buf = await sharp(buf).flatten({ background: '#ffffff' }).jpeg({ quality: 92, mozjpeg: true }).toBuffer(); outType = 'image/jpeg'; } catch { /* sem conversão: segue com o original */ }
+  if (buf.length > MAX_IMG) throw new Error('imagem maior que 4 MB depois de otimizar');
   const id = crypto.randomBytes(16).toString('hex');
-  store.setMedia(id, { type, data: buf.toString('base64'), at: new Date().toISOString() });
+  store.setMedia(id, { type: outType, data: buf.toString('base64'), at: new Date().toISOString() });
   return { url: `${origin}/media/${id}` };
 }
 
@@ -127,12 +130,14 @@ export function editItem(id, patch, by) {
 }
 
 // Luiz entrega a arte → sobe para aprovação humana.
-export async function submitArt(id, { arte_url, observacoes }, by) {
+export async function submitArt(id, { arte_url, arte_urls, observacoes }, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe arte quando está em arte ou com ajustes.` };
-  const u = String(arte_url || '').trim();
+  const lista = (Array.isArray(arte_urls) ? arte_urls : String(arte_urls || '').split(/[\s,]+/)).map((x) => String(x).trim()).filter(Boolean);
+  const u = String(arte_url || lista[0] || '').trim();
   if (!/^https:\/\//i.test(u)) return { error: 'Informe o link público (https://) da arte pronta.' };
+  if (lista.length > 10 || lista.some((x) => !/^https:\/\//i.test(x))) return { error: 'Para carrossel, informe até 10 links https (um por slide).' };
   it.arte_origem = u;
   it.arte_url = u;
   it.arte_aviso = '';
@@ -140,6 +145,11 @@ export async function submitArt(id, { arte_url, observacoes }, by) {
   if (origin) {
     try { it.arte_url = (await cacheArt(u, origin)).url; }
     catch (e) { it.arte_aviso = `Não consegui guardar uma cópia da imagem (${e.message}). Se o link expirar, as redes não conseguirão baixá-la.`; }
+  }
+  it.arte_urls = [];
+  if (lista.length > 1) {
+    for (const x of lista) { try { it.arte_urls.push(origin ? (await cacheArt(x, origin)).url : x); } catch { it.arte_urls.push(x); } }
+    it.arte_url = it.arte_urls[0];
   }
   it.arte_nota = String(observacoes || '').slice(0, 500);
   it.status = 'aguardando_aprovacao';
@@ -220,7 +230,7 @@ export async function scheduleItem(id, by = 'mariana', opts = {}) {
       if (opts.agora) {
         if (!ad.publicar) throw new Error(`${ad.nome} não publica direto.`);
         const r = await ad.publicar(it);
-        it.canais_status[canal] = { status: 'publicado', detalhe: 'Publicado agora.', externalId: r.id };
+        it.canais_status[canal] = { status: 'publicado', detalhe: 'Publicado agora.' + (r.nota ? ' ' + r.nota : ''), externalId: r.id };
         store.log({ type: 'content_published', id, canal, status: 'publicado' });
         continue;
       }
@@ -265,7 +275,7 @@ export async function tick() {
       const cs = it.canais_status?.[canal];
       if (cs?.status === 'na_fila') {
         const atraso = Math.round((t - Date.parse(it.data_publicacao)) / 60000);
-        try { const r = await adapters[canal].publicar(it); it.canais_status[canal] = { status: 'publicado', detalhe: atraso > 5 ? `Publicado com ${atraso} min de atraso (o servidor estava fora do ar).` : 'Publicado.', externalId: r.id }; }
+        try { const r = await adapters[canal].publicar(it); it.canais_status[canal] = { status: 'publicado', detalhe: (atraso > 5 ? `Publicado com ${atraso} min de atraso (o servidor estava fora do ar).` : 'Publicado.') + (r.nota ? ' ' + r.nota : ''), externalId: r.id }; }
         catch (e) { it.canais_status[canal] = { status: 'erro', detalhe: e.message }; }
         store.log({ type: 'content_published', id: it.id, canal, status: it.canais_status[canal].status });
       } else if (cs?.status === 'agendado') {
