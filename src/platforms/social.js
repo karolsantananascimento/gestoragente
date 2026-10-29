@@ -2,6 +2,7 @@ import { config, socialStatus } from '../config.js';
 import { httpJson } from '../http.js';
 import { store } from '../store.js';
 import * as reddit from './reddit.js';
+import * as linkedin from './linkedin.js';
 
 // Adaptadores das redes sociais usados pela Mariana. Cada um expõe:
 //   configured(): bool
@@ -21,6 +22,7 @@ export function contasDe(clienteId) {
     fbPageId: own.fb_page_id || (padrao ? config.social.fbPageId : ''),
     igUserId: own.ig_user_id || (padrao ? config.social.igUserId : ''),
     redditSub: own.reddit_subreddit || '',
+    linkedinAuthor: own.linkedin_author || (padrao ? config.social.linkedinAuthor : ''),
     padrao,
   };
 }
@@ -41,7 +43,7 @@ export function redesDe(clienteId) {
   return {
     facebook: !!(c.fbPageId && (tok || (c.padrao && base.facebook))),
     instagram: !!(c.igUserId && tok),
-    linkedin: base.linkedin && c.padrao, tiktok: false,
+    linkedin: !!(c.linkedinAuthor && linkedin.conectado()), tiktok: false,
     reddit: !!(c.redditSub && reddit.conectado()),
   };
 }
@@ -155,8 +157,10 @@ export const adapters = {
   // Espaços reservados: preencha quando for integrar.
   linkedin: {
     nome: 'LinkedIn',
-    configured: () => false,
-    nota: 'Publicação no LinkedIn ainda não implementada (precisa upload de imagem em duas etapas e permissão w_organization_social).',
+    configured: (item) => redesDe(item?.cliente_id).linkedin,
+    // O LinkedIn não agenda pela API: o agendador do servidor publica na hora marcada.
+    async agendar() { return { modo: 'fila' }; },
+    async publicar(item) { return linkedin.publicar(item, contasDe(item.cliente_id).linkedinAuthor); },
   },
   tiktok: {
     nome: 'TikTok',

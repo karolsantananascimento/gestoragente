@@ -279,6 +279,9 @@
       <label>Reddit: subreddit onde este cliente publica (ex.: minhaloja, ou u_seuusuario para o seu perfil)<input name="reddit_subreddit" placeholder="sem r/"></label>
       <div class="row" style="margin:0"><button type="button" class="ghost" id="redditConnect">Conectar Reddit</button><button type="button" class="ghost" id="redditCheck">Verificar Reddit</button><button type="button" class="danger hidden" id="redditOff">Desconectar</button></div>
       <div id="redditOut" class="meta" style="margin-top:6px"></div>
+      <label>LinkedIn: autor deste cliente (urn:li:person:… ou urn:li:organization:…). Vazio = não publica.<input name="linkedin_author" placeholder="urn:li:person:abc123"></label>
+      <div class="row" style="margin:0"><button type="button" class="ghost" id="liConnect">Conectar LinkedIn</button><button type="button" class="ghost" id="liCheck">Verificar LinkedIn</button><button type="button" class="ghost hidden" id="liUse">Usar meu perfil</button><button type="button" class="danger hidden" id="liOff">Desconectar</button></div>
+      <div id="liOut" class="meta" style="margin-top:6px"></div>
       <div class="row" style="margin:0"><button type="button" class="ghost" id="socialCheck">🔎 Verificar conexão e buscar contas</button><span class="note">Mostra as páginas e Instagrams que o token do Meta enxerga e preenche os IDs para você.</span></div>
       <div id="socialOut" class="meta" style="margin-top:6px"></div>
       <label>Outros links (manual da marca, pasta de assets)<textarea name="links" rows="3"></textarea></label></div>
@@ -400,6 +403,7 @@ let token = store_.get('tk');
 let me = null;
 const sid = sessionStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 sessionStorage.setItem('sid', sid);
+const liMsg = new URLSearchParams(location.search).get('linkedin');
 const redditMsg = new URLSearchParams(location.search).get('reddit');
 const inviteToken = new URLSearchParams(location.search).get('invite');
 const signupMode = !!new URLSearchParams(location.search).get('cadastro') && !inviteToken;
@@ -487,6 +491,7 @@ async function boot() {
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
   await loadClients(); await loadStatus(); await loadPending();
+  if (liMsg) { openTab('marca'); toast(liMsg === 'ok' ? 'LinkedIn conectado! Clique em Verificar LinkedIn.' : 'LinkedIn: ' + liMsg, liMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#liCheck')?.click(), 800); } else
   openTab(redditMsg ? 'marca' : (store_.get('tab') || 'conteudo'));
   if (redditMsg) { toast(redditMsg === 'ok' ? 'Reddit conectado! Clique em Verificar Reddit.' : 'Reddit: ' + redditMsg, redditMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#redditCheck')?.click(), 800); }
   if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para campanhas (analisar conta, negativas, orçamento) o que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
@@ -753,7 +758,7 @@ async function loadBrand() {
   const c = await api('/api/clients/' + encodeURIComponent(CUR)); const b = c.marca || {};
   const f = $('#brandForm');
   for (const el of f.elements) if (el.name) {
-    el.value = el.name === 'meta_semanal' ? c.meta_semanal : el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit' ? (c.contas?.[el.name] || '') : (b[el.name] || '');
+    el.value = el.name === 'meta_semanal' ? c.meta_semanal : el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit' || el.name === 'linkedin_author' ? (c.contas?.[el.name] || '') : (b[el.name] || '');
     el.disabled = me.role !== 'admin';
   }
   $('#brandSave').disabled = me.role !== 'admin'; show($('#newClient'), me.role === 'admin');
@@ -798,6 +803,22 @@ async function redditCheck() {
     show($('#redditOff'), r.conectado); $('#redditConnect').textContent = r.conectado ? 'Reconectar Reddit' : 'Conectar Reddit';
   } catch (e) { out.textContent = e.message; }
 }
+let liUrn = '';
+async function liCheck() {
+  const out = $('#liOut'); out.textContent = 'Consultando o LinkedIn…';
+  try {
+    const r = await api('/api/linkedin/status?' + qc()); out.innerHTML = ''; liUrn = r.urn || '';
+    const mk = (txt, cls) => { const x = document.createElement('div'); x.textContent = txt; x.className = cls || ''; out.appendChild(x); };
+    mk(r.conectado ? `✓ LinkedIn conectado como ${r.usuario}${r.dias != null ? ` (token vale mais ${r.dias} dias)` : ''}` : '○ LinkedIn não conectado', r.conectado ? 'ok' : 'warn');
+    if (r.autor) mk('✓ Autor deste cliente: ' + r.autor, 'ok');
+    for (const d of r.dicas) mk('→ ' + d, 'warn');
+    show($('#liOff'), r.conectado); show($('#liUse'), !!r.urn); $('#liConnect').textContent = r.conectado ? 'Reconectar LinkedIn' : 'Conectar LinkedIn';
+  } catch (e) { out.textContent = e.message; }
+}
+$('#liCheck').onclick = liCheck;
+$('#liConnect').onclick = async () => { try { const r = await api('/api/linkedin/auth-url', { method: 'POST', body: '{}' }); location.href = r.url; } catch (e) { $('#liOut').textContent = e.message; } };
+$('#liUse').onclick = () => { $('#brandForm').elements.linkedin_author.value = liUrn; toast('Autor preenchido. Clique em "Salvar marca".', 'ok'); };
+$('#liOff').onclick = async () => { if (!confirm('Desconectar o LinkedIn?')) return; await api('/api/linkedin/disconnect', { method: 'POST', body: '{}' }); liCheck(); };
 $('#redditCheck').onclick = redditCheck;
 $('#redditConnect').onclick = async () => {
   try { const r = await api('/api/reddit/auth-url', { method: 'POST', body: '{}' }); location.href = r.url; }
@@ -813,7 +834,7 @@ $('#newClient').onclick = async () => {
 $('#brandForm').onsubmit = async (e) => {
   e.preventDefault(); $('#brandErr').textContent = '';
   const marca = {}; let meta_semanal; const contas = {};
-  for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit') contas[el.name] = el.value; else marca[el.name] = el.value; }
+  for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit' || el.name === 'linkedin_author') contas[el.name] = el.value; else marca[el.name] = el.value; }
   try { await api('/api/clients/' + encodeURIComponent(CUR), { method: 'PUT', body: JSON.stringify({ marca, meta_semanal, contas }) }); await loadClients(CUR); toast('Marca salva.', 'ok'); loadBrand(); }
   catch (err) { $('#brandErr').textContent = err.message; }
 };

@@ -1,0 +1,41 @@
+// Testa a conexão e a publicação no LinkedIn com a API simulada.
+import fs from 'node:fs';
+process.env.DATA_DIR = './data/li-test'; process.env.DRY_RUN = 'false';
+process.env.LINKEDIN_CLIENT_ID = 'cid'; process.env.LINKEDIN_CLIENT_SECRET = 'sec';
+fs.rmSync('./data/li-test', { recursive: true, force: true });
+const { store } = await import('../src/store.js'); await store.init();
+const li = await import('../src/platforms/linkedin.js');
+const { adapters, redesDe } = await import('../src/platforms/social.js');
+const calls = [];
+globalThis.fetch = async (url, opts = {}) => {
+  const u = String(url); calls.push({ u, m: opts.method || 'GET', body: opts.body, h: opts.headers });
+  const j = (o, st = 200, h = {}) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json', ...h } });
+  if (u.endsWith('/oauth/v2/accessToken')) return /code=ok/.test(String(opts.body)) ? j({ access_token: 'LAT', expires_in: 5184000 }) : j({ error: 'invalid' }, 400);
+  if (u.endsWith('/v2/userinfo')) return j({ sub: 'abc123', name: 'Karolina' });
+  if (u.includes('/rest/images?action=initializeUpload')) return j({ value: { uploadUrl: 'https://upload.li/x', image: 'urn:li:image:I' + calls.length } });
+  if (u.startsWith('https://upload.li')) return new Response('', { status: 201 });
+  if (u.startsWith('https://img.exemplo.com')) return new Response(Buffer.from('jpg'), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+  if (u.endsWith('/rest/posts')) return JSON.parse(opts.body).author === 'urn:li:person:ruim' ? j({ message: 'ACCESS_DENIED not enough permissions' }, 403) : new Response('', { status: 201, headers: { 'x-restli-id': 'urn:li:share:99' } });
+  return j({}, 404);
+};
+let fails = 0; const ok = (c, m) => { console.log(`${c ? 'OK  ' : 'FALHA'} ${m}`); if (!c) fails++; };
+store.cliente('disco').contas = { linkedin_author: 'urn:li:person:abc123' }; store.saveClientes();
+ok(!redesDe('disco').linkedin, 'sem conexão o LinkedIn não está disponível');
+const url = li.authUrl('a@b.c', 'https://x/api/linkedin/callback'); const state = new URL(url).searchParams.get('state');
+ok(/scope=openid\+profile\+w_member_social/.test(url), 'pede o escopo de publicação do membro');
+const w = await li.callback(state, 'ok', '', 'https://x/cb');
+ok(w.usuario === 'Karolina' && store.integ('linkedin').urn === 'urn:li:person:abc123', 'conecta e descobre o URN do perfil');
+ok(redesDe('disco').linkedin && !redesDe('operizy').linkedin, 'só o cliente com autor cadastrado publica');
+let r = await adapters.linkedin.publicar({ cliente_id: 'disco', legenda: 'Oi (teste) #site_novo', arte_url: 'https://img.exemplo.com/a.jpg', titulo: 'T' });
+const post = JSON.parse(calls.filter((c) => c.u.endsWith('/rest/posts')).pop().body);
+ok(r.id === 'urn:li:share:99' && post.content.media.id.startsWith('urn:li:image:') && post.commentary === 'Oi \\(teste\\) #site\\_novo' && post.author === 'urn:li:person:abc123', 'publica imagem com texto escapado e autor do cliente');
+const hdr = calls.find((c) => c.u.endsWith('/rest/posts')).h;
+ok(hdr['linkedin-version'] && hdr['x-restli-protocol-version'] === '2.0.0', 'envia cabeçalhos de versão do LinkedIn');
+await adapters.linkedin.publicar({ cliente_id: 'disco', legenda: 'c', arte_url: 'https://img.exemplo.com/1.jpg', arte_urls: ['https://img.exemplo.com/1.jpg', 'https://img.exemplo.com/2.jpg'] });
+const p2 = JSON.parse(calls.filter((c) => c.u.endsWith('/rest/posts')).pop().body);
+ok(p2.content.multiImage.images.length === 2, 'carrossel vira multiImage');
+store.cliente('disco').contas = { linkedin_author: 'urn:li:person:ruim' };
+let err = ''; try { await adapters.linkedin.publicar({ cliente_id: 'disco', legenda: 'x' }); } catch (e) { err = e.message; }
+ok(/403/.test(err) && /Compartilhar no LinkedIn/.test(err), 'erro de permissão vem com explicação');
+fs.rmSync('./data/li-test', { recursive: true, force: true });
+console.log(fails ? `${fails} falha(s)` : 'linkedin ok'); process.exit(fails ? 1 : 0);

@@ -136,3 +136,9 @@ Defina `ANTHROPIC_API_KEY` no Render. Com ela o Hugo cria as pautas sozinho: na 
 3. No painel (Marca → Publicação) informe o subreddit do cliente e clique em **Conectar Reddit**: você autoriza no site do Reddit e o sistema guarda só o token de acesso (nunca a senha).
 4. Use **Verificar Reddit** para conferir conta e subreddit. Posts são de texto (título + legenda + link da arte) e só saem depois da aprovação humana.
 Atenção: o Reddit exige aprovação de acesso à API para apps novos e cada subreddit tem regras (autopromoção, flair, frequência). Contas que postam material promocional em excesso levam ban.
+
+## LinkedIn (publicação)
+1. Em linkedin.com/developers crie um app (vinculado a uma página da empresa), peça o produto **Compartilhar no LinkedIn** (escopo w_member_social) e, na aba Auth, adicione o redirect `https://SEU-DOMINIO/api/linkedin/callback`.
+2. No Render defina `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET`.
+3. No painel (Marca → Publicação) clique em **Conectar LinkedIn**, autorize, depois em **Usar meu perfil** no cliente que vai publicar e em **Salvar marca**. Cada cliente só publica com o autor cadastrado.
+4. O token vale cerca de 60 dias: o painel avisa e basta reconectar. Para publicar numa **página** é preciso o produto de páginas (w_organization_social, aprovação do LinkedIn) e informar o URN `urn:li:organization:ID`.

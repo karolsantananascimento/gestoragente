@@ -8,6 +8,7 @@ import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { diagnostico } from './platforms/social.js';
 import * as reddit from './platforms/reddit.js';
+import * as linkedin from './platforms/linkedin.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
@@ -217,6 +218,19 @@ app.get('/api/reddit/callback', async (req, res) => {
   catch (e) { res.redirect('/?reddit=' + encodeURIComponent(e.message)); }
 });
 
+// ---- LinkedIn (OAuth) ----
+const liRedirect = (req) => `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/api/linkedin/callback`;
+app.get('/api/linkedin/status', requireUser, requireAdmin, async (req, res) => { try { res.json(await linkedin.status(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/linkedin/auth-url', requireUser, requireAdmin, (req, res) => {
+  if (!linkedin.appConfigured()) return res.status(400).json({ error: 'Faltam LINKEDIN_CLIENT_ID e LINKEDIN_CLIENT_SECRET no Render (crie o app em linkedin.com/developers).' });
+  res.json({ url: linkedin.authUrl(req.user.email, liRedirect(req)), redirect_uri: liRedirect(req) });
+});
+app.post('/api/linkedin/disconnect', requireUser, requireAdmin, (req, res) => { linkedin.limpar(); store.log({ type: 'linkedin_desconectado', by: req.user.email }); res.json({ ok: true }); });
+app.get('/api/linkedin/callback', async (req, res) => {
+  try { const who = await linkedin.callback(String(req.query.state || ''), String(req.query.code || ''), String(req.query.error || ''), liRedirect(req)); store.log({ type: 'linkedin_conectado', by: who.by, usuario: who.usuario }); res.redirect('/?linkedin=ok'); }
+  catch (e) { res.redirect('/?linkedin=' + encodeURIComponent(e.message)); }
+});
+
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message, cliente } = req.body || {};
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Mensagem vazia.' });
@@ -309,7 +323,7 @@ app.get('/api/clients/:id', requireUser, (req, res) => {
 });
 const slug = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const cleanMeta = (v) => { const m = Number(v); return Number.isInteger(m) && m >= 1 && m <= 21 ? m : null; };
-const cleanContas = (c = {}) => ({ ig_user_id: String(c.ig_user_id || '').replace(/\D/g, '').slice(0, 30), fb_page_id: String(c.fb_page_id || '').replace(/\D/g, '').slice(0, 30), reddit_subreddit: String(c.reddit_subreddit || '').trim().replace(/^\/?(r\/)?/i, '').replace(/[^\w-]/g, '').slice(0, 40) });
+const cleanContas = (c = {}) => ({ ig_user_id: String(c.ig_user_id || '').replace(/\D/g, '').slice(0, 30), fb_page_id: String(c.fb_page_id || '').replace(/\D/g, '').slice(0, 30), linkedin_author: String(c.linkedin_author || '').trim().replace(/[^\w:\-]/g, '').slice(0, 80), reddit_subreddit: String(c.reddit_subreddit || '').trim().replace(/^\/?(r\/)?/i, '').replace(/[^\w-]/g, '').slice(0, 40) });
 app.post('/api/clients', requireUser, requireAdmin, (req, res) => {
   const nome = String(req.body?.nome || '').trim().slice(0, 80);
   if (!nome) return res.status(400).json({ error: 'Informe o nome do cliente.' });
