@@ -267,7 +267,7 @@ app.post('/api/tool', requireUser, async (req, res) => {
 });
 
 // Colaboradores e administradores PROPÕEM ajustes de anúncios do Meta; só administradores aprovam (botão), e os tetos de segurança valem.
-const PROPOSTAS = new Set(['meta_pausar_ativar', 'meta_ajustar_orcamento', 'meta_ajustar_publico', 'meta_ajustar_datas']);
+const PROPOSTAS = new Set(['meta_pausar_ativar', 'meta_ajustar_orcamento', 'meta_ajustar_publico', 'meta_ajustar_datas', 'meta_criar_campanha']);
 app.post('/api/meta/propor', requireUser, async (req, res) => {
   const { name, args } = req.body || {};
   if (!PROPOSTAS.has(name)) return res.status(400).json({ error: 'Ajuste não disponível.' });

@@ -89,6 +89,30 @@
   .card small { color:var(--muted); display:block; margin-top:4px; }
   .card .warn, .warn { color:var(--warn); font-size:13px; margin-top:4px; }
   .tbl { overflow:auto; max-width:100%; margin-top:6px; } .tbl table { font-size:13px; white-space:nowrap; } .tbl button { padding:3px 9px; font-size:12px; margin-right:4px; min-height:28px; }
+  /* solicitações */
+  #v-chat { grid-template-columns:1fr; }
+  #v-chat #chat { max-width:980px; width:100%; margin:0 auto; }
+  .chathead { padding:16px 18px 0; } .chathead .ptitle { font-size:22px; }
+  /* tráfego (painel) */
+  .tgrid { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:16px; align-items:start; }
+  @media (max-width: 1000px) { .tgrid { grid-template-columns:minmax(0,1fr); } }
+  .tmain, .tside { min-width:0; } .tsel { max-width:100%; }
+  @media (max-width: 600px) { .view { padding:14px 12px 40px; } .actions select { max-width:100%; } .tana .hit > div { min-width:0; } }
+  .tside aside, aside.tside { border:0; background:transparent; padding:0; overflow:visible; }
+  .sech { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .sech h3 { margin:0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:14px; }
+  .kpi { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; }
+  .kpi small { color:var(--muted); font-size:12px; display:block; } .kpi b { font-size:20px; letter-spacing:-.01em; }
+  .tana { font-size:14px; } .tana .hit { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .tana .hit:last-child { border-bottom:0; } .tana .hit > div { flex:1; min-width:200px; white-space:pre-wrap; }
+  .tlog { max-height:300px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+  .tlog .msg { max-width:100%; font-size:14px; padding:8px 12px; }
+  .chipsrow { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; } .chipsrow button { padding:2px 10px; font-size:13px; min-height:28px; }
+  .trow { display:flex; gap:8px; } .trow textarea { resize:none; min-width:0; }
+  .cname { font-weight:600; } .cname small { display:block; color:var(--muted); font-weight:400; font-size:12px; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  td .tag { margin:0; }
   /* páginas */
   .view { flex:1; overflow:auto; padding:20px 22px 40px; min-height:0; }
   .pagehead { display:flex; gap:16px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px; }
@@ -188,38 +212,96 @@
 </header>
 <nav id="tabs">
   <button data-tab="conteudo" class="on">🗂 Conteúdo <span class="badge" id="bdgConteudo"></span></button>
+  <button data-tab="chat">💬 Solicitações</button>
   <button data-tab="trafego">📈 Tráfego <span class="badge" id="bdgTrafego"></span></button>
   <button data-tab="time">🤝 Time</button>
   <button data-tab="marca">🎨 Marca</button>
 </nav>
-<main id="v-trafego" class="hidden">
+<main id="v-chat" class="hidden">
   <section id="chat">
+    <div class="chathead">
+      <h2 class="ptitle">Solicitações</h2>
+      <div class="note">Peça conteúdo, carrosséis e artes. O Hugo escreve, o Luiz faz a arte, você aprova e a Mariana agenda.</div>
+    </div>
     <div id="log"></div>
     <div id="sugs">
       <span class="lbl">Atalhos:</span>
       <button type="button" class="ghost" data-s="criar pauta de ">✍ Criar pauta</button>
+      <button type="button" class="ghost" data-s="criar pauta de carrossel sobre ">🖼 Criar carrossel</button>
       <button type="button" class="ghost" data-s="listar pauta">📋 Listar pauta</button>
       <button type="button" class="ghost" data-s="ajustar criativo ">🎯 Ajustar criativo</button>
-      <button type="button" class="ghost" data-s='pausar campanha ""'>⏸ Pausar campanha</button>
-      <button type="button" class="ghost" data-s='aumentar orçamento da campanha "" em 10%'>💲 Ajustar orçamento</button>
-    </div>
-    <div id="quick">
-      <span class="lbl">Consultar agora (sem IA):</span>
-      <button type="button" class="ghost" data-q="contas">Contas do Meta</button>
-      <button type="button" class="ghost" data-q="campanhas">Campanhas do Meta</button>
-      <button type="button" class="ghost" data-q="desempenho">Desempenho</button>
-      <select id="perSel" title="Período do desempenho"><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="last_7d" selected>7 dias</option><option value="last_14d">14 dias</option><option value="last_30d">30 dias</option><option value="this_month">Este mês</option><option value="last_month">Mês passado</option></select>
     </div>
     <form id="form">
-      <textarea id="input" rows="2" placeholder="Ex.: analisa a conta do Google 123-456-7890 dos últimos 7 dias e propõe as otimizações"></textarea>
+      <textarea id="input" rows="2" placeholder="Ex.: crie mais um post para a Disco sobre gestão de tráfego, com a arte"></textarea>
       <button id="send">Enviar</button>
     </form>
   </section>
-  <aside>
-    <h2>Aguardando aprovação</h2>
-    <div id="pending"><div class="empty">Nenhuma ação pendente.</div></div>
-  </aside>
 </main>
+
+<div class="view hidden" id="v-trafego">
+  <div class="pagehead">
+    <div>
+      <h2 class="ptitle">Tráfego pago</h2>
+      <div class="flow"><span class="st">📊 Analise</span>→<span class="st">🚀 Suba ou ajuste</span>→<span class="st hu">✅ Administrador aprova</span>→<span class="st">⚡ Executa no Meta</span></div>
+    </div>
+    <div class="actions">
+      <select id="tAcc" title="Conta de anúncio"></select>
+      <select id="tPer" title="Período"><option value="today">Hoje</option><option value="yesterday">Ontem</option><option value="last_7d" selected>7 dias</option><option value="last_14d">14 dias</option><option value="last_30d">30 dias</option><option value="this_month">Este mês</option><option value="last_month">Mês passado</option></select>
+      <button class="ghost" id="tRefresh">↻ Atualizar</button>
+    </div>
+  </div>
+  <div class="alert" id="tAlert"></div>
+  <div class="tgrid">
+    <div class="tmain">
+      <div class="kpis" id="kpis"></div>
+      <section class="sec">
+        <div class="sech"><h3>Campanhas</h3><small class="note" id="tCampNote"></small></div>
+        <div id="tCamp"><div class="empty">Carregando…</div></div>
+      </section>
+      <section class="sec" id="tAnaSec">
+        <div class="sech"><h3>🔎 Análise</h3>
+          <div class="actions"><button class="ghost" id="tDiag">Diagnóstico rápido</button><button id="tAI">✨ Analisar com IA</button></div>
+        </div>
+        <div class="sub">O diagnóstico aponta gasto sem clique, CTR baixo e frequência alta com regras simples. A análise com IA lê a conta e propõe otimizações para você aprovar (precisa da chave da IA).</div>
+        <div id="tAna" class="tana"></div>
+      </section>
+    </div>
+    <aside class="tside">
+      <section class="sec">
+        <div class="sech"><h3>⏳ Aguardando aprovação</h3></div>
+        <div id="pending"><div class="empty">Nenhuma ação pendente.</div></div>
+      </section>
+      <section class="sec">
+        <div class="sech"><h3>🚀 Subir campanha</h3></div>
+        <div class="sub">Nasce sempre pausada e só vai ao Meta depois que um administrador aprovar. Os tetos de orçamento valem.</div>
+        <form id="newCamp" class="form">
+          <label>Nome<input name="nome" required placeholder="Ex.: Disco | Leads | Nov"></label>
+          <div class="grid2" style="grid-template-columns:1fr 1fr">
+            <label>Objetivo<select name="objetivo"><option value="OUTCOME_LEADS">Leads</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_TRAFFIC">Tráfego</option><option value="OUTCOME_ENGAGEMENT">Engajamento</option><option value="OUTCOME_AWARENESS">Reconhecimento</option></select></label>
+            <label>Orçamento/dia (R$)<input name="orc" type="number" min="1" step="1" placeholder="50"></label>
+          </div>
+          <div class="row"><button>Propor criação</button></div>
+        </form>
+        <details class="panel" style="margin-top:10px"><summary>✨ Montar com IA a partir de um briefing</summary>
+          <div class="in"><textarea id="aiBrief" rows="3" placeholder="Ex.: campanha de leads para a Disco, R$ 40/dia, público lojistas de 25 a 45 anos no Brasil, foco em gestão de tráfego"></textarea>
+          <div class="row"><button id="aiBuild" type="button">Montar proposta</button></div></div>
+        </details>
+      </section>
+      <section class="sec">
+        <div class="sech"><h3>💬 Pedir ao agente de tráfego</h3></div>
+        <div id="tlog" class="tlog"></div>
+        <div class="chipsrow" id="tsugs">
+          <button type="button" class="ghost" data-s='pausar campanha ""'>⏸ Pausar</button>
+          <button type="button" class="ghost" data-s='ativar campanha ""'>▶ Ativar</button>
+          <button type="button" class="ghost" data-s='aumentar orçamento da campanha "" em 10%'>＋10%</button>
+          <button type="button" class="ghost" data-s='reduzir orçamento da campanha "" em 10%'>－10%</button>
+          <button type="button" class="ghost" data-s='orçamento da campanha "" para '>💲 Definir</button>
+        </div>
+        <form id="tform" class="trow"><textarea id="tinput" rows="2" placeholder='Ex.: pausar campanha "Black Friday"  ·  ou: analise a conta e proponha ajustes'></textarea><button>Enviar</button></form>
+      </section>
+    </aside>
+  </div>
+</div>
 
 
 <div class="view" id="v-conteudo">
@@ -442,13 +524,7 @@ function proposalBox(parent, a) {
   } else res.textContent = 'Aguardando um administrador aprovar.';
   box.appendChild(res); parent.appendChild(box);
 }
-function add(role, text) {
-  const d = document.createElement('div');
-  d.className = 'msg ' + (role === 'me' ? 'me' : 'ai');
-  d.textContent = text;
-  $('#log').appendChild(d); $('#log').scrollTop = 1e9;
-  return d;
-}
+function add(role, text) { return addTo($('#log'), role, text); }
 
 /* ---------- menu da conta ---------- */
 $('#whoBtn').onclick = (e) => { e.stopPropagation(); $('#userPop').classList.toggle('hidden'); };
@@ -471,7 +547,7 @@ function renderPending(list) {
       const row = document.createElement('div'); row.className = 'row';
       const ok = document.createElement('button'); ok.textContent = 'Aprovar';
       const no = document.createElement('button'); no.textContent = 'Rejeitar'; no.className = 'no';
-      ok.onclick = async () => { ok.disabled = true; try { const r = await api('/api/approve/' + a.id, { method: 'POST' }); add('ai', `Ação #${a.id}: ${r.status}${r.erro ? ' — ' + r.erro : ''}${r.motivos ? ' — ' + r.motivos.join(' ') : ''}`); } catch (e) { add('ai', 'Erro: ' + e.message); } loadPending(); };
+      ok.onclick = async () => { ok.disabled = true; try { const r = await api('/api/approve/' + a.id, { method: 'POST' }); toast(r.status === 'executado' ? '✅ Executado no Meta.' : r.status === 'simulado' ? '🧪 Simulado: nada mudou na conta (modo simulação).' : `⚠ ${r.status}${r.erro ? ': ' + r.erro : ''}${r.motivos ? ' ' + r.motivos.join(' ') : ''}`, r.status === 'executado' || r.status === 'simulado' ? 'ok' : 'bad'); if (r.status === 'executado') setTimeout(() => loadTrafego(), 1500); } catch (e) { toast('Erro: ' + e.message, 'bad'); } loadPending(); };
       no.onclick = async () => { await api('/api/reject/' + a.id, { method: 'POST' }); loadPending(); };
       row.append(ok, no); c.appendChild(row);
     } else {
@@ -517,7 +593,7 @@ async function boot() {
   if (liMsg) { openTab('marca'); toast(liMsg === 'ok' ? 'LinkedIn conectado! Clique em Verificar LinkedIn.' : 'LinkedIn: ' + liMsg, liMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#liCheck')?.click(), 800); } else
   openTab(redditMsg ? 'marca' : (store_.get('tab') || 'conteudo'));
   if (redditMsg) { toast(redditMsg === 'ok' ? 'Reddit conectado! Clique em Verificar Reddit.' : 'Reddit: ' + redditMsg, redditMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#redditCheck')?.click(), 800); }
-  if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para anúncios do Meta: "pausar campanha \"nome\"", "ativar campanha \"nome\"", "orçamento da campanha \"nome\" para 50", "aumentar orçamento da campanha \"nome\" em 10%". Cada ajuste vira uma proposta que um administrador aprova com um clique, dentro da conversa.');
+  if (!$('#log').children.length) add('ai', 'Oi! Peça aqui o que o time de conteúdo precisa fazer. Exemplos: "crie mais um post para a Disco sobre gestão de tráfego, com a arte", "criar pauta de carrossel sobre 5 erros de atendimento", "listar pauta", "ajustar criativo [título]: trocar a foto". Para campanhas e anúncios, use a aba Tráfego.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
 
@@ -610,89 +686,153 @@ $('#form').onsubmit = async (e) => {
 $('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#form').requestSubmit(); } });
 $('#reset').onclick = async () => { await api('/api/reset', { method: 'POST', body: JSON.stringify({ sessionId: sid }) }); $('#log').innerHTML = ''; add('ai', 'Conversa reiniciada.'); };
 
-/* ---------- consultas diretas (sem IA) ---------- */
-const QUERIES = {
-  contas: { tool: 'meta_listar_contas', title: 'Contas de anúncio do Meta', needsAccount: false },
-  campanhas: { tool: 'meta_listar_campanhas', title: 'Campanhas do Meta', needsAccount: true },
-  desempenho: { tool: 'meta_desempenho', title: 'Desempenho do Meta', needsAccount: true, args: { nivel: 'campaign' } },
-};
+/* ---------- tráfego (painel) ---------- */
 const money = (v, cur) => { try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: cur || 'BRL' }).format(Number(v) || 0); } catch { return String(v); } };
-const flatInsight = (r) => ({
-  campanha: r.campaign_name, gasto: money(r.spend, r.moeda), impressões: r.impressions, cliques: r.clicks, CTR: r.ctr ? Number(r.ctr).toFixed(2) + '%' : '', CPC: r.cpc ? Number(r.cpc).toFixed(2) : '',
-  resultados: (r.actions || []).filter((a) => /lead|registration|purchase|contact|link_click/.test(a.action_type)).slice(0, 3).map((a) => `${a.action_type}: ${a.value}`).join(' · '),
-});
-function tableEl(rows, onAccount, rowActions) {
-  const wrap = document.createElement('div'); wrap.className = 'tbl';
-  const t = document.createElement('table');
-  const cols = Object.keys(rows[0]);
-  const head = document.createElement('tr');
-  for (const c of cols) { const th = document.createElement('th'); th.textContent = c.replace(/_/g, ' '); head.appendChild(th); }
-  if (onAccount || rowActions) head.appendChild(document.createElement('th'));
-  t.appendChild(head);
-  for (const row of rows) {
-    const tr = document.createElement('tr');
-    for (const c of cols) { const td = document.createElement('td'); const v = row[c]; td.textContent = v === null || v === undefined ? '' : String(v); tr.appendChild(td); }
-    if (onAccount) {
-      const td = document.createElement('td');
-      for (const [label, key] of [['Campanhas', 'campanhas'], ['Desempenho 7d', 'desempenho']]) {
-        const b = document.createElement('button'); b.className = 'ghost'; b.textContent = label; b.onclick = () => runQuery(key, row.id); td.appendChild(b);
-      }
-      tr.appendChild(td);
-    }
-    if (rowActions) { const td = document.createElement('td'); for (const [label, fn] of rowActions(row)) { const b = document.createElement('button'); b.className = 'ghost'; b.textContent = label; b.onclick = () => fn(b); td.appendChild(b); } tr.appendChild(td); }
-    t.appendChild(tr);
-  }
-  wrap.appendChild(t); return wrap;
-}
-// Ajustes rápidos por campanha: cada clique cria uma PROPOSTA (aprovação com um clique, dentro da conversa).
+const nf = (v) => new Intl.NumberFormat('pt-BR').format(Math.round(Number(v) || 0));
+const N = (v) => Number(v) || 0;
+const toolCall = (name, args) => api('/api/tool', { method: 'POST', body: JSON.stringify({ name, args: args || {} }) });
+const TR = { cur: 'BRL', camps: [], ins: new Map() };
+const mkEl = (tag, txt, cls) => { const x = document.createElement(tag); if (txt !== undefined && txt !== null) x.textContent = txt; if (cls) x.className = cls; return x; };
+const SIT = { ACTIVE: ['Ativa', 'ok'], PAUSED: ['Pausada', 'warn'], CAMPAIGN_PAUSED: ['Pausada', 'warn'], ADSET_PAUSED: ['Pausada', 'warn'], IN_PROCESS: ['Em análise', 'warn'], PENDING_REVIEW: ['Em análise', 'warn'], WITH_ISSUES: ['Com problema', 'bad'], DISAPPROVED: ['Reprovada', 'bad'], ARCHIVED: ['Arquivada', ''] };
+const resultadoDe = (r) => (r?.actions || []).filter((a) => /lead|registration|purchase|contact|complete_registration/.test(a.action_type)).reduce((t, a) => t + N(a.value), 0);
+
+// Ajustes por campanha: cada clique cria uma PROPOSTA; só um administrador aprova (botão em "Aguardando aprovação").
 async function propor(name, args, titulo) {
-  const el = add('ai', titulo + '…');
   try {
     const r = await api('/api/meta/propor', { method: 'POST', body: JSON.stringify({ name, args }) });
-    if (r.status === 'bloqueado') el.textContent = 'Bloqueado pelos tetos de segurança: ' + r.motivos.join(' ');
-    else { el.textContent = `${titulo}. Proposta #${r.id} criada.` + (r.avisos?.length ? '\n' + r.avisos.join('\n') : ''); proposalBox(el, { id: r.id, resumo: r.resumo }); }
-    renderPending(r.pending || []);
-  } catch (e) { el.textContent = 'Erro: ' + e.message; }
+    if (r.status === 'bloqueado') { toast('Bloqueado pelos tetos de segurança: ' + (r.motivos || []).join(' '), 'bad'); return null; }
+    if (r.erro || r.error) { toast(r.erro || r.error, 'bad'); return null; }
+    toast(`${titulo}: proposta #${r.id} criada. ${me?.role === 'admin' ? 'Aprove em "Aguardando aprovação".' : 'Aguarde um administrador aprovar.'}`, 'ok');
+    for (const w of r.avisos || []) toast(w);
+    renderPending(r.pending || []); $('#pending').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return r;
+  } catch (e) { toast(e.message, 'bad'); return null; }
 }
 const campanhaAcoes = (c) => {
   const a = [];
-  a.push(c.status === 'PAUSED' ? ['▶ Ativar', () => propor('meta_pausar_ativar', { id: c.id, status: 'ACTIVE' }, `Ativar "${c.nome}"`)] : ['⏸ Pausar', () => propor('meta_pausar_ativar', { id: c.id, status: 'PAUSED' }, `Pausar "${c.nome}"`)]);
+  const pausada = c.status === 'PAUSED';
+  a.push(pausada ? ['▶ Ativar', () => propor('meta_pausar_ativar', { id: c.id, status: 'ACTIVE' }, `Ativar "${c.nome}"`)] : ['⏸ Pausar', () => propor('meta_pausar_ativar', { id: c.id, status: 'PAUSED' }, `Pausar "${c.nome}"`)]);
+  if (c.orcamento_dia_brl) {
+    a.push(['＋10%', () => propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: Math.round(c.orcamento_dia_brl * 1.1 * 100) / 100 }, `Orçamento de "${c.nome}" +10%`)]);
+    a.push(['－10%', () => propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: Math.round(c.orcamento_dia_brl * 0.9 * 100) / 100 }, `Orçamento de "${c.nome}" −10%`)]);
+  }
   a.push(['💲 Orçamento', async () => { const v = await ask('Orçamento diário', `Novo orçamento diário em reais para "${c.nome}"${c.orcamento_dia_brl ? ` (hoje R$ ${c.orcamento_dia_brl})` : ''}`, { multiline: false, value: c.orcamento_dia_brl ? String(c.orcamento_dia_brl) : '' }); const n = Number(String(v || '').replace(',', '.')); if (n > 0) propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: n }, `Orçamento de "${c.nome}" → R$ ${n}`); }]);
   return a;
 };
-async function runQuery(key, accountId) {
-  const q = QUERIES[key];
-  const el = add('ai', 'Consultando o Meta…'); el.classList.add('wide');
-  const call = (args) => api('/api/tool', { method: 'POST', body: JSON.stringify({ name: q.tool, args }) });
-  try {
-    const per = $('#perSel').value; const perTxt = $('#perSel').selectedOptions[0].textContent;
-    let r = await call({ ...(q.args || {}), ...(key === 'desempenho' ? { periodo: per } : {}), ...(accountId ? { ad_account_id: accountId } : {}) });
-    // Sem conta padrão: descobre as contas e deixa você escolher (ou usa a única existente)
-    if (q.needsAccount && !accountId && r?.status === 'nao_configurado') {
-      const accs = await api('/api/tool', { method: 'POST', body: JSON.stringify({ name: 'meta_listar_contas', args: {} }) });
-      if (Array.isArray(accs) && accs.length === 1) return el.remove(), runQuery(key, accs[0].id);
-      if (Array.isArray(accs) && accs.length > 1) {
-        el.textContent = 'Escolha a conta de anúncio:'; el.appendChild(tableEl(accs, true)); return;
-      }
-      r = accs;
-    }
-    el.textContent = q.title + (key === 'desempenho' ? ` · ${perTxt}` : '') + (accountId ? ` · ${accountId}` : '');
-    if (Array.isArray(r)) {
-      if (!r.length) { el.append(document.createElement('br'), 'Nenhum resultado. ' + (key === 'contas' ? 'O token não enxerga contas: em Configurações da empresa, atribua as contas de anúncio ao usuário do sistema com controle total.' : '')); return; }
-      let rows = key === 'desempenho' ? r.map(flatInsight) : r;
-      if (key === 'desempenho') {
-        const cur = r[0].moeda; const sum = (f) => r.reduce((a, x) => a + (Number(x[f]) || 0), 0);
-        rows = [...rows, { campanha: 'TOTAL', gasto: money(sum('spend'), cur), 'impressões': sum('impressions'), cliques: sum('clicks'), CTR: '', CPC: '', resultados: '' }];
-        el.append(document.createElement('br'), `Período: ${r[0].periodo_inicio} a ${r[0].periodo_fim} · moeda ${cur || '?'}`);
-      }
-      el.appendChild(tableEl(rows, key === 'contas', key === 'campanhas' ? campanhaAcoes : null));
-    } else {
-      el.append(document.createElement('br'), r?.erro || r?.error || JSON.stringify(r));
-    }
-  } catch (err) { el.textContent = 'Erro: ' + err.message; }
-  $('#log').scrollTop = 1e9;
+
+function renderKpis() {
+  const rows = [...TR.ins.values()];
+  const sum = (f) => rows.reduce((t, x) => t + N(x[f]), 0);
+  const gasto = sum('spend'), imp = sum('impressions'), cl = sum('clicks'), res = rows.reduce((t, x) => t + resultadoDe(x), 0);
+  const ativas = TR.camps.filter((c) => c.status === 'ACTIVE').length;
+  const k = [['Gasto', money(gasto, TR.cur)], ['Impressões', nf(imp)], ['Cliques', nf(cl)], ['CTR', imp ? (cl / imp * 100).toFixed(2) + '%' : '—'], ['CPC médio', cl ? money(gasto / cl, TR.cur) : '—'], ['Resultados', res ? nf(res) : '—'], ['Campanhas ativas', `${ativas} de ${TR.camps.length}`]];
+  const box = $('#kpis'); box.textContent = '';
+  for (const [l, v] of k) { const d = mkEl('div', null, 'kpi'); d.append(mkEl('small', l), mkEl('b', v)); box.appendChild(d); }
 }
-for (const b of document.querySelectorAll('#quick [data-q]')) b.onclick = () => runQuery(b.dataset.q);
+function renderCampanhas() {
+  const box = $('#tCamp'); box.textContent = '';
+  if (!TR.camps.length) { box.appendChild(mkEl('div', 'Nenhuma campanha nesta conta. Use "Subir campanha" ao lado.', 'empty')); return; }
+  const wrap = mkEl('div', null, 'tbl'); const t = document.createElement('table');
+  const head = document.createElement('tr');
+  for (const [h, num] of [['Campanha'], ['Status'], ['Orç./dia', 1], ['Gasto', 1], ['Cliques', 1], ['CTR', 1], ['CPC', 1], ['Result.', 1], ['Ajustar']]) { const th = mkEl('th', h); if (num) th.className = 'num'; head.appendChild(th); }
+  t.appendChild(head);
+  const ord = [...TR.camps].sort((a, b) => (b.status === 'ACTIVE') - (a.status === 'ACTIVE') || N(TR.ins.get(b.id)?.spend) - N(TR.ins.get(a.id)?.spend));
+  for (const c of ord) {
+    const i = TR.ins.get(c.id) || {}; const tr = document.createElement('tr');
+    const nm = mkEl('td', null, 'cname'); nm.append(c.nome, mkEl('small', (c.objetivo || '').replace('OUTCOME_', '').toLowerCase()));
+    const [lab, cls] = SIT[c.situacao] || SIT[c.status] || [c.situacao || c.status, ''];
+    const st = mkEl('td'); st.appendChild(mkEl('span', lab, 'tag ' + cls));
+    const num = (v) => mkEl('td', v, 'num');
+    tr.append(nm, st, num(c.orcamento_dia_brl ? money(c.orcamento_dia_brl, TR.cur) : 'no conjunto'), num(i.spend !== undefined ? money(i.spend, TR.cur) : '—'), num(i.clicks !== undefined ? nf(i.clicks) : '—'), num(i.ctr ? N(i.ctr).toFixed(2) + '%' : '—'), num(i.cpc ? money(i.cpc, TR.cur) : '—'), num(resultadoDe(i) ? nf(resultadoDe(i)) : '—'));
+    const ac = mkEl('td'); for (const [label, fn] of campanhaAcoes(c)) { const b = mkEl('button', label, 'ghost'); b.onclick = () => fn(b); ac.appendChild(b); } tr.appendChild(ac);
+    t.appendChild(tr);
+  }
+  wrap.appendChild(t); box.appendChild(wrap);
+}
+async function loadTrafego(contas) {
+  const al = $('#tAlert'); al.textContent = '';
+  const sel = $('#tAcc');
+  try {
+    if (!sel.options.length || contas) {
+      const accs = await toolCall('meta_listar_contas');
+      if (!Array.isArray(accs)) { al.textContent = 'Meta Ads não conectado: ' + (accs?.erro || accs?.error || 'configure META_ACCESS_TOKEN no Render.'); $('#tCamp').textContent = ''; $('#kpis').textContent = ''; return; }
+      sel.textContent = '';
+      for (const a of accs) { const o = mkEl('option', `${a.nome || a.id}${a.empresa ? ' · ' + a.empresa : ''}`); o.value = a.id; o.dataset.cur = a.moeda || 'BRL'; sel.appendChild(o); }
+      if (!accs.length) { al.textContent = 'O token do Meta não enxerga contas de anúncio. Em Configurações da empresa, atribua as contas ao usuário do sistema com controle total.'; $('#tCamp').textContent = ''; $('#kpis').textContent = ''; return; }
+      try { const sv = localStorage.getItem('tAcc'); if (sv && accs.some((a) => a.id === sv)) sel.value = sv; } catch {}
+    }
+    const acc = sel.value; TR.cur = sel.selectedOptions[0]?.dataset.cur || 'BRL';
+    $('#tCamp').textContent = 'Carregando…';
+    const [camps, ins] = await Promise.all([toolCall('meta_listar_campanhas', { ad_account_id: acc }), toolCall('meta_desempenho', { nivel: 'campaign', periodo: $('#tPer').value, ad_account_id: acc })]);
+    if (!Array.isArray(camps)) { al.textContent = camps?.erro || camps?.error || 'Não consegui listar as campanhas.'; $('#tCamp').textContent = ''; return; }
+    TR.camps = camps; TR.ins = new Map(Array.isArray(ins) ? ins.map((x) => [x.campaign_id, x]) : []);
+    if (!Array.isArray(ins)) al.textContent = 'Campanhas carregadas, mas o desempenho falhou: ' + (ins?.erro || ins?.error || '');
+    $('#tCampNote').textContent = `${$('#tPer').selectedOptions[0].textContent} · ${TR.cur}`;
+    renderKpis(); renderCampanhas();
+  } catch (e) { al.textContent = 'Erro: ' + e.message; }
+}
+$('#tAcc').onchange = () => { try { localStorage.setItem('tAcc', $('#tAcc').value); } catch {} loadTrafego(); };
+$('#tPer').onchange = () => loadTrafego();
+$('#tRefresh').onclick = () => loadTrafego(true);
+
+// Diagnóstico por regras (sem IA)
+$('#tDiag').onclick = () => {
+  const out = $('#tAna'); out.textContent = '';
+  if (!TR.camps.length) { out.appendChild(mkEl('div', 'Carregue a conta primeiro.', 'empty')); return; }
+  const hits = [];
+  for (const c of TR.camps) {
+    const i = TR.ins.get(c.id); if (!i || c.status !== 'ACTIVE') continue;
+    const gasto = N(i.spend), cl = N(i.clicks), imp = N(i.impressions), ctr = N(i.ctr), fr = N(i.frequency);
+    if (gasto > 0 && cl === 0) hits.push({ c, sev: 'bad', txt: `Gastou ${money(gasto, TR.cur)} sem nenhum clique. Vale pausar e revisar o criativo e o público.`, pausar: true });
+    else if (imp >= 1000 && ctr < 0.8) hits.push({ c, sev: 'warn', txt: `CTR baixo (${ctr.toFixed(2)}%) com ${nf(imp)} impressões: o criativo ou a segmentação não está chamando atenção.` });
+    if (fr >= 3.5) hits.push({ c, sev: 'warn', txt: `Frequência ${fr.toFixed(1)}: o público está saturado. Renove o criativo ou amplie a audiência.` });
+    if (gasto > 0 && cl > 0 && !resultadoDe(i) && /LEADS|SALES/.test(c.objetivo || '')) hits.push({ c, sev: 'warn', txt: `Objetivo de ${(c.objetivo || '').replace('OUTCOME_', '').toLowerCase()} sem resultados registrados no período (${money(gasto, TR.cur)} gastos). Confira o evento de conversão.` });
+  }
+  const sem = TR.camps.filter((c) => c.status === 'ACTIVE' && !TR.ins.get(c.id));
+  for (const c of sem) hits.push({ c, sev: '', txt: 'Ativa, mas sem entrega no período. Confira orçamento, aprovação dos anúncios e pendências de pagamento.' });
+  if (!hits.length) { out.appendChild(mkEl('div', '✓ Nenhum problema óbvio nas campanhas ativas neste período.', 'ok')); return; }
+  for (const h of hits) {
+    const d = mkEl('div', null, 'hit'); const t = mkEl('div'); t.append(mkEl('b', h.c.nome), document.createElement('br'), h.txt);
+    d.append(mkEl('span', h.sev === 'bad' ? '🔴' : h.sev === 'warn' ? '🟠' : '⚪'), t);
+    if (h.pausar) { const b = mkEl('button', '⏸ Propor pausa', 'ghost'); b.onclick = () => propor('meta_pausar_ativar', { id: h.c.id, status: 'PAUSED' }, `Pausar "${h.c.nome}"`); d.appendChild(b); }
+    out.appendChild(d);
+  }
+};
+
+/* ---------- conversa com o agente (compartilhada) ---------- */
+function addTo(log, role, text) { const d = mkEl('div', text, 'msg ' + (role === 'me' ? 'me' : 'ai')); log.appendChild(d); log.scrollTop = 1e9; return d; }
+async function enviarAoAgente(text, log, btn, sess) {
+  addTo(log, 'me', text);
+  const wait = addTo(log, 'ai', 'Pensando…'); if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sess, message: text, cliente: CUR }) });
+    wait.textContent = r.reply || '(sem resposta)';
+    if (r.acao) proposalBox(wait, r.acao);
+    renderPending(r.pending || []);
+  } catch (err) { wait.textContent = 'Erro: ' + err.message; }
+  if (btn) btn.disabled = false; log.scrollTop = 1e9;
+}
+$('#tform').onsubmit = (e) => { e.preventDefault(); const t = $('#tinput').value.trim(); if (!t) return; $('#tinput').value = ''; enviarAoAgente(t, $('#tlog'), e.target.querySelector('button'), sid + '-t'); };
+$('#tinput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#tform').requestSubmit(); } });
+for (const b of document.querySelectorAll('#tsugs [data-s]')) b.onclick = () => { const i = $('#tinput'); i.value = b.dataset.s; i.focus(); const p = i.value.indexOf('""'); if (p >= 0) i.setSelectionRange(p + 1, p + 1); };
+$('#tAI').onclick = () => {
+  const acc = $('#tAcc').value; if (!acc) return toast('Carregue a conta primeiro.', 'bad');
+  const out = $('#tAna'); out.textContent = '';
+  const box = mkEl('div', null, 'tlog'); out.appendChild(box);
+  enviarAoAgente(`Analise a conta de anúncios do Meta ${acc} no período ${$('#tPer').selectedOptions[0].textContent} (meta_desempenho por campanha e por conjunto). Diga o que está bom, o que está ruim e proponha otimizações concretas (pausar, ajustar orçamento, público) como propostas para aprovação, sem executar nada.`, box, $('#tAI'), sid + '-t');
+};
+$('#newCamp').onsubmit = async (e) => {
+  e.preventDefault(); const f = e.target.elements;
+  const args = { nome: f.nome.value.trim(), objetivo: f.objetivo.value, ad_account_id: $('#tAcc').value || undefined };
+  if (f.orc.value) args.orcamento_diario_brl = Number(f.orc.value);
+  const r = await propor('meta_criar_campanha', args, `Criar campanha "${args.nome}"`);
+  if (r) e.target.reset();
+};
+$('#aiBuild').onclick = () => {
+  const b = $('#aiBrief').value.trim(); if (!b) return toast('Descreva a campanha.', 'bad');
+  const acc = $('#tAcc').value;
+  enviarAoAgente(`Monte uma campanha no Meta Ads${acc ? ' na conta ' + acc : ''} a partir deste briefing: ${b}. Crie a campanha como proposta (ela nasce pausada) e me diga os próximos passos para conjuntos e anúncios.`, $('#tlog'), $('#aiBuild'), sid + '-t'); $('#aiBrief').value = '';
+};
 
 /* ---------- alterar senha ---------- */
 $('#pwBtn').onclick = () => { $('#pwErr').textContent = ''; $('#pwForm').reset(); show($('#pwModal'), true); };
@@ -767,12 +907,13 @@ $('#inviteForm').onsubmit = async (e) => {
 
 
 /* ---------- abas ---------- */
-const TABS = ['trafego', 'conteudo', 'time', 'marca'];
+const TABS = ['chat', 'trafego', 'conteudo', 'time', 'marca'];
 function openTab(t) {
   for (const x of TABS) show($('#v-' + x), x === t);
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === t);
   store_.set('tab', t, true);
   if (t === 'conteudo') loadItems().catch(() => {});
+  if (t === 'trafego') loadTrafego().catch(() => {});
   if (t === 'time') loadAgents().catch(() => {});
   if (t === 'marca') loadBrand().catch(() => {});
 }
