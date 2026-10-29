@@ -5,6 +5,13 @@ Agente que cria e otimiza campanhas (Google, Meta, LinkedIn) a partir de texto. 
 - **Chat web** (`https://SEU-SERVICO.onrender.com`): conversa + painel de aprovação.
 - **Servidor MCP** (`https://SEU-SERVICO.onrender.com/mcp`): conecte no Claude como conector personalizado e peça no próprio Claude.
 
+## Acesso e equipe
+
+- **Administradora principal:** `knasck@gmail.com` (variável `ADMIN_EMAIL`). Entra com esse e-mail + a `APP_PASSWORD` e pode trocar a senha no botão **Senha**. Não pode ser removida.
+- **Convites:** botão **Equipe** → informe o e-mail e o papel → o painel gera um link válido por 7 dias (copie e envie). Se configurar `RESEND_API_KEY` e `MAIL_FROM`, o e-mail é enviado automaticamente.
+- **Papéis:** *Colaborador* conversa com o agente e propõe ações. *Administrador* também aprova/rejeita ações, vê a auditoria e gerencia a equipe.
+- **Atenção:** no plano gratuito do Render o disco é efêmero, então colaboradores, fila e histórico somem a cada reinício ou deploy. Para manter a equipe, use o plano Starter com disco (`render.yaml`). Enquanto isso, a administradora sempre consegue entrar com `APP_PASSWORD`.
+
 ## Segurança em camadas
 
 1. **DRY_RUN=true por padrão**: simula tudo, não toca nas contas.

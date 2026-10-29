@@ -5,6 +5,14 @@ export const config = {
   // Seguro por padrão: só sai do modo simulação com DRY_RUN=false explícito
   dryRun: process.env.DRY_RUN !== 'false',
   appPassword: process.env.APP_PASSWORD || '',
+  // Conta administradora principal. Entra com este e-mail + APP_PASSWORD até definir a própria senha no painel.
+  adminEmail: (process.env.ADMIN_EMAIL || 'knasck@gmail.com').trim().toLowerCase(),
+  // Assina as sessões. Se não definido, deriva de APP_PASSWORD + MCP_TOKEN (sessões sobrevivem a reinícios).
+  sessionSecret: process.env.SESSION_SECRET || `derived:${process.env.APP_PASSWORD || ''}:${process.env.MCP_TOKEN || ''}`,
+  publicUrl: (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, ''),
+  // Envio opcional de e-mail de convite (Resend). Sem isso, o painel mostra o link para você copiar.
+  resendKey: process.env.RESEND_API_KEY || '',
+  mailFrom: process.env.MAIL_FROM || '',
   mcpToken: process.env.MCP_TOKEN || '',
   approvalPin: process.env.APPROVAL_PIN || '',
   anthropicKey: process.env.ANTHROPIC_API_KEY || '',

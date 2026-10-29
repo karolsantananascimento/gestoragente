@@ -32,7 +32,7 @@ function system() {
   return `${masterPrompt()}\n\n---\nHoje é ${hoje}. ${modo} ${tetos}`;
 }
 
-export async function chat(sessionId, userMessage) {
+export async function chat(sessionId, userMessage, who = 'chat') {
   if (!config.anthropicKey) {
     return { reply: 'ANTHROPIC_API_KEY não configurada no servidor. Configure a variável de ambiente para usar o chat.', pending: pendingActions() };
   }
@@ -56,7 +56,7 @@ export async function chat(sessionId, userMessage) {
 
     const results = [];
     for (const u of uses) {
-      const out = await callTool(u.name, u.input, 'chat');
+      const out = await callTool(u.name, u.input, `chat:${who}`);
       results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out).slice(0, 30000) });
     }
     history.push({ role: 'user', content: results });

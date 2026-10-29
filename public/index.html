@@ -9,9 +9,9 @@
   @media (prefers-color-scheme: light) { :root { --bg:#f5f6fa; --panel:#fff; --line:#e1e4ec; --text:#171a21; --muted:#6a7287; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; height:100dvh; display:flex; flex-direction:column; }
-  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
-  header h1 { font-size:16px; margin:0; flex:1; }
-  .pill { font-size:12px; padding:3px 10px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+  header { display:flex; gap:10px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; flex:1; min-width:140px; }
+  .pill { font-size:12px; padding:3px 10px; border-radius:99px; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
   .pill.sim { color:var(--warn); border-color:var(--warn); } .pill.real { color:var(--bad); border-color:var(--bad); } .pill.on { color:var(--ok); border-color:var(--ok); }
   main { flex:1; display:grid; grid-template-columns: 1fr 360px; min-height:0; }
   @media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } aside { max-height: 38dvh; } }
@@ -20,34 +20,49 @@
   .msg { max-width:820px; padding:10px 14px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
   .me { align-self:flex-end; background:var(--accent); color:#fff; }
   .ai { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
-  form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--panel); }
-  textarea { flex:1; resize:none; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+  #form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--panel); }
+  textarea, input, select { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+  textarea { flex:1; resize:none; }
   button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:0 16px; font:inherit; cursor:pointer; }
   button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); padding:4px 10px; border-radius:8px; font-size:13px; }
+  button.danger { background:transparent; color:var(--bad); border:1px solid var(--line); padding:3px 9px; border-radius:8px; font-size:12px; }
   button:disabled { opacity:.5; cursor:wait; }
   aside { border-left:1px solid var(--line); background:var(--panel); overflow:auto; padding:14px; }
-  aside h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
+  aside h2, .modal h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
   .card { border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:var(--bg); }
   .card small { color:var(--muted); display:block; margin-top:4px; }
   .card .warn { color:var(--warn); font-size:13px; margin-top:4px; }
-  .row { display:flex; gap:8px; margin-top:8px; }
+  .row { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
   .row button { padding:6px 12px; font-size:13px; }
   .row .no { background:transparent; border:1px solid var(--line); color:var(--muted); }
-  .empty { color:var(--muted); font-size:14px; }
-  #login { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; }
-  #login form { flex-direction:column; width:320px; border:1px solid var(--line); border-radius:14px; padding:20px; }
-  #login input { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
-  #login button { padding:10px; }
+  .empty, .note { color:var(--muted); font-size:14px; }
+  .overlay { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; z-index:10; }
+  .overlay.dim { background:rgba(0,0,0,.55); }
+  .box { width:360px; max-width:100%; border:1px solid var(--line); border-radius:14px; padding:20px; background:var(--panel); display:flex; flex-direction:column; gap:10px; }
+  .box.wide { width:640px; max-height:90dvh; overflow:auto; }
+  .box h1 { margin:0; font-size:18px; }
+  .box button { padding:10px; }
   .err { color:var(--bad); font-size:13px; min-height:18px; }
+  .ok { color:var(--ok); font-size:13px; }
+  .hidden { display:none !important; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  .link { word-break:break-all; font-size:13px; padding:8px; border:1px dashed var(--line); border-radius:8px; }
+  .grow { flex:1; min-width:160px; }
 </style>
 </head>
 <body>
-<div id="login">
-  <form id="loginForm">
-    <h1 style="margin:0 0 4px;font-size:18px">Agente de Tráfego</h1>
-    <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" autofocus>
+
+<!-- Login / convite -->
+<div class="overlay" id="login">
+  <form class="box" id="loginForm">
+    <h1 id="loginTitle">Agente de Tráfego</h1>
+    <div class="note" id="loginNote">Entre com seu e-mail e senha.</div>
+    <input id="email" type="email" placeholder="E-mail" autocomplete="username" required>
+    <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" required>
     <div class="err" id="loginErr"></div>
-    <button>Entrar</button>
+    <button id="loginBtn">Entrar</button>
   </form>
 </div>
 
@@ -55,7 +70,11 @@
   <h1>Agente de Tráfego</h1>
   <span class="pill" id="modo">…</span>
   <span class="pill" id="pg">…</span>
+  <span class="pill" id="who">…</span>
+  <button class="ghost hidden" id="teamBtn">Equipe</button>
+  <button class="ghost" id="pwBtn">Senha</button>
   <button class="ghost" id="reset">Nova conversa</button>
+  <button class="ghost" id="logout">Sair</button>
 </header>
 <main>
   <section id="chat">
@@ -71,16 +90,59 @@
   </aside>
 </main>
 
+<!-- Equipe (admin) -->
+<div class="overlay dim hidden" id="teamModal">
+  <div class="box wide modal">
+    <h2>Equipe e convites</h2>
+    <form class="row" id="inviteForm" style="margin:0">
+      <input class="grow" id="invEmail" type="email" placeholder="E-mail do colaborador" required>
+      <select id="invRole">
+        <option value="member">Colaborador (propõe ações)</option>
+        <option value="admin">Administrador (aprova ações e gerencia equipe)</option>
+      </select>
+      <button>Convidar</button>
+    </form>
+    <div class="err" id="invErr"></div>
+    <div id="invResult" class="hidden card"></div>
+    <div class="note">Colaboradores conversam com o agente e propõem ações. Só administradores aprovam, rejeitam e convidam.</div>
+    <h2 style="margin-top:10px">Pessoas com acesso</h2>
+    <table id="usersTbl"></table>
+    <h2 style="margin-top:10px">Convites pendentes</h2>
+    <div id="invitesBox" class="note">Nenhum.</div>
+    <div class="row"><button class="ghost" id="teamClose">Fechar</button></div>
+  </div>
+</div>
+
+<!-- Alterar senha -->
+<div class="overlay dim hidden" id="pwModal">
+  <form class="box modal" id="pwForm">
+    <h2>Alterar senha</h2>
+    <input id="pwCur" type="password" placeholder="Senha atual" autocomplete="current-password" required>
+    <input id="pwNew" type="password" placeholder="Nova senha (mín. 8 caracteres)" autocomplete="new-password" required minlength="8">
+    <div class="err" id="pwErr"></div>
+    <div class="row"><button>Salvar</button><button type="button" class="ghost" id="pwClose">Cancelar</button></div>
+  </form>
+</div>
+
 <script>
 const $ = (s) => document.querySelector(s);
-let pw = sessionStorage.getItem('pw') || '';
-const sid = sessionStorage.getItem('sid') || (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+const show = (el, v) => el.classList.toggle('hidden', !v);
+let token = sessionStorage.getItem('tk') || '';
+let me = null;
+const sid = sessionStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 sessionStorage.setItem('sid', sid);
+const inviteToken = new URLSearchParams(location.search).get('invite');
 
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', 'x-app-password': pw, ...(opts.headers || {}) } });
-  if (r.status === 401) { sessionStorage.removeItem('pw'); $('#login').style.display = 'flex'; throw new Error('Senha inválida'); }
-  return r.json();
+  const r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) } });
+  if (r.status === 401 && token) { logout(); throw new Error('Sessão expirada'); }
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Erro ' + r.status);
+  return data;
+}
+function logout() {
+  token = ''; me = null; sessionStorage.removeItem('tk');
+  show($('#login'), true); $('#pw').value = '';
 }
 function add(role, text) {
   const d = document.createElement('div');
@@ -89,6 +151,8 @@ function add(role, text) {
   $('#log').appendChild(d); $('#log').scrollTop = 1e9;
   return d;
 }
+
+/* ---------- pendências ---------- */
 function renderPending(list) {
   const el = $('#pending');
   if (!list.length) { el.innerHTML = '<div class="empty">Nenhuma ação pendente.</div>'; return; }
@@ -98,12 +162,17 @@ function renderPending(list) {
     const t = document.createElement('div'); t.textContent = a.summary; c.appendChild(t);
     const s = document.createElement('small'); s.textContent = `#${a.id} · ${a.platform}`; c.appendChild(s);
     for (const w of a.warnings || []) { const x = document.createElement('div'); x.className = 'warn'; x.textContent = w; c.appendChild(x); }
-    const row = document.createElement('div'); row.className = 'row';
-    const ok = document.createElement('button'); ok.textContent = 'Aprovar';
-    const no = document.createElement('button'); no.textContent = 'Rejeitar'; no.className = 'no';
-    ok.onclick = async () => { ok.disabled = true; const r = await api('/api/approve/' + a.id, { method: 'POST' }); add('ai', `Ação #${a.id}: ${r.status}${r.erro ? ' — ' + r.erro : ''}${r.motivos ? ' — ' + r.motivos.join(' ') : ''}`); loadPending(); };
-    no.onclick = async () => { await api('/api/reject/' + a.id, { method: 'POST' }); loadPending(); };
-    row.append(ok, no); c.appendChild(row); el.appendChild(c);
+    if (me?.role === 'admin') {
+      const row = document.createElement('div'); row.className = 'row';
+      const ok = document.createElement('button'); ok.textContent = 'Aprovar';
+      const no = document.createElement('button'); no.textContent = 'Rejeitar'; no.className = 'no';
+      ok.onclick = async () => { ok.disabled = true; try { const r = await api('/api/approve/' + a.id, { method: 'POST' }); add('ai', `Ação #${a.id}: ${r.status}${r.erro ? ' — ' + r.erro : ''}${r.motivos ? ' — ' + r.motivos.join(' ') : ''}`); } catch (e) { add('ai', 'Erro: ' + e.message); } loadPending(); };
+      no.onclick = async () => { await api('/api/reject/' + a.id, { method: 'POST' }); loadPending(); };
+      row.append(ok, no); c.appendChild(row);
+    } else {
+      const n = document.createElement('small'); n.textContent = 'Aguardando um administrador aprovar.'; c.appendChild(n);
+    }
+    el.appendChild(c);
   }
 }
 const loadPending = async () => renderPending(await api('/api/pending'));
@@ -114,15 +183,43 @@ async function loadStatus() {
   $('#pg').textContent = on.length ? 'Conectado: ' + on.join(', ') : 'Nenhuma plataforma conectada';
   $('#pg').className = 'pill' + (on.length ? ' on' : '');
 }
+
+/* ---------- sessão ---------- */
 async function boot() {
-  $('#login').style.display = 'none';
+  me = await api('/api/me');
+  show($('#login'), false);
+  $('#who').textContent = `${me.email} · ${me.role === 'admin' ? 'administrador' : 'colaborador'}`;
+  show($('#teamBtn'), me.role === 'admin');
+  history.replaceState(null, '', location.pathname);
   await loadStatus(); await loadPending();
-  if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a sua aprovação.');
+  if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
+async function setSession(r) { token = r.token; sessionStorage.setItem('tk', token); await boot(); }
+
+if (inviteToken) {
+  $('#loginTitle').textContent = 'Você foi convidado(a)';
+  $('#loginNote').textContent = 'Crie uma senha (mínimo 8 caracteres) para entrar.';
+  $('#loginBtn').textContent = 'Criar senha e entrar';
+  $('#pw').autocomplete = 'new-password'; $('#pw').minLength = 8; $('#pw').placeholder = 'Crie sua senha';
+  $('#email').readOnly = true;
+  api('/api/invite-info?token=' + encodeURIComponent(inviteToken))
+    .then((i) => { $('#email').value = i.email; })
+    .catch((e) => { $('#loginErr').textContent = e.message; $('#loginBtn').disabled = true; });
+}
+
 $('#loginForm').onsubmit = async (e) => {
-  e.preventDefault(); pw = $('#pw').value;
-  try { await api('/api/status'); sessionStorage.setItem('pw', pw); boot(); } catch { $('#loginErr').textContent = 'Senha inválida.'; }
+  e.preventDefault(); $('#loginErr').textContent = ''; $('#loginBtn').disabled = true;
+  try {
+    const r = inviteToken
+      ? await api('/api/accept-invite', { method: 'POST', body: JSON.stringify({ token: inviteToken, password: $('#pw').value }) })
+      : await api('/api/login', { method: 'POST', body: JSON.stringify({ email: $('#email').value, password: $('#pw').value }) });
+    await setSession(r);
+  } catch (err) { $('#loginErr').textContent = err.message; }
+  $('#loginBtn').disabled = false;
 };
+$('#logout').onclick = logout;
+
+/* ---------- chat ---------- */
 $('#form').onsubmit = async (e) => {
   e.preventDefault();
   const text = $('#input').value.trim(); if (!text) return;
@@ -130,15 +227,74 @@ $('#form').onsubmit = async (e) => {
   const wait = add('ai', 'Pensando…'); $('#send').disabled = true;
   try {
     const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sid, message: text }) });
-    wait.textContent = r.reply || r.error || '(sem resposta)';
+    wait.textContent = r.reply || '(sem resposta)';
     renderPending(r.pending || []);
   } catch (err) { wait.textContent = 'Erro: ' + err.message; }
   $('#send').disabled = false; $('#log').scrollTop = 1e9;
 };
 $('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#form').requestSubmit(); } });
 $('#reset').onclick = async () => { await api('/api/reset', { method: 'POST', body: JSON.stringify({ sessionId: sid }) }); $('#log').innerHTML = ''; add('ai', 'Conversa reiniciada.'); };
-setInterval(() => { if (pw && $('#login').style.display === 'none') loadPending().catch(() => {}); }, 15000);
-if (pw) api('/api/status').then(boot).catch(() => {});
+
+/* ---------- alterar senha ---------- */
+$('#pwBtn').onclick = () => { $('#pwErr').textContent = ''; $('#pwForm').reset(); show($('#pwModal'), true); };
+$('#pwClose').onclick = () => show($('#pwModal'), false);
+$('#pwForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('/api/password', { method: 'POST', body: JSON.stringify({ current: $('#pwCur').value, next: $('#pwNew').value }) }); show($('#pwModal'), false); add('ai', 'Senha alterada.'); }
+  catch (err) { $('#pwErr').textContent = err.message; }
+};
+
+/* ---------- equipe ---------- */
+const fmt = (iso) => iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+async function loadTeam() {
+  const { users, invites } = await api('/api/users');
+  const t = $('#usersTbl');
+  t.innerHTML = '<tr><th>E-mail</th><th>Papel</th><th>Último acesso</th><th></th></tr>';
+  for (const u of users) {
+    const tr = document.createElement('tr');
+    const tds = [u.email + (u.owner ? ' (principal)' : ''), u.role === 'admin' ? 'Administrador' : 'Colaborador', fmt(u.lastLoginAt)];
+    for (const v of tds) { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); }
+    const td = document.createElement('td');
+    if (!u.owner && u.email !== me.email) {
+      const b = document.createElement('button'); b.className = 'danger'; b.textContent = 'Remover';
+      b.onclick = async () => { if (confirm(`Remover o acesso de ${u.email}?`)) { try { await api('/api/users/' + encodeURIComponent(u.email), { method: 'DELETE' }); loadTeam(); } catch (e) { alert(e.message); } } };
+      td.appendChild(b);
+    }
+    tr.appendChild(td); t.appendChild(tr);
+  }
+  const box = $('#invitesBox');
+  if (!invites.length) { box.textContent = 'Nenhum.'; return; }
+  box.innerHTML = '';
+  for (const i of invites) {
+    const row = document.createElement('div'); row.className = 'row';
+    const s = document.createElement('span'); s.className = 'grow'; s.textContent = `${i.email} · ${i.role === 'admin' ? 'administrador' : 'colaborador'} · expira ${fmt(i.expiresAt)}`;
+    const b = document.createElement('button'); b.className = 'danger'; b.textContent = 'Cancelar';
+    b.onclick = async () => { await api('/api/invites/' + i.id, { method: 'DELETE' }); loadTeam(); };
+    row.append(s, b); box.appendChild(row);
+  }
+}
+$('#teamBtn').onclick = async () => { $('#invErr').textContent = ''; show($('#invResult'), false); show($('#teamModal'), true); try { await loadTeam(); } catch (e) { $('#invErr').textContent = e.message; } };
+$('#teamClose').onclick = () => show($('#teamModal'), false);
+$('#inviteForm').onsubmit = async (e) => {
+  e.preventDefault(); $('#invErr').textContent = ''; show($('#invResult'), false);
+  try {
+    const r = await api('/api/invites', { method: 'POST', body: JSON.stringify({ email: $('#invEmail').value, role: $('#invRole').value }) });
+    const box = $('#invResult'); box.innerHTML = '';
+    const p = document.createElement('div'); p.className = r.emailSent ? 'ok' : 'note';
+    p.textContent = r.emailSent ? `Convite enviado por e-mail para ${r.email}.` : `Copie o link e envie para ${r.email} (válido por 7 dias).`;
+    const l = document.createElement('div'); l.className = 'link'; l.textContent = r.link;
+    const row = document.createElement('div'); row.className = 'row';
+    const c = document.createElement('button'); c.textContent = 'Copiar link';
+    c.onclick = async () => { try { await navigator.clipboard.writeText(r.link); c.textContent = 'Copiado!'; } catch { c.textContent = 'Selecione e copie manualmente'; } };
+    row.appendChild(c);
+    box.append(p, l, row); show(box, true);
+    $('#invEmail').value = ''; loadTeam();
+  } catch (err) { $('#invErr').textContent = err.message; }
+};
+
+/* ---------- init ---------- */
+setInterval(() => { if (me) loadPending().catch(() => {}); }, 15000);
+if (token && !inviteToken) boot().catch(() => logout());
 </script>
 </body>
 </html>

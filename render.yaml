@@ -28,7 +28,13 @@ services:
       - key: ANTHROPIC_MODEL
         value: claude-sonnet-5-5
       # Segredos: preencher no painel do Render (não vão para o Git)
+      - key: ADMIN_EMAIL
+        value: knasck@gmail.com
       - key: APP_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
         sync: false
       - key: MCP_TOKEN
         sync: false

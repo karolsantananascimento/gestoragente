@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from './config.js';
 
-// Persistência simples em arquivo JSON (fila de aprovações + auditoria).
-// Em produção no Render, use um disco persistente em DATA_DIR ou migre para Postgres.
+// Persistência simples em arquivo JSON (fila de aprovações, auditoria, usuários e convites).
+// ATENÇÃO: no plano gratuito do Render o disco é efêmero e o arquivo some a cada reinício/deploy.
+// Para manter equipe, fila e histórico, use o plano Starter com disco em DATA_DIR (ou migre para Postgres).
 const file = () => path.join(config.dataDir, 'store.json');
 
 let state = null;
@@ -13,8 +14,12 @@ function load() {
   try {
     state = JSON.parse(fs.readFileSync(file(), 'utf8'));
   } catch {
-    state = { actions: [], audit: [] };
+    state = {};
   }
+  state.actions ||= [];
+  state.audit ||= [];
+  state.users ||= [];
+  state.invites ||= [];
   return state;
 }
 
@@ -42,5 +47,22 @@ export const store = {
     s.audit.unshift({ at: new Date().toISOString(), ...entry });
     s.audit = s.audit.slice(0, 1000);
     save();
+  },
+
+  // --- usuários e convites ---
+  users: () => load().users,
+  invites: () => load().invites,
+  addUser(u) { load().users.push(u); save(); return u; },
+  updateUser(email, patch) {
+    const u = load().users.find((x) => x.email === email);
+    if (u) { Object.assign(u, patch); save(); }
+    return u;
+  },
+  removeUser(email) { const s = load(); s.users = s.users.filter((u) => u.email !== email); save(); },
+  addInvite(i) { load().invites.unshift(i); save(); return i; },
+  updateInvite(id, patch) {
+    const i = load().invites.find((x) => x.id === id);
+    if (i) { Object.assign(i, patch); save(); }
+    return i;
   },
 };
