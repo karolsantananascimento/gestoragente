@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente de Tráfego</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e8eaf0; --muted:#8b93a7; --accent:#7c5cff; --ok:#2fbf71; --warn:#f0a13a; --bad:#ef5b5b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f5f6fa; --panel:#fff; --line:#e1e4ec; --text:#171a21; --muted:#6a7287; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; height:100dvh; display:flex; flex-direction:column; }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; flex:1; }
+  .pill { font-size:12px; padding:3px 10px; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+  .pill.sim { color:var(--warn); border-color:var(--warn); } .pill.real { color:var(--bad); border-color:var(--bad); } .pill.on { color:var(--ok); border-color:var(--ok); }
+  main { flex:1; display:grid; grid-template-columns: 1fr 360px; min-height:0; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } aside { max-height: 38dvh; } }
+  #chat { display:flex; flex-direction:column; min-height:0; }
+  #log { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:820px; padding:10px 14px; border-radius:12px; white-space:pre-wrap; word-wrap:break-word; }
+  .me { align-self:flex-end; background:var(--accent); color:#fff; }
+  .ai { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
+  form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--panel); }
+  textarea { flex:1; resize:none; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:0 16px; font:inherit; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); padding:4px 10px; border-radius:8px; font-size:13px; }
+  button:disabled { opacity:.5; cursor:wait; }
+  aside { border-left:1px solid var(--line); background:var(--panel); overflow:auto; padding:14px; }
+  aside h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 10px; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; background:var(--bg); }
+  .card small { color:var(--muted); display:block; margin-top:4px; }
+  .card .warn { color:var(--warn); font-size:13px; margin-top:4px; }
+  .row { display:flex; gap:8px; margin-top:8px; }
+  .row button { padding:6px 12px; font-size:13px; }
+  .row .no { background:transparent; border:1px solid var(--line); color:var(--muted); }
+  .empty { color:var(--muted); font-size:14px; }
+  #login { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #login form { flex-direction:column; width:320px; border:1px solid var(--line); border-radius:14px; padding:20px; }
+  #login input { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px; font:inherit; }
+  #login button { padding:10px; }
+  .err { color:var(--bad); font-size:13px; min-height:18px; }
+</style>
+</head>
+<body>
+<div id="login">
+  <form id="loginForm">
+    <h1 style="margin:0 0 4px;font-size:18px">Agente de Tráfego</h1>
+    <input id="pw" type="password" placeholder="Senha" autocomplete="current-password" autofocus>
+    <div class="err" id="loginErr"></div>
+    <button>Entrar</button>
+  </form>
+</div>
+
+<header>
+  <h1>Agente de Tráfego</h1>
+  <span class="pill" id="modo">…</span>
+  <span class="pill" id="pg">…</span>
+  <button class="ghost" id="reset">Nova conversa</button>
+</header>
+<main>
+  <section id="chat">
+    <div id="log"></div>
+    <form id="form">
+      <textarea id="input" rows="2" placeholder="Ex.: analisa a conta do Google 123-456-7890 dos últimos 7 dias e propõe as otimizações"></textarea>
+      <button id="send">Enviar</button>
+    </form>
+  </section>
+  <aside>
+    <h2>Aguardando aprovação</h2>
+    <div id="pending"><div class="empty">Nenhuma ação pendente.</div></div>
+  </aside>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let pw = sessionStorage.getItem('pw') || '';
+const sid = sessionStorage.getItem('sid') || (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+sessionStorage.setItem('sid', sid);
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', 'x-app-password': pw, ...(opts.headers || {}) } });
+  if (r.status === 401) { sessionStorage.removeItem('pw'); $('#login').style.display = 'flex'; throw new Error('Senha inválida'); }
+  return r.json();
+}
+function add(role, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + (role === 'me' ? 'me' : 'ai');
+  d.textContent = text;
+  $('#log').appendChild(d); $('#log').scrollTop = 1e9;
+  return d;
+}
+function renderPending(list) {
+  const el = $('#pending');
+  if (!list.length) { el.innerHTML = '<div class="empty">Nenhuma ação pendente.</div>'; return; }
+  el.innerHTML = '';
+  for (const a of list) {
+    const c = document.createElement('div'); c.className = 'card';
+    const t = document.createElement('div'); t.textContent = a.summary; c.appendChild(t);
+    const s = document.createElement('small'); s.textContent = `#${a.id} · ${a.platform}`; c.appendChild(s);
+    for (const w of a.warnings || []) { const x = document.createElement('div'); x.className = 'warn'; x.textContent = w; c.appendChild(x); }
+    const row = document.createElement('div'); row.className = 'row';
+    const ok = document.createElement('button'); ok.textContent = 'Aprovar';
+    const no = document.createElement('button'); no.textContent = 'Rejeitar'; no.className = 'no';
+    ok.onclick = async () => { ok.disabled = true; const r = await api('/api/approve/' + a.id, { method: 'POST' }); add('ai', `Ação #${a.id}: ${r.status}${r.erro ? ' — ' + r.erro : ''}${r.motivos ? ' — ' + r.motivos.join(' ') : ''}`); loadPending(); };
+    no.onclick = async () => { await api('/api/reject/' + a.id, { method: 'POST' }); loadPending(); };
+    row.append(ok, no); c.appendChild(row); el.appendChild(c);
+  }
+}
+const loadPending = async () => renderPending(await api('/api/pending'));
+async function loadStatus() {
+  const s = await api('/api/status');
+  const m = $('#modo'); m.textContent = s.modo === 'REAL' ? 'MODO REAL' : 'Simulação'; m.className = 'pill ' + (s.modo === 'REAL' ? 'real' : 'sim');
+  const on = Object.entries(s.plataformas).filter(([, v]) => v).map(([k]) => k);
+  $('#pg').textContent = on.length ? 'Conectado: ' + on.join(', ') : 'Nenhuma plataforma conectada';
+  $('#pg').className = 'pill' + (on.length ? ' on' : '');
+}
+async function boot() {
+  $('#login').style.display = 'none';
+  await loadStatus(); await loadPending();
+  if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a sua aprovação.');
+}
+$('#loginForm').onsubmit = async (e) => {
+  e.preventDefault(); pw = $('#pw').value;
+  try { await api('/api/status'); sessionStorage.setItem('pw', pw); boot(); } catch { $('#loginErr').textContent = 'Senha inválida.'; }
+};
+$('#form').onsubmit = async (e) => {
+  e.preventDefault();
+  const text = $('#input').value.trim(); if (!text) return;
+  $('#input').value = ''; add('me', text);
+  const wait = add('ai', 'Pensando…'); $('#send').disabled = true;
+  try {
+    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sid, message: text }) });
+    wait.textContent = r.reply || r.error || '(sem resposta)';
+    renderPending(r.pending || []);
+  } catch (err) { wait.textContent = 'Erro: ' + err.message; }
+  $('#send').disabled = false; $('#log').scrollTop = 1e9;
+};
+$('#input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#form').requestSubmit(); } });
+$('#reset').onclick = async () => { await api('/api/reset', { method: 'POST', body: JSON.stringify({ sessionId: sid }) }); $('#log').innerHTML = ''; add('ai', 'Conversa reiniciada.'); };
+setInterval(() => { if (pw && $('#login').style.display === 'none') loadPending().catch(() => {}); }, 15000);
+if (pw) api('/api/status').then(boot).catch(() => {});
+</script>
+</body>
+</html>

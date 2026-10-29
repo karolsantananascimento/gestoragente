@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: traffic-agent
+    runtime: node
+    plan: starter            # precisa de plano pago para ter disco persistente (fila e auditoria)
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: traffic-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DRY_RUN
+        value: "true"        # só mude para "false" depois de testar tudo em simulação
+      - key: DATA_DIR
+        value: /var/data
+      - key: MAX_DAILY_BUDGET_BRL
+        value: "300"
+      - key: MAX_BUDGET_INCREASE_PCT
+        value: "20"
+      - key: MAX_ACTIVATIONS_PER_DAY
+        value: "5"
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5-5
+      # Segredos: preencher no painel do Render (não vão para o Git)
+      - key: APP_PASSWORD
+        sync: false
+      - key: MCP_TOKEN
+        sync: false
+      - key: APPROVAL_PIN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_ADS_DEVELOPER_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ADS_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_ADS_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_ADS_LOGIN_CUSTOMER_ID
+        sync: false
+      - key: GOOGLE_ADS_API_VERSION
+        value: v21
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: META_AD_ACCOUNT_ID
+        sync: false
+      - key: META_API_VERSION
+        value: v23.0
+      - key: LINKEDIN_ACCESS_TOKEN
+        sync: false
+      - key: LINKEDIN_AD_ACCOUNT_ID
+        sync: false
+      - key: LINKEDIN_API_VERSION
+        value: "202510"

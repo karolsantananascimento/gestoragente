@@ -1,0 +1,45 @@
+const num = (v, d) => (v !== undefined && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : d);
+
+export const config = {
+  port: num(process.env.PORT, 3000),
+  // Seguro por padrão: só sai do modo simulação com DRY_RUN=false explícito
+  dryRun: process.env.DRY_RUN !== 'false',
+  appPassword: process.env.APP_PASSWORD || '',
+  mcpToken: process.env.MCP_TOKEN || '',
+  approvalPin: process.env.APPROVAL_PIN || '',
+  anthropicKey: process.env.ANTHROPIC_API_KEY || '',
+  model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+  dataDir: process.env.DATA_DIR || './data',
+  caps: {
+    maxDailyBudgetBRL: num(process.env.MAX_DAILY_BUDGET_BRL, 300),
+    maxBudgetIncreasePct: num(process.env.MAX_BUDGET_INCREASE_PCT, 20),
+    maxActivationsPerDay: num(process.env.MAX_ACTIVATIONS_PER_DAY, 5),
+  },
+  google: {
+    developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+    clientId: process.env.GOOGLE_ADS_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET || '',
+    refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
+    loginCustomerId: (process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID || '').replace(/-/g, ''),
+    version: process.env.GOOGLE_ADS_API_VERSION || 'v21',
+  },
+  meta: {
+    token: process.env.META_ACCESS_TOKEN || '',
+    adAccountId: process.env.META_AD_ACCOUNT_ID || '',
+    version: process.env.META_API_VERSION || 'v23.0',
+  },
+  linkedin: {
+    token: process.env.LINKEDIN_ACCESS_TOKEN || '',
+    adAccountId: process.env.LINKEDIN_AD_ACCOUNT_ID || '',
+    version: process.env.LINKEDIN_API_VERSION || '202510',
+  },
+};
+
+export function platformStatus() {
+  const g = config.google, m = config.meta, l = config.linkedin;
+  return {
+    google: !!(g.developerToken && g.clientId && g.clientSecret && g.refreshToken),
+    meta: !!(m.token && m.adAccountId),
+    linkedin: !!(l.token && l.adAccountId),
+  };
+}

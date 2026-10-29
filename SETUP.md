@@ -1,0 +1,88 @@
+# Agente de Tráfego · Guia de setup
+
+Agente que cria e otimiza campanhas (Google, Meta, LinkedIn) a partir de texto. Funciona de dois jeitos ao mesmo tempo:
+
+- **Chat web** (`https://SEU-SERVICO.onrender.com`): conversa + painel de aprovação.
+- **Servidor MCP** (`https://SEU-SERVICO.onrender.com/mcp`): conecte no Claude como conector personalizado e peça no próprio Claude.
+
+## Segurança em camadas
+
+1. **DRY_RUN=true por padrão**: simula tudo, não toca nas contas.
+2. **Toda escrita vira proposta pendente.** Só executa depois da sua aprovação (botão no painel, ou `aprovar_acao` + PIN no MCP).
+3. **Tetos no código**: orçamento diário máximo, aumento máximo por ação (+20%), máximo de ativações por dia. Revalidados na hora de executar.
+4. **Nunca exclui**: só pausa.
+5. **Campanhas nascem pausadas.** Ativar é outra ação, com outra aprovação.
+6. **Auditoria** de tudo em `/api/audit`.
+
+## Ordem de execução
+
+### 1. Testar localmente (5 min)
+```bash
+cp .env.example .env     # preencha APP_PASSWORD, MCP_TOKEN, APPROVAL_PIN
+npm install
+npm test                 # travas de segurança
+export $(grep -v '^#' .env | xargs) && npm start
+```
+Abra http://localhost:3000.
+
+### 2. Subir no GitHub
+```bash
+git init && git add . && git commit -m "traffic agent"
+# crie um repositório privado no GitHub e:
+git remote add origin git@github.com:SEU_USUARIO/traffic-agent.git
+git push -u origin main
+```
+
+### 3. Deploy no Render
+Dashboard Render → **New → Blueprint** → escolha o repositório (usa o `render.yaml`). Preencha os segredos pedidos:
+`APP_PASSWORD`, `MCP_TOKEN`, `APPROVAL_PIN`, `ANTHROPIC_API_KEY` (as de plataforma pode deixar em branco por enquanto).
+
+URL final: `https://traffic-agent.onrender.com` (se o nome estiver ocupado, o Render adiciona um sufixo).
+
+### 4. Conectar no Claude (MCP)
+Claude → Configurações → Conectores → **Adicionar conector personalizado**:
+- URL: `https://SEU-SERVICO.onrender.com/mcp`
+- Autenticação: cabeçalho `Authorization: Bearer <MCP_TOKEN>` (se a sua versão do Claude só aceitar OAuth, use o chat web, ou coloque um proxy de autenticação na frente).
+
+### 5. Credenciais das plataformas (a parte mais demorada, comece cedo)
+
+**Google Ads**
+1. Conta MCC → Ferramentas → Central de API → solicite o **developer token** (nível básico leva alguns dias).
+2. Google Cloud → crie projeto, ative *Google Ads API*, crie credencial OAuth (tipo "App para computador") → `CLIENT_ID` e `CLIENT_SECRET`.
+3. Gere o **refresh token** pelo OAuth Playground com o escopo `https://www.googleapis.com/auth/adwords`.
+4. `GOOGLE_ADS_LOGIN_CUSTOMER_ID` = ID da MCC (só números).
+5. Confirme a versão vigente da API e ajuste `GOOGLE_ADS_API_VERSION`.
+
+**Meta Ads**
+1. developers.facebook.com → crie app (tipo Business) → adicione **Marketing API**.
+2. Business Manager → Usuários do sistema → crie um usuário **Admin** → atribua a conta de anúncio → gere token com `ads_management` e `ads_read` (token de longa duração).
+3. `META_AD_ACCOUNT_ID` no formato `act_123...`.
+
+**LinkedIn Ads**
+1. developers.linkedin.com → crie app, solicite **Advertising API / Marketing Developer Platform** (aprovação manual).
+2. Gere token OAuth com `r_ads`, `rw_ads`, `r_ads_reporting`. Anote o ID da conta de anúncio.
+
+### 6. Validar em SIMULAÇÃO com dados reais
+Com `DRY_RUN=true` e credenciais preenchidas, as **leituras são reais** (listar campanhas, termos, desempenho) e as **escritas são simuladas**. Teste:
+- "Lista as campanhas da conta 123-456-7890 dos últimos 7 dias"
+- "Mostra os termos de pesquisa que gastaram sem converter"
+- "Propõe negativas para a campanha X" → aprove no painel e veja o resultado simulado
+
+### 7. Ir para o modo real (só depois do passo 6)
+1. Reduza os tetos (`MAX_DAILY_BUDGET_BRL`) para um valor baixo no início.
+2. Em uma conta de teste, coloque `DRY_RUN=false` e rode **uma** ação de baixo risco (adicionar uma negativa).
+3. Confira na própria plataforma que a mudança aconteceu.
+4. Aumente a confiança aos poucos.
+
+## Limitações conhecidas (leia antes de usar em produção)
+
+- **As chamadas às APIs não foram testadas contra contas reais**; foi testada a estrutura, as travas e o fluxo de aprovação em simulação. Valide cada ferramenta de escrita na sua conta de teste antes de confiar nela. Os pontos mais sensíveis a mudanças de versão são `google_criar_*`, `meta_criar_campanha` e tudo do LinkedIn.
+- Criação de conjuntos/anúncios do **Meta** e de campanhas no **LinkedIn** ainda não existe (só leitura, pausa/ativação e, no Meta, criar campanha e ajustar orçamento). É a próxima fase.
+- A fila de aprovação usa arquivo em disco. Funciona em 1 instância; para escalar, migre para Postgres.
+- O MCP usa Bearer token fixo. Para uso por mais pessoas, implemente OAuth.
+
+## Evoluções sugeridas
+1. Rotina diária (cron do Render) que chama o agente, gera relatório e deixa propostas na fila.
+2. Alertas de saldo e anomalia (CPA, gasto) por e-mail/WhatsApp.
+3. Criação completa no Meta (conjunto + criativo) e LinkedIn.
+4. Edite `prompts/master.md` com a sua metodologia: é o que faz o agente pensar como você.

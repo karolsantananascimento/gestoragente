@@ -1,0 +1,19 @@
+{
+  "name": "traffic-agent",
+  "version": "0.1.0",
+  "description": "Agente de IA que cria e otimiza campanhas (Google, Meta, LinkedIn Ads) por texto, com aprovação humana e travas de segurança",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "express": "^4.21.0",
+    "zod": "^3.25.0"
+  }
+}
