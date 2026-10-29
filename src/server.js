@@ -8,6 +8,7 @@ import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { diagnostico } from './platforms/social.js';
 import * as reddit from './platforms/reddit.js';
+import { revisar } from './revisao.js';
 import * as linkedin from './platforms/linkedinPost.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
@@ -271,7 +272,7 @@ app.post('/api/reject/:id', requireUser, requireAdmin, (req, res) => res.json(re
 // --- Time, conteúdo e marca ---
 app.get('/api/team', requireUser, (_req, res) => res.json(teamInfo()));
 
-app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status, req.query.cliente) }));
+app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status, req.query.cliente).map((i) => ({ ...i, revisao: revisar(i) })) }));
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
 app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));

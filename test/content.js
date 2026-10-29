@@ -239,3 +239,14 @@ process.exit(fails ? 1 : 0);
   if (a.criados !== 1 || b.criados !== 0) throw new Error('importação não é idempotente');
   console.log('ok planilha');
 }
+
+// ---- revisão de marca (regras do playbook de marketing)
+{
+  const { revisar } = await import('../src/revisao.js');
+  const ruim = revisar({ cliente_id: 'operizy', canais: ['reddit'], legenda: 'O MELHOR sistema do Brasil, resultado garantido! Veja [LINK] #a #b' });
+  const temas = ruim.alertas.map((a) => a.tema + ':' + a.sev).join(' ');
+  if (!/Pendência:alta/.test(temas) || !/Alegação:média/.test(temas) || !/Canal:média/.test(temas) || ruim.ok) throw new Error('revisão não achou os problemas: ' + temas);
+  const bom = revisar({ cliente_id: 'operizy', canais: ['instagram'], legenda: 'Cliente pergunta o preço e some. Acompanhar quem hesita é parte da venda. Comente CHECKOUT e veja como recuperar. #lojavirtual #ecommerce' });
+  if (!bom.ok) throw new Error('revisão acusou legenda boa: ' + JSON.stringify(bom.alertas));
+  console.log('ok revisão de marca');
+}

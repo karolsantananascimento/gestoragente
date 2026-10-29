@@ -309,6 +309,7 @@
   <form class="box modal form" id="apprForm" style="max-width:480px">
     <h2>Aprovar e publicar</h2>
     <div class="note" id="apprTitle"></div>
+    <div class="alert" id="apprRev"></div>
     <label>Publicar em:</label>
     <div id="apprCh"></div>
     <label>Quando?</label>
@@ -954,6 +955,8 @@ function itemCard(it, full, color) {
   const late = it.data_publicacao && Date.parse(it.data_publicacao) < Date.now() && !['publicado', 'cancelado'].includes(it.status);
   chips.append(mk('span', FMT[it.formato] || it.formato || 'Feed', 'chip fmt'), mk('span', '📅 ' + dia(it.data_publicacao), 'chip' + (late ? ' late' : '')));
   if (it.status === 'ajustes') chips.append(mk('span', '↩ Ajustes', 'chip late'));
+  const rv = it.revisao; const nAl = rv ? rv.altas + rv.medias : 0;
+  if (nAl && !['publicado', 'cancelado'].includes(it.status)) chips.append(mk('span', `⚠ ${nAl} alerta${nAl > 1 ? 's' : ''}`, 'chip' + (rv.altas ? ' late' : '')));
   if (it.rascunho_auto) chips.append(mk('span', 'Rascunho', 'chip'));
   c.append(chips, mk('h4', it.titulo));
   if (!full && it.arte_url) { const img = document.createElement('img'); img.className = 'thumb'; img.loading = 'lazy'; img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); c.appendChild(img); }
@@ -966,6 +969,12 @@ function itemCard(it, full, color) {
   if (full) {
     c.append(mk('div', `${STATUS_TXT[it.status] || it.status}${it.marca ? ' · ' + it.marca : ''} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
     c.append(mk('div', 'Briefing da arte', 'lbl2'), mk('div', it.briefing_arte, 'cap'));
+    if (rv?.alertas?.length) {
+      c.append(mk('div', 'Revisão de marca', 'lbl2'));
+      const l = document.createElement('div'); l.className = 'hist cap'; l.style.maxHeight = 'none';
+      for (const a of rv.alertas) { const d = document.createElement('div'); d.textContent = `${a.sev === 'alta' ? '🔴' : a.sev === 'média' ? '🟠' : '⚪'} ${a.tema}: ${a.msg}${a.trecho ? ` ("${a.trecho}")` : ''}`; l.appendChild(d); }
+      c.appendChild(l);
+    } else if (rv) c.append(mk('div', 'Revisão de marca', 'lbl2'), mk('div', '✓ Nenhum alerta: legenda dentro das regras da marca.', 'ok'));
     if (it.rascunho_auto) c.appendChild(mk('div', 'Rascunho automático: revise a legenda e o briefing (Editar) ou rode a squad para o Hugo com IA refinar.', 'warn'));
     if (it.status === 'ajustes' && it.feedback) c.appendChild(mk('div', 'Ajustes pedidos: ' + it.feedback, 'warn'));
     if (it.arte_url) {
@@ -1000,6 +1009,8 @@ async function openApproval(it) {
   apprItem = it; $('#apprErr').textContent = '';
   const st = await api('/api/status?cliente=' + encodeURIComponent(apprItem.cliente_id || CUR)); const redes = st.redes || {};
   $('#apprTitle').textContent = it.titulo;
+  const rv = (it.revisao?.alertas || []).filter((a) => a.sev !== 'baixa');
+  $('#apprRev').innerHTML = ''; if (rv.length) { const h = document.createElement('b'); h.textContent = 'Antes de aprovar, revise:'; $('#apprRev').appendChild(h); for (const a of rv) { const d = document.createElement('div'); d.textContent = `${a.sev === 'alta' ? '🔴' : '🟠'} ${a.tema}: ${a.msg}${a.trecho ? ` ("${a.trecho}")` : ''}`; $('#apprRev').appendChild(d); } }
   $('#apprWhen').textContent = it.data_publicacao ? fmt(it.data_publicacao) : '(sem data — edite a pauta)';
   const box = $('#apprCh'); box.innerHTML = '';
   for (const k of Object.keys(CH_NAMES)) {

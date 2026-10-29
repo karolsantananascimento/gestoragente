@@ -3,6 +3,7 @@ import { sourcesForTeam, listSources } from './sources.js';
 import { gerarImagem } from './images.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
+import { revisar } from './revisao.js';
 import { createItem, editItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, listRequests, closeRequest, kitCompleto, getCliente, STATUS } from './content.js';
 
 const view = (c) => ({
@@ -105,6 +106,12 @@ export const teamTools = [
       if (!r.error && a.pedido_id) closeRequest(a.pedido_id, r.item.id, 'hugo');
       return wrap(r);
     },
+  },
+  {
+    name: 'conteudo_revisar', risk: 'read', agent: 'hugo,luiz,mariana',
+    description: 'REVISÃO DE MARCA de uma pauta: confere a legenda contra o kit do cliente e as regras de conformidade (placeholders [LINK]/[PREENCHER], superlativos e promessas sem prova, termos proibidos, números sem fonte, CTA, limite e tom por canal). Devolve alertas por gravidade (alta/média/baixa). Corrija as altas e médias com hugo_atualizar_pauta antes de seguir. Não aprova nada.',
+    params: { id: { type: 'string', desc: 'ID do conteúdo', required: true } },
+    handler: async ({ id }) => { const it = listItems().find((c) => c.id === id); return it ? { id, titulo: it.titulo, ...revisar(it) } : { status: 'erro', erro: 'Conteúdo não encontrado.' }; },
   },
   {
     name: 'hugo_atualizar_pauta', risk: 'internal', agent: 'hugo',

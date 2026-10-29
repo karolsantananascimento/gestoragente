@@ -37,7 +37,7 @@ function system(clienteNome = '') {
 
 // Automação: o Hugo (IA do próprio servidor) atende os pedidos abertos de um cliente criando as pautas.
 // Só usa ferramentas de equipe (nada de anúncios, nada de aprovação). A arte continua com o Luiz no Canva (conector do Claude).
-const TEAM_AUTO = ['hugo_atualizar_pauta', 'pedidos_listar', 'marca_ver', 'fontes_listar', 'conteudo_listar', 'hugo_criar_pauta', 'time_proximas_tarefas'];
+const TEAM_AUTO = ['conteudo_revisar', 'hugo_atualizar_pauta', 'pedidos_listar', 'marca_ver', 'fontes_listar', 'conteudo_listar', 'hugo_criar_pauta', 'time_proximas_tarefas'];
 const autoDefs = toolDefs.filter((t) => TEAM_AUTO.includes(t.name));
 const running = new Set();
 export const autoDisponivel = () => !!config.anthropicKey;
@@ -61,7 +61,7 @@ export async function atenderPedidos(clienteId, { completarMeta = false } = {}) 
   const antes = listItems(null, clienteId).length;
   try {
     const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Recife', dateStyle: 'full' });
-    const sys = `${prompt('hugo')}\n\n---\n${prompt('squad')}\n\nHoje é ${hoje}. Você é o Hugo rodando automaticamente dentro do sistema. Use só as ferramentas disponíveis. Nunca aprove nem publique nada.`;
+    const sys = `${prompt('hugo')}\n\n---\n${prompt('marketing')}\n\n---\n${prompt('squad')}\n\nHoje é ${hoje}. Você é o Hugo rodando automaticamente dentro do sistema. Use só as ferramentas disponíveis. Nunca aprove nem publique nada.`;
     const history = [{ role: 'user', content: `Atenda agora TODOS os pedidos abertos do cliente "${cl.nome}": chame pedidos_listar (cliente) e marca_ver; se houver fontes_de_pauta chame fontes_listar; para cada pedido crie a pauta com hugo_criar_pauta (cliente, pedido_id, canais, data_publicacao no formato AAAA-MM-DDTHH:MM em horário de Recife, formato, legenda completa com CTA e hashtags no tom do cliente, briefing_arte detalhado). Se o pedido não trouxer data, use as datas sugeridas de time_proximas_tarefas.${completarMeta ? ' Depois, chame time_proximas_tarefas (cliente) e crie também as pautas que faltam para bater a meta semanal, nas datas sugeridas, sem repetir temas já existentes (conteudo_listar).' : ''} Ao final responda com uma linha por pauta criada.` }];
     for (let turn = 0; turn < 14; turn++) {
       const res = await anthropic().messages.create({ model: config.model, max_tokens: 3500, system: sys, tools: autoDefs, messages: history });

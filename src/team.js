@@ -21,7 +21,7 @@ export const AGENTS = [
     id: 'hugo', nome: 'Hugo', cargo: 'Planejamento de conteúdo (IA)', emoji: '🗓️',
     funcao: 'Monta a pauta de conteúdos: para cada post, escreve a legenda e o briefing da arte, define canais e data.',
     entrega: 'Pautas na etapa "Em arte" (legenda + briefing)',
-    ferramentas: 'hugo_criar_pauta, marca_ver, conteudo_listar',
+    ferramentas: 'hugo_criar_pauta, conteudo_revisar, marca_ver, conteudo_listar',
     integracoes: () => [{ nome: 'Kit da marca', ok: true }],
   },
   {
