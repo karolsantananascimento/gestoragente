@@ -186,6 +186,21 @@
   </form>
 </div>
 
+<!-- Aprovação: escolher contas e quando publicar -->
+<div class="overlay dim hidden" id="apprModal">
+  <form class="box modal form" id="apprForm" style="max-width:480px">
+    <h2>Aprovar e publicar</h2>
+    <div class="note" id="apprTitle"></div>
+    <label>Publicar em:</label>
+    <div id="apprCh"></div>
+    <label>Quando?</label>
+    <label style="display:block"><input type="radio" name="modo" value="agendar" checked> Agendar para <b id="apprWhen"></b></label>
+    <label style="display:block"><input type="radio" name="modo" value="agora"> Publicar agora (instantâneo)</label>
+    <div class="err" id="apprErr"></div>
+    <div class="row"><button class="big">Aprovar</button><button type="button" class="ghost" id="apprClose">Cancelar</button></div>
+  </form>
+</div>
+
 <!-- Equipe (admin) -->
 <div class="overlay dim hidden" id="teamModal">
   <div class="box wide modal">
@@ -609,7 +624,7 @@ function itemCard(it) {
   if (['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) btn('Pedir ajuste', async () => { const n = prompt('O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');
   if (it.status === 'aguardando_aprovacao') {
     if (admin) {
-      btn('Aprovar e agendar', async () => { if (!it.data_publicacao) return alert('Defina a data de publicação (Editar) antes de aprovar.'); const r = await post('approve'); const v = Object.values(r.item.canais_status || {}); if (v.some((x) => x.status === 'sem_integracao')) alert('Aprovado. Alguns canais não têm integração conectada: publique esses manualmente.'); }, 'big');
+      btn('Aprovar…', async () => { await openApproval(it); }, 'big');
     } else row.appendChild(mk('small', 'Aguardando um administrador aprovar.', 'note'));
   }
   if (admin && ['aprovado', 'erro'].includes(it.status)) btn('Tentar agendar de novo', () => post('schedule'), 'no');
@@ -617,6 +632,37 @@ function itemCard(it) {
   if (row.children.length) c.appendChild(row);
   return c;
 }
+const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok' };
+let apprItem = null;
+async function openApproval(it) {
+  apprItem = it; $('#apprErr').textContent = '';
+  const st = await api('/api/status'); const redes = st.redes || {};
+  $('#apprTitle').textContent = it.titulo;
+  $('#apprWhen').textContent = it.data_publicacao ? fmt(it.data_publicacao) : '(sem data — edite a pauta)';
+  const box = $('#apprCh'); box.innerHTML = '';
+  for (const k of Object.keys(CH_NAMES)) {
+    const l = document.createElement('label'); l.style.display = 'block';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.value = k; c.checked = it.canais.includes(k);
+    l.append(c, ` ${CH_NAMES[k]} `);
+    const t = document.createElement('span'); t.className = 'tag'; t.textContent = redes[k] ? 'conectado' : 'não conectado (fica para publicar manualmente)'; l.appendChild(t);
+    box.appendChild(l);
+  }
+  show($('#apprModal'), true);
+}
+$('#apprClose').onclick = () => show($('#apprModal'), false);
+$('#apprForm').onsubmit = async (e) => {
+  e.preventDefault(); $('#apprErr').textContent = '';
+  const canais = [...$('#apprCh').querySelectorAll('input:checked')].map((x) => x.value);
+  const modo = e.target.elements.modo.value;
+  if (!canais.length) return ($('#apprErr').textContent = 'Escolha ao menos uma conta.');
+  if (modo === 'agora' && !confirm('Publicar AGORA em: ' + canais.map((k) => CH_NAMES[k]).join(', ') + '?')) return;
+  try {
+    const r = await api(`/api/content/${apprItem.id}/approve`, { method: 'POST', body: JSON.stringify({ canais, modo }) });
+    show($('#apprModal'), false);
+    if (Object.values(r.item.canais_status || {}).some((x) => x.status === 'sem_integracao')) alert('Aprovado. Alguns canais não têm integração conectada: publique esses manualmente.');
+    loadItems();
+  } catch (err) { $('#apprErr').textContent = err.message; }
+};
 function openItem(it) {
   editing = it || null;
   const f = $('#itemForm'); f.reset(); $('#itemErr').textContent = '';

@@ -215,7 +215,7 @@ app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
 app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
 // Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
-app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email)));
+app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email, { canais: req.body?.canais, modo: req.body?.modo })));
 app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));

@@ -150,18 +150,27 @@ export function requestChanges(id, nota, by) {
 }
 
 // APROVAÇÃO HUMANA. Só chamada por rota de administrador; não existe ferramenta de IA que aprove.
-export async function approveItem(id, by) {
+export async function approveItem(id, by, opts = {}) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (it.status !== 'aguardando_aprovacao') return { error: `Este conteúdo está "${STATUS[it.status]}", não aguarda aprovação.` };
   if (!it.arte_url) return { error: 'Sem arte registrada.' };
-  if (!it.data_publicacao) return { error: 'Defina a data de publicação antes de aprovar.' };
+  const agora = opts.modo === 'agora';
+  if (opts.modo && !['agora', 'agendar'].includes(opts.modo)) return { error: 'Modo inválido. Use "agendar" ou "agora".' };
+  if (!agora && !it.data_publicacao) return { error: 'Defina a data de publicação antes de aprovar (ou escolha publicar agora).' };
+  if (opts.canais !== undefined) {
+    const ch = cleanChannels(opts.canais);
+    if (ch.error) return ch;
+    it.canais = ch.list;
+    for (const k of Object.keys(it.canais_status || {})) if (!ch.list.includes(k)) delete it.canais_status[k];
+  }
+  if (agora) it.data_publicacao = now();
   it.status = 'aprovado';
   it.approvedBy = by; it.approvedAt = now();
-  hist(it, by, 'Aprovado por humano.');
+  hist(it, by, `Aprovado por humano para: ${it.canais.join(', ')} (${agora ? 'publicar agora' : 'agendar'}).`);
   store.saveContent();
-  store.log({ type: 'content_approved', id, by });
-  return scheduleItem(id, 'mariana');
+  store.log({ type: 'content_approved', id, by, canais: it.canais, modo: agora ? 'agora' : 'agendar' });
+  return scheduleItem(id, 'mariana', { agora });
 }
 
 export function cancelItem(id, by) {
@@ -176,7 +185,7 @@ export function cancelItem(id, by) {
 }
 
 // Mariana: só agenda o que foi aprovado por humano.
-export async function scheduleItem(id, by = 'mariana') {
+export async function scheduleItem(id, by = 'mariana', opts = {}) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!['aprovado', 'agendado', 'erro'].includes(it.status) || !it.approvedAt) {
@@ -194,6 +203,13 @@ export async function scheduleItem(id, by = 'mariana') {
     }
     if (config.dryRun) { it.canais_status[canal] = { status: 'simulado', detalhe: 'Modo simulação: nada foi enviado à rede.' }; continue; }
     try {
+      if (opts.agora) {
+        if (!ad.publicar) throw new Error(`${ad.nome} não publica direto.`);
+        const r = await ad.publicar(it);
+        it.canais_status[canal] = { status: 'publicado', detalhe: 'Publicado agora.', externalId: r.id };
+        store.log({ type: 'content_published', id, canal, status: 'publicado' });
+        continue;
+      }
       const r = await ad.agendar(it, when);
       it.canais_status[canal] = r.modo === 'fila'
         ? { status: 'na_fila', detalhe: 'Será publicado automaticamente na data marcada.' }

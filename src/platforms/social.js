@@ -25,6 +25,13 @@ export const adapters = {
       });
       return { modo: 'nativo', id: r.post_id || r.id };
     },
+    async publicar(item) {
+      const r = await httpJson(`${G()}/${config.social.fbPageId}/photos`, {
+        method: 'POST',
+        form: { url: item.arte_url, caption: item.legenda, published: 'true', access_token: config.social.fbPageToken },
+      });
+      return { id: r.post_id || r.id };
+    },
   },
   instagram: {
     nome: 'Instagram',

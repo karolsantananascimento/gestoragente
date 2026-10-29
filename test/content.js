@@ -124,6 +124,16 @@ try {
   const aj = c.requestChanges(np.conteudo.id, 'trocar a foto', 'u@x.com');
   ok(aj.item?.status === 'ajustes' && aj.item.feedback === 'trocar a foto', 'ajuste pode ser pedido logo na etapa em arte');
   ok(c.requestChanges(np.conteudo.id, 'título menor', 'u@x.com').item.feedback === 'trocar a foto | título menor', 'ajustes pendentes se acumulam');
+
+  // Aprovação escolhendo contas e publicando na hora
+  const qa = c.createItem({ titulo: 'agora', legenda: 'l', briefing_arte: 'b', canais: 'instagram, facebook' }, 'x').item;
+  await c.submitArt(qa.id, { arte_url: 'https://x.com/a.png' }, 'luiz');
+  ok((await c.approveItem(qa.id, 'adm', { canais: ['orkut'] })).error, 'aprovação recusa conta inválida');
+  ok((await c.approveItem(qa.id, 'adm', { canais: [], modo: 'agora' })).error, 'aprovação exige ao menos uma conta');
+  const before = calls.length;
+  const rq3 = await c.approveItem(qa.id, 'adm', { canais: ['instagram'], modo: 'agora' });
+  ok(rq3.item?.canais.join() === 'instagram' && rq3.item.status === 'publicado' && rq3.item.canais_status.instagram.status === 'publicado', 'publicar agora publica só nas contas escolhidas, sem exigir data');
+  ok(calls.slice(before).some((x) => x.url.endsWith('/IG1/media_publish')) && !calls.slice(before).some((x) => x.url.includes('/photos')), 'só o Instagram recebeu a publicação');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
