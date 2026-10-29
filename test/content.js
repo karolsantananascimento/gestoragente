@@ -227,3 +227,14 @@ try {
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);
+
+// ---- planilha da agência
+{
+  const { lerPlanilhaPauta, importarCsv } = await import('../src/planilha.js');
+  const csv = 'Título\n\nID,Data,Formato,Arte (texto na arte),Legenda,Prompt para o criativo\nX-A,"sex., 30/10/2026",Reels,"Linha 1\nLinha 2",Veja. [LINK],Prompt\n';
+  const l = lerPlanilhaPauta(csv);
+  if (!l || l.length !== 1 || l[0].data !== '2026-10-30' || !l[0].arte.includes('Linha 2')) throw new Error('planilha mal lida');
+  const a = importarCsv('operizy', csv, {}), b = importarCsv('operizy', csv, {});
+  if (a.criados !== 1 || b.criados !== 0) throw new Error('importação não é idempotente');
+  console.log('ok planilha');
+}

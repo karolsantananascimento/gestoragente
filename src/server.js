@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
+import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
 import { criarRascunhoDoPedido } from './rascunho.js';
@@ -350,6 +351,10 @@ app.use(express.static(path.join(here, '..', 'public')));
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
+{ // pautas prontas da agência (src/pautas/*.csv): entram os próximos 7 dias, na partida e todo dia
+  const rodar = () => { try { for (const r of importarPautasDeArquivo()) if (r.criados) console.log(`[pauta] ${r.cliente}: ${r.criados} pauta(s) importada(s) de ${r.arquivo}`); } catch (e) { console.error('[pauta]', e.message); } };
+  rodar(); setInterval(rodar, 6 * 3600e3).unref();
+}
 if (autoDisponivel()) {
   // Chave presente: atende no início os pedidos que ficaram abertos e, todo dia às 07h (Recife), completa a meta de cada cliente.
   setTimeout(() => rodarTodos({ completarMeta: false }).catch(() => {}), 20_000).unref();
