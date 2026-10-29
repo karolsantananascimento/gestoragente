@@ -51,7 +51,7 @@ export function platformStatus() {
   const g = config.google, m = config.meta, l = config.linkedin;
   return {
     google: !!(g.developerToken && g.clientId && g.clientSecret && g.refreshToken),
-    meta: !!(m.token && m.adAccountId),
+    meta: !!m.token,
     linkedin: !!(l.token && l.adAccountId),
   };
 }

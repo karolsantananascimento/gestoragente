@@ -68,7 +68,7 @@ Claude → Configurações → Conectores → **Adicionar conector personalizado
 4. `GOOGLE_ADS_LOGIN_CUSTOMER_ID` = ID da MCC (só números).
 5. Confirme a versão vigente da API e ajuste `GOOGLE_ADS_API_VERSION`.
 
-**Meta Ads**
+**Meta Ads** (basta o token; o ID da conta o agente descobre com `meta_listar_contas`)
 1. developers.facebook.com → crie app (tipo Business) → adicione **Marketing API**.
 2. Business Manager → Usuários do sistema → crie um usuário **Admin** → atribua a conta de anúncio → gere token com `ads_management` e `ads_read` (token de longa duração).
 3. `META_AD_ACCOUNT_ID` no formato `act_123...`.

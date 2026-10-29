@@ -18,6 +18,11 @@ const ok = (cond, msg) => { console.log(`${cond ? 'OK  ' : 'FALHA'} ${msg}`); if
 let r = await callTool('google_listar_campanhas', { customer_id: '123-456-7890' });
 ok(r.status === 'nao_configurado', 'leitura sem credenciais retorna "nao_configurado"');
 
+r = await callTool('meta_listar_contas');
+ok(r.status === 'nao_configurado' && /META_ACCESS_TOKEN/.test(r.erro), 'Meta sem token informa exatamente o que falta');
+r = await callTool('meta_listar_campanhas', {});
+ok(r.status === 'nao_configurado', 'Meta sem token não quebra ao listar campanhas');
+
 // 2. Escrita vira proposta pendente, nunca executa direto
 r = await callTool('google_pausar_ativar_campanha', { customer_id: '1234567890', campaign_id: '99', status: 'PAUSED' });
 ok(r.status === 'pendente_aprovacao' && r.id, 'pausar campanha vira proposta pendente');

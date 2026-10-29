@@ -1,17 +1,19 @@
 import { config } from '../config.js';
 import { httpJson, NotConfigured } from '../http.js';
 
+// Só o token é obrigatório. A conta de anúncio pode vir de META_AD_ACCOUNT_ID ou ser informada em cada chamada.
 function requireMeta() {
   const m = config.meta;
-  const missing = [];
-  if (!m.token) missing.push('META_ACCESS_TOKEN');
-  if (!m.adAccountId) missing.push('META_AD_ACCOUNT_ID');
-  if (missing.length) throw new NotConfigured('Meta Ads', missing);
+  if (!m.token) throw new NotConfigured('Meta Ads', ['META_ACCESS_TOKEN']);
   return m;
 }
 
 const base = () => `https://graph.facebook.com/${config.meta.version}`;
-const acct = (id) => { const v = id || config.meta.adAccountId; return v.startsWith('act_') ? v : `act_${v}`; };
+const acct = (id) => {
+  const v = String(id || config.meta.adAccountId || '').trim();
+  if (!v) throw new NotConfigured('Meta Ads', ['META_AD_ACCOUNT_ID (ou informe ad_account_id; use meta_listar_contas para descobrir)']);
+  return v.startsWith('act_') ? v : `act_${v}`;
+};
 
 async function get(path, params = {}) {
   const m = requireMeta();
@@ -32,6 +34,22 @@ async function currentDailyBudget(objectId) {
 }
 
 export const metaTools = [
+  {
+    name: 'meta_listar_contas',
+    platform: 'meta',
+    risk: 'read',
+    description: 'Lista as contas de anúncio do Meta que o token enxerga (id no formato act_..., nome, moeda, status e total gasto). Use para descobrir o ID da conta antes das demais ferramentas.',
+    params: {},
+    handler: async () => {
+      const r = await get('me/adaccounts', { fields: 'id,name,account_status,currency,amount_spent,business{name}', limit: '100' });
+      const status = { 1: 'ATIVA', 2: 'DESATIVADA', 3: 'COM PENDÊNCIA DE PAGAMENTO', 7: 'EM ANÁLISE', 9: 'EM PERÍODO DE CARÊNCIA', 100: 'ENCERRAMENTO PENDENTE', 101: 'ENCERRADA' };
+      return (r.data || []).map((a) => ({
+        id: a.id, nome: a.name, empresa: a.business?.name || null, moeda: a.currency,
+        status: status[a.account_status] || String(a.account_status),
+        total_gasto: a.amount_spent ? Number(a.amount_spent) / 100 : 0,
+      }));
+    },
+  },
   {
     name: 'meta_listar_campanhas',
     platform: 'meta',
