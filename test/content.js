@@ -96,7 +96,9 @@ try {
   ok(g.status === 'ok' && /^https:\/\/app\.exemplo\.com\/media\/[a-f0-9]{32}$/.test(g.imagem_url), 'luiz_gerar_imagem devolve link público da imagem');
   const oa = calls.find((x) => x.url.includes('api.openai.com'));
   ok(oa && JSON.parse(oa.body).size === '1024x1536' && /NÃO escreva texto/.test(JSON.parse(oa.body).prompt), 'pedido à OpenAI leva formato e regras da marca (sem texto na imagem)');
-  await callTool('luiz_gerar_imagem', { prompt: 'x' }, 'mcp');
+  const full = await callTool('luiz_gerar_imagem', { prompt: 'post lista', modo: 'arte_completa', texto: '5 SINAIS PARA RENOVAR SEU SITE' }, 'mcp');
+  ok(full.status === 'ok' && full.referencias_usadas >= 1 && calls.some((x) => x.url.endsWith('/images/edits')), 'arte_completa envia as referências visuais da marca ao endpoint de edição');
+  ok((await callTool('luiz_gerar_imagem', { prompt: 'sem texto', modo: 'arte_completa' }, 'mcp')).error?.includes('texto'), 'arte_completa exige o texto exato');
   ok((await callTool('luiz_gerar_imagem', { prompt: 'y' }, 'mcp')).error?.includes('Teto diário'), 'teto diário de imagens é respeitado');
 
   // data sem fuso = Recife

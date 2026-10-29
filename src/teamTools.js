@@ -43,7 +43,7 @@ export const teamTools = [
     name: 'marca_ver', risk: 'read', agent: 'hugo,luiz',
     description: 'Devolve o kit da marca (tom de voz, cores, fontes, regras de uso do logo, links). Luiz deve seguir à risca; Hugo usa o tom de voz.',
     params: {},
-    handler: async () => { const b = { ...store.brand() }; if (b.logo_url?.startsWith('/')) b.logo_url = `${config.publicUrl}${b.logo_url}`; return Object.keys(b).length ? b : { aviso: 'Kit da marca ainda vazio. Peça à administradora para preencher na aba Marca do painel.' }; },
+    handler: async () => { const b = { ...store.brand() }; if (b.logo_url?.startsWith('/')) b.logo_url = `${config.publicUrl}${b.logo_url}`; if (Array.isArray(b.referencias_visuais)) b.referencias_visuais = b.referencias_visuais.map((u) => (u.startsWith('/') ? `${config.publicUrl}${u}` : u)); return Object.keys(b).length ? b : { aviso: 'Kit da marca ainda vazio. Peça à administradora para preencher na aba Marca do painel.' }; },
   },
   {
     name: 'conteudo_listar', risk: 'read', agent: 'hugo,luiz,mariana',
@@ -78,10 +78,12 @@ export const teamTools = [
   },
   {
     name: 'luiz_gerar_imagem', risk: 'internal', agent: 'luiz',
-    description: 'LUIZ gera com o ChatGPT (OpenAI) uma imagem de fundo/ilustração no estilo da marca, SEM texto. Devolve um link público; envie ao Canva com upload-asset-from-url e componha título, logo e CTA lá. Tem teto diário (IMAGE_DAILY_CAP).',
+    description: 'LUIZ gera com o ChatGPT (OpenAI) uma imagem no estilo da marca. modo=fundo: fundo/ilustração SEM texto, devolve link público para compor no Canva (upload-asset-from-url). modo=arte_completa: arte pronta com o texto informado, copiando o padrão visual das referências da marca (revise cada palavra antes de registrar). Tem teto diário (IMAGE_DAILY_CAP).',
     params: {
       prompt: { type: 'string', desc: 'Descrição da imagem (cena, objetos, clima). Não peça texto na imagem.', required: true },
       formato: { type: 'string', desc: 'retrato (feed 4:5 / story), quadrado ou paisagem', enum: ['retrato', 'quadrado', 'paisagem'] },
+      modo: { type: 'string', desc: 'fundo (padrão): imagem sem texto para compor no Canva. arte_completa: arte pronta com texto, no padrão visual de referência da marca', enum: ['fundo', 'arte_completa'] },
+      texto: { type: 'string', desc: 'Só em arte_completa: TODO o texto exato que deve aparecer na arte (títulos, itens, CTA), já revisado em português' },
     },
     handler: async (a) => gerarImagem(a),
   },

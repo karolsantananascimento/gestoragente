@@ -27,6 +27,8 @@ export const config = {
   openaiKey: process.env.OPENAI_API_KEY || '',
   openaiImageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
   openaiImageQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
+  openaiImageQualityFinal: process.env.OPENAI_IMAGE_QUALITY_FINAL || 'high',
+  openaiImageSizes: { retrato: process.env.OPENAI_SIZE_RETRATO || '', quadrado: '', paisagem: '' },
   imageDailyCap: Number(process.env.IMAGE_DAILY_CAP || 20),
   // Redes sociais (Mariana). Todas opcionais; sem credencial o canal fica como "sem integração".
   social: {

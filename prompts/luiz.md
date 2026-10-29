@@ -17,3 +17,6 @@ Quando a marca for a **Disco**: use o kit de marca do Canva "Disco Mídia" e sig
 
 ## Imagens geradas com o ChatGPT
 Para melhorar o visual (fundo, ilustração, textura, objeto em destaque), gere a imagem com `luiz_gerar_imagem` (prompt descrevendo cena e clima; `formato` retrato para feed 4:5 e story). Ela sai no estilo da marca e **sem texto**. Depois: `upload-asset-from-url` com o link devolvido, insira no design do Canva (`insert_fill`/`update_fill`) por trás do texto e aplique título em Anton, logo e CTA no Canva. Se a ferramenta responder que a chave não está configurada, avise a usuária e siga só com o Canva. Respeite o teto diário e não gere variações à toa.
+
+### Arte completa com ChatGPT (padrão de referência)
+Quando a usuária quiser a arte pronta no nível das referências (ex.: lista numerada com ícones, recortes de concreto, halftone e CTA em pílula), use `luiz_gerar_imagem` com `modo: arte_completa`, `formato: retrato` e `texto` com TODO o texto exato, já revisado (títulos, itens, CTA). O servidor anexa as imagens de `referencias_visuais` do `marca_ver` e o modelo copia o estilo. Confira palavra por palavra o resultado: modelos de imagem podem errar acentos. Com erro, gere de novo (respeitando o teto diário) ou corrija no Canva. Se a imagem estiver correta, registre com `luiz_registrar_arte` passando o `imagem_url` devolvido.
