@@ -10,7 +10,7 @@ import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
-import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, planoSemanas, STATUS } from './content.js';
+import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -247,6 +247,7 @@ app.get('/media/:id', (req, res) => {
 app.use(express.static(path.join(here, '..', 'public')));
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
+{ const n = importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
 setInterval(() => tick().catch((e) => console.error('[agendador]', e.message)), 60_000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => store.flush().finally(() => process.exit(0)));
 

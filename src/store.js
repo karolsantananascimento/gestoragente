@@ -22,6 +22,7 @@ const normalize = (s) => {
   s.brand ||= {};
   s.media ||= {};
   s.settings ||= {};
+  s.seeded ||= [];
   return s;
 };
 
@@ -114,6 +115,8 @@ export const store = {
   saveContent() { save(); },
   settings: () => ({ meta_semanal: 3, ...load().settings }),
   setSettings(p) { Object.assign(load().settings, p); save(); return this.settings(); },
+  seeded: () => load().seeded,
+  markSeeded(id) { load().seeded.push(id); save(); },
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
   // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).

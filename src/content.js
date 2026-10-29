@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import { config } from './config.js';
 import { store } from './store.js';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { adapters } from './platforms/social.js';
 
 const MAX_IMG = 4 * 1024 * 1024;
@@ -270,4 +272,19 @@ export function planoSemanas(n = 3, marca) {
     weeks.push({ semana_de: ini, semana_ate: addDays(ini, 6), meta, planejados: items.length, faltam: sug.length, datas_sugeridas: sug });
   }
   return weeks;
+}
+
+// Pautas iniciais entregues junto com o código (src/seedContent.json). Entram uma única vez e só se a data ainda não passou.
+export function importSeeds() {
+  let seeds = [];
+  try { seeds = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./seedContent.json', import.meta.url)), 'utf8')); } catch { return 0; }
+  let n = 0;
+  for (const sd of seeds) {
+    if (store.seeded().includes(sd.seed_id)) continue;
+    const when = parseWhen(sd.data_publicacao);
+    if (!when || when.getTime() < Date.now()) continue;
+    const r = createItem(sd, 'hugo');
+    if (r.item) { store.markSeeded(sd.seed_id); n++; }
+  }
+  return n;
 }
