@@ -47,6 +47,8 @@ function promptCompleto(prompt, texto, b = {}) {
 export async function gerarImagem({ prompt, formato = 'retrato', modo = 'fundo', texto = '' }) {
   if (!config.openaiKey) throw new NotConfigured('OPENAI_API_KEY não configurada no servidor (Render → Environment).');
   if (!String(prompt || '').trim()) return { error: 'Descreva a imagem (prompt).' };
+  const completo = modo === 'arte_completa';
+  if (completo && !String(texto || '').trim()) return { error: 'No modo arte_completa informe o texto exato da arte (parâmetro texto).' };
   const origin = config.publicUrl;
   if (!origin) return { error: 'PUBLIC_URL não configurada; sem ela não há link público para a imagem.' };
 
@@ -54,8 +56,6 @@ export async function gerarImagem({ prompt, formato = 'retrato', modo = 'fundo',
   const usadas = store.audit().filter((e) => e.type === 'imagem_gerada' && e.at.startsWith(hoje)).length;
   if (usadas >= config.imageDailyCap) return { error: `Teto diário de ${config.imageDailyCap} imagens atingido (IMAGE_DAILY_CAP). Tente amanhã ou peça à administradora para aumentar.` };
 
-  const completo = modo === 'arte_completa';
-  if (completo && !String(texto || '').trim()) return { error: 'No modo arte_completa informe o texto exato da arte (parâmetro texto).' };
   const brand = store.brand();
   const refs = completo ? referencias(brand) : [];
   const size = config.openaiImageSizes[formato] || SIZES[formato] || SIZES.retrato;
