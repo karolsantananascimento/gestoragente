@@ -39,6 +39,7 @@ export const config = {
     linkedinAuthor: process.env.LINKEDIN_AUTHOR_URN || '', // urn:li:organization:123 ou urn:li:person:abc
     tiktokToken: process.env.TIKTOK_ACCESS_TOKEN || '',
   },
+  reddit: { clientId: process.env.REDDIT_CLIENT_ID || '', clientSecret: process.env.REDDIT_CLIENT_SECRET || '', userAgent: process.env.REDDIT_USER_AGENT || 'web:gestoragente:1.0 (by /u/' + (process.env.REDDIT_USERNAME || 'gestoragente') + ')' },
   caps: {
     maxDailyBudgetBRL: num(process.env.MAX_DAILY_BUDGET_BRL, 300),
     maxBudgetIncreasePct: num(process.env.MAX_BUDGET_INCREASE_PCT, 20),

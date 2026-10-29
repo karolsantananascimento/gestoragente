@@ -23,7 +23,7 @@ async function cacheArt(url, origin) {
   return { url: `${origin}/media/${id}` };
 }
 
-export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok'];
+export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok', 'reddit'];
 export const STATUS = {
   em_arte: 'Em arte (Luiz)',
   aguardando_aprovacao: 'Aguardando aprovação',

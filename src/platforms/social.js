@@ -1,6 +1,7 @@
 import { config, socialStatus } from '../config.js';
 import { httpJson } from '../http.js';
 import { store } from '../store.js';
+import * as reddit from './reddit.js';
 
 // Adaptadores das redes sociais usados pela Mariana. Cada um expõe:
 //   configured(): bool
@@ -19,6 +20,7 @@ export function contasDe(clienteId) {
   return {
     fbPageId: own.fb_page_id || (padrao ? config.social.fbPageId : ''),
     igUserId: own.ig_user_id || (padrao ? config.social.igUserId : ''),
+    redditSub: own.reddit_subreddit || '',
     padrao,
   };
 }
@@ -40,6 +42,7 @@ export function redesDe(clienteId) {
     facebook: !!(c.fbPageId && (tok || (c.padrao && base.facebook))),
     instagram: !!(c.igUserId && tok),
     linkedin: base.linkedin && c.padrao, tiktok: false,
+    reddit: !!(c.redditSub && reddit.conectado()),
   };
 }
 
@@ -141,6 +144,13 @@ export const adapters = {
         return { id: p.id, nota };
       } catch (e) { throw comDica(e); }
     },
+  },
+  reddit: {
+    nome: 'Reddit',
+    configured: (item) => redesDe(item?.cliente_id).reddit,
+    // O Reddit não agenda pela API: o agendador do servidor publica na hora marcada.
+    async agendar() { return { modo: 'fila' }; },
+    async publicar(item) { return reddit.publicar(item, contasDe(item.cliente_id).redditSub); },
   },
   // Espaços reservados: preencha quando for integrar.
   linkedin: {

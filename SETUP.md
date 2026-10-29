@@ -129,3 +129,10 @@ Persistência: sem `DATABASE_URL` os dados ficam em arquivo e somem a cada rein�
 
 ## Execução automática do time (opcional, recomendada)
 Defina `ANTHROPIC_API_KEY` no Render. Com ela o Hugo cria as pautas sozinho: na hora de cada pedido (caixa de diálogo ou "Pedir ao time"), no botão "Rodar agora" e todo dia às 07h (Recife) para completar a meta semanal de cada cliente (`AUTO_TEAM_DAILY=false` desliga a rotina diária). Só roda para clientes com kit de marca completo. A arte continua com o Luiz no Canva (conector do Claude).
+
+## Reddit (publicação)
+1. Em reddit.com/prefs/apps crie um app do tipo **web app**, com redirect uri `https://SEU-DOMINIO/api/reddit/callback`.
+2. No Render defina `REDDIT_CLIENT_ID` (abaixo do nome do app) e `REDDIT_CLIENT_SECRET`. Opcional: `REDDIT_USER_AGENT`.
+3. No painel (Marca → Publicação) informe o subreddit do cliente e clique em **Conectar Reddit**: você autoriza no site do Reddit e o sistema guarda só o token de acesso (nunca a senha).
+4. Use **Verificar Reddit** para conferir conta e subreddit. Posts são de texto (título + legenda + link da arte) e só saem depois da aprovação humana.
+Atenção: o Reddit exige aprovação de acesso à API para apps novos e cada subreddit tem regras (autopromoção, flair, frequência). Contas que postam material promocional em excesso levam ban.

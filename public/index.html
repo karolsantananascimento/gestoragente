@@ -276,6 +276,9 @@
     <div class="sec"><h3>Publicação e links</h3><div class="sub">Contas onde o Mariana publica. Vazio = não publica.</div>
       <div class="grid2"><label>Instagram: ID da conta profissional<input name="ig_user_id" inputmode="numeric"></label>
       <label>Facebook: ID da página<input name="fb_page_id" inputmode="numeric"></label></div>
+      <label>Reddit: subreddit onde este cliente publica (ex.: minhaloja, ou u_seuusuario para o seu perfil)<input name="reddit_subreddit" placeholder="sem r/"></label>
+      <div class="row" style="margin:0"><button type="button" class="ghost" id="redditConnect">Conectar Reddit</button><button type="button" class="ghost" id="redditCheck">Verificar Reddit</button><button type="button" class="danger hidden" id="redditOff">Desconectar</button></div>
+      <div id="redditOut" class="meta" style="margin-top:6px"></div>
       <div class="row" style="margin:0"><button type="button" class="ghost" id="socialCheck">🔎 Verificar conexão e buscar contas</button><span class="note">Mostra as páginas e Instagrams que o token do Meta enxerga e preenche os IDs para você.</span></div>
       <div id="socialOut" class="meta" style="margin-top:6px"></div>
       <label>Outros links (manual da marca, pasta de assets)<textarea name="links" rows="3"></textarea></label></div>
@@ -397,6 +400,7 @@ let token = store_.get('tk');
 let me = null;
 const sid = sessionStorage.getItem('sid') || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 sessionStorage.setItem('sid', sid);
+const redditMsg = new URLSearchParams(location.search).get('reddit');
 const inviteToken = new URLSearchParams(location.search).get('invite');
 const signupMode = !!new URLSearchParams(location.search).get('cadastro') && !inviteToken;
 
@@ -483,7 +487,8 @@ async function boot() {
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
   await loadClients(); await loadStatus(); await loadPending();
-  openTab(store_.get('tab') || 'conteudo');
+  openTab(redditMsg ? 'marca' : (store_.get('tab') || 'conteudo'));
+  if (redditMsg) { toast(redditMsg === 'ok' ? 'Reddit conectado! Clique em Verificar Reddit.' : 'Reddit: ' + redditMsg, redditMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#redditCheck')?.click(), 800); }
   if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para campanhas (analisar conta, negativas, orçamento) o que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
@@ -748,7 +753,7 @@ async function loadBrand() {
   const c = await api('/api/clients/' + encodeURIComponent(CUR)); const b = c.marca || {};
   const f = $('#brandForm');
   for (const el of f.elements) if (el.name) {
-    el.value = el.name === 'meta_semanal' ? c.meta_semanal : el.name === 'ig_user_id' || el.name === 'fb_page_id' ? (c.contas?.[el.name] || '') : (b[el.name] || '');
+    el.value = el.name === 'meta_semanal' ? c.meta_semanal : el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit' ? (c.contas?.[el.name] || '') : (b[el.name] || '');
     el.disabled = me.role !== 'admin';
   }
   $('#brandSave').disabled = me.role !== 'admin'; show($('#newClient'), me.role === 'admin');
@@ -782,6 +787,23 @@ $('#socialCheck').onclick = async () => {
   } catch (e) { out.textContent = e.message; }
   $('#socialCheck').disabled = false;
 };
+async function redditCheck() {
+  const out = $('#redditOut'); out.textContent = 'Consultando o Reddit…';
+  try {
+    const r = await api('/api/reddit/status?' + qc()); out.innerHTML = '';
+    const mk = (txt, cls) => { const x = document.createElement('div'); x.textContent = txt; x.className = cls || ''; out.appendChild(x); };
+    mk(r.conectado ? `✓ Reddit conectado como u/${r.usuario}` : '○ Reddit não conectado', r.conectado ? 'ok' : 'warn');
+    if (r.sub) mk(`✓ r/${r.subreddit}: ${r.sub.titulo || ''} · ${r.sub.assinantes ?? '?'} membros · aceita ${r.sub.tipo || 'texto'}`, 'ok');
+    for (const d of r.dicas) mk('→ ' + d, 'warn');
+    show($('#redditOff'), r.conectado); $('#redditConnect').textContent = r.conectado ? 'Reconectar Reddit' : 'Conectar Reddit';
+  } catch (e) { out.textContent = e.message; }
+}
+$('#redditCheck').onclick = redditCheck;
+$('#redditConnect').onclick = async () => {
+  try { const r = await api('/api/reddit/auth-url', { method: 'POST', body: '{}' }); location.href = r.url; }
+  catch (e) { $('#redditOut').textContent = e.message; }
+};
+$('#redditOff').onclick = async () => { if (!confirm('Desconectar o Reddit?')) return; await api('/api/reddit/disconnect', { method: 'POST', body: '{}' }); redditCheck(); };
 $('#newClient').onclick = async () => {
   const nome = await ask('Novo cliente', 'Nome do cliente', { multiline: false }); if (!nome) return;
   const meta = await ask('Novo cliente', 'Quantos posts por semana?', { value: '2', multiline: false }); if (!meta) return;
@@ -791,7 +813,7 @@ $('#newClient').onclick = async () => {
 $('#brandForm').onsubmit = async (e) => {
   e.preventDefault(); $('#brandErr').textContent = '';
   const marca = {}; let meta_semanal; const contas = {};
-  for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id') contas[el.name] = el.value; else marca[el.name] = el.value; }
+  for (const el of e.target.elements) if (el.name) { if (el.name === 'meta_semanal') meta_semanal = Number(el.value); else if (el.name === 'ig_user_id' || el.name === 'fb_page_id' || el.name === 'reddit_subreddit') contas[el.name] = el.value; else marca[el.name] = el.value; }
   try { await api('/api/clients/' + encodeURIComponent(CUR), { method: 'PUT', body: JSON.stringify({ marca, meta_semanal, contas }) }); await loadClients(CUR); toast('Marca salva.', 'ok'); loadBrand(); }
   catch (err) { $('#brandErr').textContent = err.message; }
 };
@@ -951,7 +973,7 @@ function itemCard(it, full, color) {
   if (!full) c.onclick = () => { renderView(it); show($('#viewModal'), true); };
   return c;
 }
-const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok' };
+const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', reddit: 'Reddit' };
 let apprItem = null;
 async function openApproval(it) {
   apprItem = it; $('#apprErr').textContent = '';

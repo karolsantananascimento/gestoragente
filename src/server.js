@@ -7,6 +7,7 @@ import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { diagnostico } from './platforms/social.js';
+import * as reddit from './platforms/reddit.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
@@ -203,6 +204,19 @@ app.get('/api/status', requireUser, (req, res) =>
 
 app.get('/api/social/check', requireUser, requireAdmin, async (req, res) => { try { res.json(await diagnostico(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
 
+// ---- Reddit (OAuth: a senha da usuária nunca passa pelo sistema; só o token de acesso é guardado) ----
+const redditRedirect = (req) => `${config.publicUrl || `${req.protocol}://${req.get('host')}`}/api/reddit/callback`;
+app.get('/api/reddit/status', requireUser, requireAdmin, async (req, res) => { try { res.json(await reddit.status(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/reddit/auth-url', requireUser, requireAdmin, (req, res) => {
+  if (!reddit.appConfigured()) return res.status(400).json({ error: 'Faltam REDDIT_CLIENT_ID e REDDIT_CLIENT_SECRET no Render (crie o app em reddit.com/prefs/apps).' });
+  res.json({ url: reddit.authUrl(req.user.email, redditRedirect(req)), redirect_uri: redditRedirect(req) });
+});
+app.post('/api/reddit/disconnect', requireUser, requireAdmin, (req, res) => { store.setInteg('reddit', null); reddit.limparToken(); store.log({ type: 'reddit_desconectado', by: req.user.email }); res.json({ ok: true }); });
+app.get('/api/reddit/callback', async (req, res) => {
+  try { const who = await reddit.callback(String(req.query.state || ''), String(req.query.code || ''), String(req.query.error || ''), redditRedirect(req)); store.log({ type: 'reddit_conectado', by: who.by, usuario: who.usuario }); res.redirect('/?reddit=ok'); }
+  catch (e) { res.redirect('/?reddit=' + encodeURIComponent(e.message)); }
+});
+
 app.post('/api/chat', requireUser, async (req, res) => {
   const { sessionId = 'default', message, cliente } = req.body || {};
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Mensagem vazia.' });
@@ -295,7 +309,7 @@ app.get('/api/clients/:id', requireUser, (req, res) => {
 });
 const slug = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const cleanMeta = (v) => { const m = Number(v); return Number.isInteger(m) && m >= 1 && m <= 21 ? m : null; };
-const cleanContas = (c = {}) => ({ ig_user_id: String(c.ig_user_id || '').replace(/\D/g, '').slice(0, 30), fb_page_id: String(c.fb_page_id || '').replace(/\D/g, '').slice(0, 30) });
+const cleanContas = (c = {}) => ({ ig_user_id: String(c.ig_user_id || '').replace(/\D/g, '').slice(0, 30), fb_page_id: String(c.fb_page_id || '').replace(/\D/g, '').slice(0, 30), reddit_subreddit: String(c.reddit_subreddit || '').trim().replace(/^\/?(r\/)?/i, '').replace(/[^\w-]/g, '').slice(0, 40) });
 app.post('/api/clients', requireUser, requireAdmin, (req, res) => {
   const nome = String(req.body?.nome || '').trim().slice(0, 80);
   if (!nome) return res.status(400).json({ error: 'Informe o nome do cliente.' });
