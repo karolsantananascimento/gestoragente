@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "id": "d7b3d668",
+      "id": "dbc99346",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -13,8 +13,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:27:54.121Z",
-      "executedAt": "2026-10-29T17:27:54.122Z",
+      "createdAt": "2026-10-29T17:35:24.018Z",
+      "executedAt": "2026-10-29T17:35:24.019Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 101",
@@ -27,7 +27,7 @@
       "simulated": true
     },
     {
-      "id": "08243b76",
+      "id": "bd85764e",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -39,8 +39,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:27:54.120Z",
-      "executedAt": "2026-10-29T17:27:54.121Z",
+      "createdAt": "2026-10-29T17:35:24.016Z",
+      "executedAt": "2026-10-29T17:35:24.017Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 100",
@@ -53,7 +53,7 @@
       "simulated": true
     },
     {
-      "id": "98886e12",
+      "id": "fbcdc113",
       "tool": "google_criar_campanha_pesquisa",
       "platform": "google",
       "args": {
@@ -67,10 +67,10 @@
       "activation": false,
       "status": "pending",
       "source": "agent",
-      "createdAt": "2026-10-29T17:27:54.117Z"
+      "createdAt": "2026-10-29T17:35:24.011Z"
     },
     {
-      "id": "ba2b7b9c",
+      "id": "954490c1",
       "tool": "google_pausar_ativar_campanha",
       "platform": "google",
       "args": {
@@ -83,8 +83,8 @@
       "activation": false,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-29T17:27:54.115Z",
-      "executedAt": "2026-10-29T17:27:54.119Z",
+      "createdAt": "2026-10-29T17:35:24.009Z",
+      "executedAt": "2026-10-29T17:35:24.015Z",
       "result": {
         "simulado": true,
         "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
@@ -100,7 +100,7 @@
   ],
   "audit": [
     {
-      "at": "2026-10-29T17:27:54.123Z",
+      "at": "2026-10-29T17:35:24.020Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -113,7 +113,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.123Z",
+      "at": "2026-10-29T17:35:24.020Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -126,9 +126,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.122Z",
+      "at": "2026-10-29T17:35:24.020Z",
       "type": "simulated",
-      "id": "d7b3d668",
+      "id": "dbc99346",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -146,9 +146,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:27:54.122Z",
+      "at": "2026-10-29T17:35:24.019Z",
       "type": "proposed",
-      "id": "d7b3d668",
+      "id": "dbc99346",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -157,9 +157,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.121Z",
+      "at": "2026-10-29T17:35:24.017Z",
       "type": "simulated",
-      "id": "08243b76",
+      "id": "bd85764e",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -177,9 +177,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:27:54.120Z",
+      "at": "2026-10-29T17:35:24.016Z",
       "type": "proposed",
-      "id": "08243b76",
+      "id": "bd85764e",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -188,9 +188,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.119Z",
+      "at": "2026-10-29T17:35:24.015Z",
       "type": "simulated",
-      "id": "ba2b7b9c",
+      "id": "954490c1",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -210,7 +210,7 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-29T17:27:54.118Z",
+      "at": "2026-10-29T17:35:24.014Z",
       "type": "blocked",
       "tool": "google_criar_grupo_com_anuncio",
       "args": {
@@ -234,9 +234,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.118Z",
+      "at": "2026-10-29T17:35:24.012Z",
       "type": "proposed",
-      "id": "98886e12",
+      "id": "fbcdc113",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
         "customer_id": "1234567890",
@@ -247,7 +247,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.117Z",
+      "at": "2026-10-29T17:35:24.011Z",
       "type": "blocked",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
@@ -262,9 +262,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-29T17:27:54.116Z",
+      "at": "2026-10-29T17:35:24.010Z",
       "type": "proposed",
-      "id": "ba2b7b9c",
+      "id": "954490c1",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",

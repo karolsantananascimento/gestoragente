@@ -11,7 +11,8 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "https://export-download.canva.com/6n-dQ/DAHZab6n-dQ/-1/0/0001-4632472738776316163.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261029%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261029T171423Z&X-Amz-Expires=6849&X-Amz-Signature=be3a329a081befa7ea162bcd206a30e1609de236d8f25bc59a9bf853aa764fb9&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A08%3A32%20GMT"
+    "arte_url": "https://export-download.canva.com/zNtUk/DAHZaWzNtUk/-1/0/0001-1137679428961196499.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261029%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261029T064652Z&X-Amz-Expires=46047&X-Amz-Signature=cc3dc1d651da68a816f36db59ce133b2c9219ee98c687c24fe5b7c1a6f2314ef&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A34%3A19%20GMT",
+    "arte_nota": "Capa de feed no padrão do feed atual da Disco (título curto, verde dominante, imagem única)."
   },
   {
     "seed_id": "disco-sites-2026-w45-2",
@@ -25,7 +26,8 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "https://export-download.canva.com/I1GFU/DAHZadI1GFU/-1/0/0001-214441502907087828.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261028%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261028T235457Z&X-Amz-Expires=68933&X-Amz-Signature=211d141ef3570edbe4a76ca627f0685bfad1b1d6ac95a2109c3cbdc30a8b9fda&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A03%3A50%20GMT"
+    "arte_url": "https://export-download.canva.com/FewSA/DAHZaRFewSA/-1/0/0001-7636373691194444524.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261029%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261029T075828Z&X-Amz-Expires=38719&X-Amz-Signature=3f35956ec770e2188349150839eea57d087114579363a9a5546c6d3fab0d9add&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2018%3A43%3A47%20GMT",
+    "arte_nota": "Capa de feed no padrão do feed atual da Disco (título curto, verde dominante, imagem única)."
   },
   {
     "seed_id": "disco-sites-2026-w45-3",
@@ -39,7 +41,7 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "/brand/ref/lista-5-sinais.png",
-    "arte_nota": "Arte aprovada como referência do padrão visual (lista numerada)."
+    "arte_url": "https://export-download.canva.com/nXN1w/DAHZaTnXN1w/-1/0/0001-8551730313794173036.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261029%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261029T080437Z&X-Amz-Expires=41008&X-Amz-Signature=993cbd7fbab494298185a1dc9ff149fef1b52de3ec6745898024c6f8fc206f15&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A28%3A05%20GMT",
+    "arte_nota": "Capa de feed no padrão do feed atual da Disco (título curto, verde dominante, imagem única)."
   }
 ]
