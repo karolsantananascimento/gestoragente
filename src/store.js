@@ -21,6 +21,7 @@ const normalize = (s) => {
   s.content ||= [];
   s.brand ||= {};
   s.media ||= {};
+  s.settings ||= {};
   return s;
 };
 
@@ -111,6 +112,8 @@ export const store = {
     return c;
   },
   saveContent() { save(); },
+  settings: () => ({ meta_semanal: 3, ...load().settings }),
+  setSettings(p) { Object.assign(load().settings, p); save(); return this.settings(); },
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
   // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).

@@ -1,7 +1,7 @@
 import { store } from './store.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
-import { createItem, submitArt, scheduleItem, listItems, cronograma, STATUS } from './content.js';
+import { createItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, STATUS } from './content.js';
 
 const view = (c) => ({
   id: c.id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
@@ -13,6 +13,23 @@ const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok
 
 // risk 'internal': age só dentro do sistema (nada é gasto nem publicado sem aprovação humana).
 export const teamTools = [
+  {
+    name: 'time_proximas_tarefas', risk: 'read', agent: 'todos',
+    description: 'COMECE POR AQUI. Fila de trabalho do time: o que Hugo, Luiz e Mariana devem fazer agora (semanas com menos posts que a meta, artes pendentes, agendamentos a tentar) e o que espera aprovação humana. Execute as tarefas de Hugo e Luiz sem pedir permissão: tudo termina na aprovação humana.',
+    params: { semanas: { type: 'number', desc: 'Quantas semanas à frente planejar (padrão 2)' } },
+    handler: async ({ semanas }) => {
+      const n = Math.min(Math.max(Number(semanas) || 2, 1), 6);
+      const plano = planoSemanas(n);
+      const por = (s) => listItems(s).map((c) => ({ id: c.id, titulo: c.titulo, canais: c.canais, data_publicacao: c.data_publicacao, formato: c.formato, ajustes_pedidos: c.feedback }));
+      return {
+        meta_semanal: plano[0]?.meta,
+        hugo: { tarefa: 'Criar as pautas que faltam com hugo_criar_pauta (legenda + briefing da arte), usando as datas sugeridas. Consulte marca_ver e conteudo_listar para não repetir temas; varie entre posts de autoridade e de storytelling.', semanas: plano.filter((w) => w.faltam > 0) },
+        luiz: { tarefa: 'Criar a arte de cada item no Canva e registrar com luiz_registrar_arte.', pendentes: [...por('em_arte'), ...por('ajustes')] },
+        mariana: { tarefa: 'Reagendar com mariana_agendar os itens abaixo (aprovados que não foram agendados ou deram erro).', pendentes: [...por('aprovado'), ...por('erro')] },
+        aguardando_aprovacao_humana: por('aguardando_aprovacao').length,
+      };
+    },
+  },
   {
     name: 'time_agentes', risk: 'read', agent: 'todos',
     description: 'Lista o time (Camila, Hugo, Luiz, Mariana) e a função de cada um. Com "agente", devolve também as instruções detalhadas dele.',
@@ -44,6 +61,7 @@ export const teamTools = [
       data_publicacao: { type: 'string', desc: 'Quando publicar, AAAA-MM-DD ou AAAA-MM-DDTHH:MM (horário de Recife)', required: true },
       formato: { type: 'string', desc: 'feed, carrossel, story, reels (padrão feed)' },
       objetivo: { type: 'string', desc: 'Objetivo do post' },
+      marca: { type: 'string', desc: 'Marca/cliente do post (padrão: a marca do kit)' },
     },
     handler: async (a) => wrap(createItem(a, 'hugo')),
   },

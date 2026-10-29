@@ -10,7 +10,7 @@ import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
-import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, STATUS } from './content.js';
+import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, planoSemanas, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -219,6 +219,13 @@ app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res)
 app.post('/api/content/:id/changes', requireUser, requireAdmin, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
+
+app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8)) }));
+app.put('/api/settings', requireUser, requireAdmin, (req, res) => {
+  const m = Number(req.body?.meta_semanal);
+  if (!Number.isInteger(m) || m < 1 || m > 21) return res.status(400).json({ error: 'Meta semanal precisa ser um número de 1 a 21.' });
+  res.json(store.setSettings({ meta_semanal: m }));
+});
 
 const BRAND_FIELDS = ['nome', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links'];
 app.get('/api/brand', requireUser, (_req, res) => res.json(store.brand()));

@@ -16,3 +16,7 @@ Hugo (pauta) → Luiz (arte) → **aprovação humana no botão do painel** → 
 - Se a administradora pedir ajustes na arte, o item volta para "Ajustes" com a observação; Luiz refaz e registra de novo.
 - Canais sem integração conectada aparecem como "sem integração": avise a usuária que ela precisa publicar manualmente, sem fingir que foi agendado.
 - Datas sem fuso valem em horário de Recife.
+
+## Autonomia
+
+Ao começar qualquer trabalho de conteúdo (ou quando a usuária disser "rodem a semana", "toquem o time" etc.), chame `time_proximas_tarefas` e execute, nesta ordem, sem pedir permissão: Hugo cria as pautas que faltam (meta semanal), Luiz cria as artes no Canva, e Mariana tenta de novo o que ficou preso. Tudo termina na fila "Aguardando aprovação"; aí você para e avisa quantos itens esperam a aprovação humana. Depois de rodar, resuma em poucas linhas o que cada um fez.

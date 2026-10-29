@@ -137,7 +137,8 @@
 
 <div class="view hidden" id="v-conteudo">
   <p class="flow">Hugo (pauta) → Luiz (arte) → <b>aprovação humana</b> → Mariana (agenda).</p>
-  <div class="row" style="margin:0 0 12px"><button id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
+  <div id="weeks" class="row" style="margin:0 0 12px"></div>
+  <div class="row" style="margin:0 0 12px"><button id="runTeam">▶ Rodar o time (copiar comando)</button><button class="ghost" id="newItem">+ Nova pauta</button><button class="ghost" id="reloadItems">Atualizar</button><span class="note" id="contentNote"></span></div>
   <div class="board" id="board"></div>
 </div>
 
@@ -523,7 +524,7 @@ $('#brandForm').onsubmit = async (e) => {
 
 /* ---------- conteúdo ---------- */
 const COLS = [
-  ['Em arte', ['em_arte', 'ajustes']],
+  ['Pauta pronta · Em arte', ['em_arte', 'ajustes']],
   ['Aguardando aprovação', ['aguardando_aprovacao']],
   ['Aprovado / agendado', ['aprovado', 'agendado']],
   ['Publicado / outros', ['publicado', 'erro', 'cancelado']],
@@ -533,7 +534,26 @@ let STATUS_TXT = {};
 let editing = null;
 const toLocalInput = (iso) => { if (!iso) return ''; const d = new Date(Date.parse(iso) - 3 * 3600e3); return d.toISOString().slice(0, 16); }; // Recife = UTC-3
 
+async function loadPlan() {
+  const { semanas } = await api('/api/plan?n=3');
+  const el = $('#weeks'); el.innerHTML = '';
+  const d = (ymd) => ymd.slice(8) + '/' + ymd.slice(5, 7);
+  for (const w of semanas) {
+    const t = document.createElement('span'); t.className = 'tag ' + (w.faltam ? 'warn' : 'ok'); t.style.fontSize = '13px';
+    t.textContent = `Semana ${d(w.semana_de)}–${d(w.semana_ate)}: ${w.planejados}/${w.meta} posts`;
+    el.appendChild(t);
+  }
+  if (me.role === 'admin' && semanas[0]) {
+    const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Meta semanal';
+    b.onclick = async () => { const v = prompt('Quantos posts por semana?', semanas[0].meta); if (v) { try { await api('/api/settings', { method: 'PUT', body: JSON.stringify({ meta_semanal: Number(v) }) }); loadPlan(); } catch (e) { alert(e.message); } } };
+    el.appendChild(b);
+  }
+}
+const RUN_CMD = 'Use o conector Agente de Tráfego: chame time_proximas_tarefas e execute as tarefas do time (Hugo cria as pautas que faltam para a Disco, Luiz cria as artes no Canva). Deixe tudo aguardando aprovação.';
+$('#runTeam').onclick = async () => { try { await navigator.clipboard.writeText(RUN_CMD); $('#contentNote').textContent = 'Comando copiado. Cole numa conversa do Claude com o conector.'; } catch { prompt('Copie e cole no Claude:', RUN_CMD); } };
+
 async function loadItems() {
+  loadPlan().catch(() => {});
   const r = await api('/api/content'); STATUS_TXT = r.status;
   const board = $('#board'); board.innerHTML = '';
   for (const [title, sts] of COLS) {
@@ -547,7 +567,7 @@ async function loadItems() {
 function itemCard(it) {
   const c = document.createElement('div'); c.className = 'item';
   const mk = (tag, txt, cls) => { const x = document.createElement(tag); x.textContent = txt; if (cls) x.className = cls; return x; };
-  c.append(mk('h4', it.titulo), mk('div', `${STATUS_TXT[it.status] || it.status} · ${it.canais.join(', ')} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
+  c.append(mk('h4', it.titulo), mk('div', `${it.marca ? it.marca + ' · ' : ''}${STATUS_TXT[it.status] || it.status} · ${it.canais.join(', ')} · ${it.data_publicacao ? fmt(it.data_publicacao) : 'sem data'}`, 'meta'));
   const cap = mk('div', it.legenda, 'cap'); cap.onclick = () => cap.classList.toggle('open'); c.appendChild(cap);
   const br = mk('div', 'Briefing: ' + it.briefing_arte, 'meta'); br.style.marginTop = '6px'; c.appendChild(br);
   if (it.status === 'ajustes' && it.feedback) c.appendChild(mk('div', 'Ajustes pedidos: ' + it.feedback, 'warn'));

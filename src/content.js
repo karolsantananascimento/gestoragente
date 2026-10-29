@@ -71,6 +71,7 @@ export function createItem(p, by) {
   const item = {
     id: crypto.randomUUID().slice(0, 8),
     titulo, legenda, briefing_arte: briefing,
+    marca: String(p.marca || store.brand().nome || '').slice(0, 80),
     formato: String(p.formato || 'feed').slice(0, 40),
     objetivo: String(p.objetivo || '').slice(0, 300),
     canais: ch.list,
@@ -239,4 +240,34 @@ export async function tick() {
     hist(it, 'mariana', `Publicação: ${it.status}`);
     store.saveContent();
   }
+}
+
+// --- Planejamento semanal (meta de posts por semana) ---
+const RECIFE = 3 * 3600e3;
+// Segunda-feira (AAAA-MM-DD) da semana de uma data, no horário de Recife.
+export function weekStart(d) {
+  const t = new Date(d.getTime() - RECIFE);
+  const dow = (t.getUTCDay() + 6) % 7; // segunda = 0
+  t.setUTCDate(t.getUTCDate() - dow);
+  return t.toISOString().slice(0, 10);
+}
+const addDays = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const SLOTS = [[0, '11:00'], [2, '11:00'], [4, '11:00']]; // seg, qua, sex (sugestão)
+
+export function planoSemanas(n = 3, marca) {
+  const meta = store.settings().meta_semanal;
+  const start = weekStart(new Date());
+  const weeks = [];
+  for (let i = 0; i < n; i++) {
+    const ini = addDays(start, i * 7);
+    const items = store.content().filter((c) => c.status !== 'cancelado' && c.data_publicacao && weekStart(new Date(c.data_publicacao)) === ini && (!marca || !c.marca || c.marca === marca));
+    const falta = Math.max(0, meta - items.length);
+    const usados = new Set(items.map((c) => new Date(new Date(c.data_publicacao).getTime() - RECIFE).toISOString().slice(0, 10)));
+    const livres = SLOTS.map(([d, h]) => `${addDays(ini, d)}T${h}`)
+      .filter((s) => !usados.has(s.slice(0, 10)) && parseWhen(s).getTime() > Date.now() + 3600e3);
+    // Em semana já em andamento só dá para planejar nos horários que ainda não passaram.
+    const sug = livres.slice(0, falta);
+    weeks.push({ semana_de: ini, semana_ate: addDays(ini, 6), meta, planejados: items.length, faltam: sug.length, datas_sugeridas: sug });
+  }
+  return weeks;
 }

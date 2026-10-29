@@ -31,6 +31,15 @@ try {
   const mk = await callTool('marca_ver', {});
   ok(mk.nome === 'Disco' && /#78D600/.test(mk.cores) && /ANTON/i.test(mk.fontes) && /storytelling/i.test(mk.objetivo_conteudo) && /a gente/.test(mk.tom_de_voz) && mk.logo_url === 'https://app.exemplo.com/brand/disco-logo-branco-verde.svg', 'marca_ver entrega o kit Disco (cores, fontes, estilo, logo) ao Luiz');
 
+  // fila de trabalho autônoma: Hugo vê as semanas sem pauta
+  let q = await callTool('time_proximas_tarefas', { semanas: 2 });
+  ok(q.meta_semanal === 3 && q.hugo.semanas.length >= 1 && q.hugo.semanas[0].datas_sugeridas.length > 0, 'time_proximas_tarefas diz ao Hugo quantos posts faltam e em que datas');
+  const w0 = q.hugo.semanas[0];
+  for (const d of w0.datas_sugeridas) await callTool('hugo_criar_pauta', { titulo: 'Auto ' + d, legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: d });
+  const q2 = await callTool('time_proximas_tarefas', { semanas: 2 });
+  ok(!q2.hugo.semanas.some((w) => w.semana_de === w0.semana_de), 'depois de criar as pautas sugeridas a semana fica completa (sem passar da meta)');
+  ok(q2.luiz.pendentes.length === w0.datas_sugeridas.length, 'as pautas aparecem na fila do Luiz');
+
   // Hugo cria pela ferramenta
   let r = await callTool('hugo_criar_pauta', { titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
   ok(r.status === 'ok' && r.conteudo.status === 'em_arte', 'Hugo cria a pauta e ela nasce em "em_arte"');
