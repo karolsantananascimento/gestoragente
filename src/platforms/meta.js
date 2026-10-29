@@ -131,6 +131,63 @@ export const metaTools = [
     handler: async ({ id, novo_orcamento_brl }) => post(id, { daily_budget: cents(novo_orcamento_brl) }),
   },
   {
+    name: 'meta_listar_conjuntos',
+    platform: 'meta',
+    risk: 'read',
+    description: 'Lista conjuntos de anúncios (id, nome, campanha, status, orçamento diário, público: idade, gêneros e países). Use para achar o conjunto antes de ajustar público ou orçamento.',
+    params: { ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' }, campanha_id: { type: 'string', desc: 'Filtrar por campanha (opcional)' } },
+    handler: async ({ ad_account_id, campanha_id }) => {
+      const rows = await getAll(`${acct(ad_account_id)}/adsets`, { fields: 'id,name,campaign_id,status,effective_status,daily_budget,end_time,targeting{age_min,age_max,genders,geo_locations{countries}}', limit: '100' });
+      return rows.filter((x) => !campanha_id || x.campaign_id === campanha_id).map((x) => ({ id: x.id, nome: x.name, campanha_id: x.campaign_id, status: x.status, situacao: x.effective_status, orcamento_dia_brl: x.daily_budget ? Number(x.daily_budget) / 100 : null, termina_em: x.end_time || null, idade_min: x.targeting?.age_min, idade_max: x.targeting?.age_max, generos: x.targeting?.genders, paises: x.targeting?.geo_locations?.countries }));
+    },
+  },
+  {
+    name: 'meta_ajustar_publico',
+    platform: 'meta',
+    risk: 'write',
+    description: 'Ajusta o público de um CONJUNTO de anúncios do Meta: faixa de idade, gênero e/ou países. Só altera o que for informado e mantém o resto do público. Passa por aprovação humana.',
+    params: {
+      id: { type: 'string', desc: 'ID do conjunto de anúncios', required: true },
+      idade_min: { type: 'number', desc: 'Idade mínima (13 a 65)' },
+      idade_max: { type: 'number', desc: 'Idade máxima (13 a 65)' },
+      genero: { type: 'string', enum: ['todos', 'masculino', 'feminino'], desc: 'Gênero do público' },
+      paises: { type: 'string[]', desc: 'Códigos de país (ex.: BR, PT)' },
+    },
+    summarize: (a) => `Meta: público do conjunto ${a.id} →${a.idade_min ? ` idade mín. ${a.idade_min}` : ''}${a.idade_max ? ` idade máx. ${a.idade_max}` : ''}${a.genero ? ` gênero ${a.genero}` : ''}${a.paises?.length ? ` países ${a.paises.join(',')}` : ''}`,
+    precheck: async (a) => {
+      if (a.idade_min !== undefined && (a.idade_min < 13 || a.idade_min > 65)) return { error: 'Idade mínima deve ficar entre 13 e 65.' };
+      if (a.idade_max !== undefined && (a.idade_max < 13 || a.idade_max > 65)) return { error: 'Idade máxima deve ficar entre 13 e 65.' };
+      if (a.idade_min !== undefined && a.idade_max !== undefined && a.idade_min > a.idade_max) return { error: 'Idade mínima maior que a máxima.' };
+      if (a.paises?.some((c) => !/^[A-Za-z]{2}$/.test(c))) return { error: 'Países devem ser códigos de 2 letras (ex.: BR).' };
+      if (a.idade_min === undefined && a.idade_max === undefined && !a.genero && !a.paises?.length) return { error: 'Informe ao menos um ajuste de público.' };
+      const cur = await get(a.id, { fields: 'name,targeting{age_min,age_max,genders,geo_locations{countries}}' });
+      const t = cur.targeting || {};
+      return { warn: `Público atual de "${cur.name}": idade ${t.age_min || '?'}–${t.age_max || '?'}, gêneros ${t.genders ? t.genders.join(',') : 'todos'}, países ${(t.geo_locations?.countries || []).join(',') || '—'}.` };
+    },
+    handler: async (a) => {
+      const cur = await get(a.id, { fields: 'targeting' });
+      const t = { ...(cur.targeting || {}) };
+      if (a.idade_min !== undefined) t.age_min = a.idade_min;
+      if (a.idade_max !== undefined) t.age_max = a.idade_max;
+      if (a.genero) { if (a.genero === 'todos') delete t.genders; else t.genders = [a.genero === 'masculino' ? 1 : 2]; }
+      if (a.paises?.length) t.geo_locations = { ...(t.geo_locations || {}), countries: a.paises.map((c) => c.toUpperCase()) };
+      return post(a.id, { targeting: JSON.stringify(t) });
+    },
+  },
+  {
+    name: 'meta_ajustar_datas',
+    platform: 'meta',
+    risk: 'write',
+    description: 'Define a data/hora de término de uma campanha ou conjunto do Meta (ex.: encerrar numa data). Não exclui nada.',
+    params: {
+      id: { type: 'string', desc: 'ID da campanha ou do conjunto', required: true },
+      termina_em: { type: 'string', desc: 'Data/hora de término ISO (ex.: 2026-11-30T23:59:00-03:00)', required: true },
+    },
+    summarize: (a) => `Meta: encerrar o objeto ${a.id} em ${a.termina_em}`,
+    precheck: async (a) => { const d = new Date(a.termina_em); if (Number.isNaN(d.getTime())) return { error: 'Data de término inválida.' }; if (d.getTime() < Date.now()) return { error: 'A data de término já passou.' }; return {}; },
+    handler: async (a) => post(a.id, { end_time: new Date(a.termina_em).toISOString() }),
+  },
+  {
     name: 'meta_criar_campanha',
     platform: 'meta',
     risk: 'write',

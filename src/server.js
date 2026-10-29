@@ -9,6 +9,7 @@ import { buildMcpServer } from './mcp.js';
 import { diagnostico } from './platforms/social.js';
 import * as reddit from './platforms/reddit.js';
 import { revisar } from './revisao.js';
+import { runTrafego } from './trafegoCmd.js';
 import * as linkedin from './platforms/linkedinPost.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
@@ -20,7 +21,7 @@ import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
 import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
-import { approveAction, rejectAction, pendingActions } from './guardrails.js';
+import { approveAction, rejectAction, pendingActions, proposeAction } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
   listUsers, removeUser, createInvite, inviteInfo, acceptInvite, revokeInvite, pendingInvites, sendInviteEmail,
@@ -244,6 +245,9 @@ app.post('/api/chat', requireUser, async (req, res) => {
       store.log({ type: 'comando', by: req.user.email, cliente: cmd.cliente_id || null });
       return res.json({ reply, pending: pendingActions(), comando: true });
     }
+    // 2) comandos de tráfego (pausar/ativar/orçamento no Meta) viram propostas para aprovação
+    const tr = await runTrafego({ texto: message, by: req.user.email });
+    if (tr.handled) return res.json({ reply: tr.reply, acao: tr.acao, pending: pendingActions(), comando: true });
     res.json(await chat(`${req.user.email}:${sessionId}`, message, req.user.email, getCliente(cliente)?.nome));
   } catch (e) {
     console.error('[chat]', e);
@@ -259,6 +263,16 @@ app.post('/api/tool', requireUser, async (req, res) => {
   const t = allTools.find((x) => x.name === name);
   if (!t || t.risk !== 'read' || t.mcpOnly || NO_PANEL.has(name)) return res.status(400).json({ error: 'Ferramenta não disponível neste painel.' });
   res.json(await callTool(name, args && typeof args === 'object' ? args : {}, `painel:${req.user.email}`));
+});
+
+// Colaboradores e administradores PROPÕEM ajustes de anúncios do Meta; só administradores aprovam (botão), e os tetos de segurança valem.
+const PROPOSTAS = new Set(['meta_pausar_ativar', 'meta_ajustar_orcamento', 'meta_ajustar_publico', 'meta_ajustar_datas']);
+app.post('/api/meta/propor', requireUser, async (req, res) => {
+  const { name, args } = req.body || {};
+  if (!PROPOSTAS.has(name)) return res.status(400).json({ error: 'Ajuste não disponível.' });
+  const t = allTools.find((x) => x.name === name);
+  const r = await proposeAction(t, args && typeof args === 'object' ? args : {}, `painel:${req.user.email}`);
+  res.json({ ...r, pending: pendingActions() });
 });
 
 app.get('/api/pending', requireUser, (_req, res) => res.json(pendingActions()));

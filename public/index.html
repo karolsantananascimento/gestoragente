@@ -200,6 +200,8 @@
       <button type="button" class="ghost" data-s="criar pauta de ">✍ Criar pauta</button>
       <button type="button" class="ghost" data-s="listar pauta">📋 Listar pauta</button>
       <button type="button" class="ghost" data-s="ajustar criativo ">🎯 Ajustar criativo</button>
+      <button type="button" class="ghost" data-s='pausar campanha ""'>⏸ Pausar campanha</button>
+      <button type="button" class="ghost" data-s='aumentar orçamento da campanha "" em 10%'>💲 Ajustar orçamento</button>
     </div>
     <div id="quick">
       <span class="lbl">Consultar agora (sem IA):</span>
@@ -420,6 +422,21 @@ function logout() {
   token = ''; me = null; store_.del('tk');
   show($('#login'), true); $('#pw').value = '';
 }
+// Proposta de ajuste no chat: botões de aprovar/rejeitar na própria conversa (só administradores aprovam).
+function proposalBox(parent, a) {
+  const box = document.createElement('div'); box.className = 'card'; box.style.marginTop = '8px';
+  const t = document.createElement('div'); t.textContent = '⏳ ' + a.resumo; box.appendChild(t);
+  const row = document.createElement('div'); row.className = 'row';
+  const res = document.createElement('div'); res.className = 'note';
+  if (me?.role === 'admin') {
+    const ok = document.createElement('button'); ok.className = 'big'; ok.textContent = 'Aprovar e executar no Meta';
+    const no = document.createElement('button'); no.className = 'no'; no.textContent = 'Rejeitar';
+    ok.onclick = async () => { ok.disabled = no.disabled = true; try { const r = await api('/api/approve/' + a.id, { method: 'POST' }); res.textContent = r.status === 'executado' ? '✅ Executado no Meta.' : r.status === 'simulado' ? '🧪 Simulado (modo simulação: nada mudou na conta).' : `⚠ ${r.status}: ${r.erro || (r.motivos || []).join(' ') || ''}`; } catch (e) { res.textContent = 'Erro: ' + e.message; } row.remove(); loadPending(); };
+    no.onclick = async () => { await api('/api/reject/' + a.id, { method: 'POST' }); res.textContent = 'Proposta rejeitada.'; row.remove(); loadPending(); };
+    row.append(ok, no); box.appendChild(row);
+  } else res.textContent = 'Aguardando um administrador aprovar.';
+  box.appendChild(res); parent.appendChild(box);
+}
 function add(role, text) {
   const d = document.createElement('div');
   d.className = 'msg ' + (role === 'me' ? 'me' : 'ai');
@@ -432,7 +449,7 @@ function add(role, text) {
 $('#whoBtn').onclick = (e) => { e.stopPropagation(); $('#userPop').classList.toggle('hidden'); };
 document.addEventListener('click', (e) => { if (!e.target.closest('.usermenu')) $('#userPop').classList.add('hidden'); });
 for (const b of document.querySelectorAll('#userPop button')) b.addEventListener('click', () => $('#userPop').classList.add('hidden'));
-for (const b of document.querySelectorAll('#sugs [data-s]')) b.onclick = () => { const i = $('#input'); i.value = b.dataset.s; i.focus(); };
+for (const b of document.querySelectorAll('#sugs [data-s]')) b.onclick = () => { const i = $('#input'); i.value = b.dataset.s; i.focus(); const p = i.value.indexOf('""'); if (p >= 0) i.setSelectionRange(p + 1, p + 1); };
 
 /* ---------- pendências ---------- */
 function renderPending(list) {
@@ -495,7 +512,7 @@ async function boot() {
   if (liMsg) { openTab('marca'); toast(liMsg === 'ok' ? 'LinkedIn conectado! Clique em Verificar LinkedIn.' : 'LinkedIn: ' + liMsg, liMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#liCheck')?.click(), 800); } else
   openTab(redditMsg ? 'marca' : (store_.get('tab') || 'conteudo'));
   if (redditMsg) { toast(redditMsg === 'ok' ? 'Reddit conectado! Clique em Verificar Reddit.' : 'Reddit: ' + redditMsg, redditMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#redditCheck')?.click(), 800); }
-  if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para campanhas (analisar conta, negativas, orçamento) o que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
+  if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para anúncios do Meta: "pausar campanha \"nome\"", "ativar campanha \"nome\"", "orçamento da campanha \"nome\" para 50", "aumentar orçamento da campanha \"nome\" em 10%". Cada ajuste vira uma proposta que um administrador aprova com um clique, dentro da conversa.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
 
@@ -580,6 +597,7 @@ $('#form').onsubmit = async (e) => {
   try {
     const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sid, message: text, cliente: CUR }) });
     wait.textContent = r.reply || '(sem resposta)';
+    if (r.acao) proposalBox(wait, r.acao);
     renderPending(r.pending || []);
   } catch (err) { wait.textContent = 'Erro: ' + err.message; }
   $('#send').disabled = false; $('#log').scrollTop = 1e9;
@@ -598,13 +616,13 @@ const flatInsight = (r) => ({
   campanha: r.campaign_name, gasto: money(r.spend, r.moeda), impressões: r.impressions, cliques: r.clicks, CTR: r.ctr ? Number(r.ctr).toFixed(2) + '%' : '', CPC: r.cpc ? Number(r.cpc).toFixed(2) : '',
   resultados: (r.actions || []).filter((a) => /lead|registration|purchase|contact|link_click/.test(a.action_type)).slice(0, 3).map((a) => `${a.action_type}: ${a.value}`).join(' · '),
 });
-function tableEl(rows, onAccount) {
+function tableEl(rows, onAccount, rowActions) {
   const wrap = document.createElement('div'); wrap.className = 'tbl';
   const t = document.createElement('table');
   const cols = Object.keys(rows[0]);
   const head = document.createElement('tr');
   for (const c of cols) { const th = document.createElement('th'); th.textContent = c.replace(/_/g, ' '); head.appendChild(th); }
-  if (onAccount) head.appendChild(document.createElement('th'));
+  if (onAccount || rowActions) head.appendChild(document.createElement('th'));
   t.appendChild(head);
   for (const row of rows) {
     const tr = document.createElement('tr');
@@ -616,10 +634,27 @@ function tableEl(rows, onAccount) {
       }
       tr.appendChild(td);
     }
+    if (rowActions) { const td = document.createElement('td'); for (const [label, fn] of rowActions(row)) { const b = document.createElement('button'); b.className = 'ghost'; b.textContent = label; b.onclick = () => fn(b); td.appendChild(b); } tr.appendChild(td); }
     t.appendChild(tr);
   }
   wrap.appendChild(t); return wrap;
 }
+// Ajustes rápidos por campanha: cada clique cria uma PROPOSTA (aprovação com um clique, dentro da conversa).
+async function propor(name, args, titulo) {
+  const el = add('ai', titulo + '…');
+  try {
+    const r = await api('/api/meta/propor', { method: 'POST', body: JSON.stringify({ name, args }) });
+    if (r.status === 'bloqueado') el.textContent = 'Bloqueado pelos tetos de segurança: ' + r.motivos.join(' ');
+    else { el.textContent = `${titulo}. Proposta #${r.id} criada.` + (r.avisos?.length ? '\n' + r.avisos.join('\n') : ''); proposalBox(el, { id: r.id, resumo: r.resumo }); }
+    renderPending(r.pending || []);
+  } catch (e) { el.textContent = 'Erro: ' + e.message; }
+}
+const campanhaAcoes = (c) => {
+  const a = [];
+  a.push(c.status === 'PAUSED' ? ['▶ Ativar', () => propor('meta_pausar_ativar', { id: c.id, status: 'ACTIVE' }, `Ativar "${c.nome}"`)] : ['⏸ Pausar', () => propor('meta_pausar_ativar', { id: c.id, status: 'PAUSED' }, `Pausar "${c.nome}"`)]);
+  a.push(['💲 Orçamento', async () => { const v = await ask('Orçamento diário', `Novo orçamento diário em reais para "${c.nome}"${c.orcamento_dia_brl ? ` (hoje R$ ${c.orcamento_dia_brl})` : ''}`, { multiline: false, value: c.orcamento_dia_brl ? String(c.orcamento_dia_brl) : '' }); const n = Number(String(v || '').replace(',', '.')); if (n > 0) propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: n }, `Orçamento de "${c.nome}" → R$ ${n}`); }]);
+  return a;
+};
 async function runQuery(key, accountId) {
   const q = QUERIES[key];
   const el = add('ai', 'Consultando o Meta…'); el.classList.add('wide');
@@ -645,7 +680,7 @@ async function runQuery(key, accountId) {
         rows = [...rows, { campanha: 'TOTAL', gasto: money(sum('spend'), cur), 'impressões': sum('impressions'), cliques: sum('clicks'), CTR: '', CPC: '', resultados: '' }];
         el.append(document.createElement('br'), `Período: ${r[0].periodo_inicio} a ${r[0].periodo_fim} · moeda ${cur || '?'}`);
       }
-      el.appendChild(tableEl(rows, key === 'contas'));
+      el.appendChild(tableEl(rows, key === 'contas', key === 'campanhas' ? campanhaAcoes : null));
     } else {
       el.append(document.createElement('br'), r?.erro || r?.error || JSON.stringify(r));
     }

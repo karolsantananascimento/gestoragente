@@ -1,0 +1,52 @@
+// Testa os comandos de tráfego (pausar/ativar/orçamento) → proposta → aprovação, com a API do Meta simulada.
+import fs from 'node:fs';
+process.env.DATA_DIR = './data/trafego-test'; process.env.DRY_RUN = 'false';
+process.env.META_ACCESS_TOKEN = 'tk'; process.env.META_AD_ACCOUNT_ID = 'act_1'; process.env.MAX_DAILY_BUDGET_BRL = '100'; process.env.MAX_BUDGET_INCREASE_PCT = '20';
+fs.rmSync('./data/trafego-test', { recursive: true, force: true });
+const calls = [];
+globalThis.fetch = async (url, opts = {}) => {
+  const u = String(url); calls.push({ u, m: opts.method || 'GET', body: opts.body });
+  const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+  if (/act_1\/campaigns/.test(u)) return j({ data: [{ id: '111', name: 'Leads Black Friday', objective: 'OUTCOME_LEADS', status: 'ACTIVE', daily_budget: '5000' }, { id: '222', name: 'Leads Natal', status: 'PAUSED', daily_budget: '3000' }, { id: '333', name: 'Tráfego site', status: 'ACTIVE' }] });
+  if (/\/111\?fields=daily_budget/.test(u)) return j({ daily_budget: '5000', name: 'Leads Black Friday' });
+  if (/\/adsets/.test(u)) return j({ data: [] });
+  if (/\/444\?fields=/.test(u)) return j({ name: 'Conjunto A', targeting: { age_min: 18, age_max: 65, geo_locations: { countries: ['BR'] } } });
+  if (opts.method === 'POST') return j({ success: true });
+  return j({});
+};
+const { store } = await import('../src/store.js'); await store.init();
+const { runTrafego } = await import('../src/trafegoCmd.js');
+const { approveAction, pendingActions, proposeAction } = await import('../src/guardrails.js');
+const { getPlatformTool } = await import('../src/registry.js');
+let fails = 0; const ok = (c, m) => { console.log(`${c ? 'OK  ' : 'FALHA'} ${m}`); if (!c) fails++; };
+
+let r = await runTrafego({ texto: 'pausar campanha "Black Friday"', by: 'a@b.c' });
+ok(r.handled && r.acao && /PAUSAR/.test(r.acao.resumo) && /111/.test(r.acao.resumo), 'pausar: acha a campanha pelo nome e propõe');
+ok(pendingActions().length === 1, 'a proposta fica pendente (nada executou)');
+ok(!calls.some((c) => c.m === 'POST'), 'nenhuma escrita no Meta antes da aprovação');
+const ap = await approveAction(r.acao.id, 'admin');
+ok(ap.status === 'executado' && calls.some((c) => c.m === 'POST' && /\/111$/.test(c.u) && /status=PAUSED/.test(c.body)), 'aprovar executa o POST de status no Meta');
+
+r = await runTrafego({ texto: 'aumentar orçamento da campanha "Black Friday" em 10%', by: 'a@b.c' });
+ok(r.acao && /55/.test(r.acao.resumo), 'aumentar 10% de R$ 50 → R$ 55');
+r = await runTrafego({ texto: 'orçamento da campanha "Black Friday" para 90', by: 'a@b.c' });
+ok(/Bloqueado/.test(r.reply) && /teto/.test(r.reply), 'aumento acima do teto de +20% é bloqueado');
+r = await runTrafego({ texto: 'orçamento da campanha "Black Friday" para 150', by: 'a@b.c' });
+ok(/Bloqueado/.test(r.reply), 'orçamento acima do teto diário é bloqueado');
+r = await runTrafego({ texto: 'pausar campanha "Leads"', by: 'a@b.c' });
+ok(/2 campanhas/.test(r.reply) && !r.acao, 'nome ambíguo: lista as opções e não propõe');
+r = await runTrafego({ texto: 'ativar campanha "Natal"', by: 'a@b.c' });
+ok(r.acao && /ATIVAR/.test(r.acao.resumo), 'ativar campanha pausada propõe ativação');
+r = await runTrafego({ texto: 'pausar campanha "Natal"', by: 'a@b.c' });
+ok(/já está pausada/.test(r.reply), 'campanha já pausada: avisa');
+r = await runTrafego({ texto: 'bom dia, tudo bem?', by: 'a@b.c' });
+ok(!r.handled, 'conversa comum segue para a IA');
+const pub = getPlatformTool('meta_ajustar_publico');
+const pr = await proposeAction(pub, { id: '444', idade_min: 25, genero: 'feminino' }, 't');
+ok(pr.status === 'pendente_aprovacao' && /Público atual/.test(pr.avisos.join(' ')), 'ajuste de público mostra o público atual');
+await approveAction(pr.id, 'admin');
+const tp = calls.filter((c) => c.m === 'POST' && /\/444$/.test(c.u)).pop();
+const t = JSON.parse(new URLSearchParams(tp.body).get('targeting'));
+ok(t.age_min === 25 && t.age_max === 65 && t.genders[0] === 2 && t.geo_locations.countries[0] === 'BR', 'público: muda só o informado e preserva o resto');
+fs.rmSync('./data/trafego-test', { recursive: true, force: true });
+console.log(fails ? `${fails} falha(s)` : 'trafego ok'); process.exit(fails ? 1 : 0);

@@ -86,7 +86,7 @@ export async function atenderPedidos(clienteId, { completarMeta = false } = {}) 
 
 export async function chat(sessionId, userMessage, who = 'chat', clienteNome = '') {
   if (!config.anthropicKey) {
-    return { reply: 'Entendo estes comandos mesmo sem IA: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para conversar livremente sobre campanhas, configure ANTHROPIC_API_KEY no Render, ou use o agente dentro do Claude pelo conector "Agente de Tráfego". Os botões acima (Contas, Campanhas e Desempenho do Meta) também funcionam.', pending: pendingActions() };
+    return { reply: 'Entendo estes comandos mesmo sem IA: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta"; e, para o Meta Ads: "pausar campanha \"nome\"", "ativar campanha \"nome\"", "orçamento da campanha \"nome\" para 50" e "aumentar orçamento da campanha \"nome\" em 10%". Para conversar livremente sobre campanhas, configure ANTHROPIC_API_KEY no Render, ou use o agente dentro do Claude pelo conector "Agente de Tráfego". Os botões acima (Contas, Campanhas e Desempenho do Meta) também funcionam.', pending: pendingActions() };
   }
   const history = sessions.get(sessionId) || [];
   history.push({ role: 'user', content: userMessage });
