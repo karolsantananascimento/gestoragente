@@ -275,7 +275,7 @@ export function planoSemanas(n = 3, marca) {
 }
 
 // Pautas iniciais entregues junto com o código (src/seedContent.json). Entram uma única vez e só se a data ainda não passou.
-export function importSeeds() {
+export async function importSeeds() {
   let seeds = [];
   try { seeds = JSON.parse(fs.readFileSync(fileURLToPath(new URL('./seedContent.json', import.meta.url)), 'utf8')); } catch { return 0; }
   let n = 0;
@@ -286,17 +286,26 @@ export function importSeeds() {
     const r = createItem(sd, 'hugo');
     if (r.item) { r.item.seed_id = sd.seed_id; store.saveContent(); store.markSeeded(sd.seed_id); n++; }
   }
-  // Links das artes (Canva) entregues junto com o código: entram só em pautas ainda "em arte".
+  // Artes entregues junto com o código: entram em pautas ainda não aprovadas e vão para aprovação humana.
   for (const sd of seeds) {
     if (!sd.arte_url) continue;
     const it = store.content().find((c) => c.seed_id === sd.seed_id || (!c.seed_id && c.titulo === sd.titulo));
-    if (!it || it.status !== 'em_arte') continue;
+    if (!it || !['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status) || it.arte_origem === sd.arte_url) continue;
+    const origin = config.publicUrl;
     it.seed_id = sd.seed_id;
-    it.arte_origem = it.arte_url = sd.arte_url;
-    it.arte_aviso = 'Link de edição do Canva (não é imagem). Exporte em PNG e use "Registrar arte" para as redes publicarem.';
-    it.arte_nota = 'Arte criada pelo Luiz no Canva com o kit Disco.';
+    it.arte_origem = sd.arte_url;
+    it.arte_aviso = '';
+    if (sd.arte_url.startsWith('/')) it.arte_url = `${origin}${sd.arte_url}`;
+    else {
+      it.arte_url = sd.arte_url;
+      if (origin) {
+        try { it.arte_url = (await cacheArt(sd.arte_url, origin)).url; }
+        catch (e) { it.arte_aviso = `Não consegui guardar uma cópia da imagem (${e.message}). Se o link expirar, use "Registrar arte" com o PNG exportado.`; }
+      }
+    }
+    it.arte_nota = sd.arte_nota || 'Arte entregue pelo Luiz no padrão do kit Disco.';
     it.status = 'aguardando_aprovacao';
-    hist(it, 'luiz', 'Arte entregue (link do Canva). Aguardando aprovação humana.');
+    hist(it, 'luiz', 'Arte entregue. Aguardando aprovação humana.');
     store.saveContent(); n++;
   }
   return n;

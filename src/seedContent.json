@@ -11,7 +11,7 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "https://www.canva.com/d/_iEmtwX1yRYL2vt"
+    "arte_url": "https://export-download.canva.com/6n-dQ/DAHZab6n-dQ/-1/0/0001-4632472738776316163.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261029%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261029T171423Z&X-Amz-Expires=6849&X-Amz-Signature=be3a329a081befa7ea162bcd206a30e1609de236d8f25bc59a9bf853aa764fb9&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A08%3A32%20GMT"
   },
   {
     "seed_id": "disco-sites-2026-w45-2",
@@ -25,7 +25,7 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "https://www.canva.com/d/qlITrltwNWmQnhO"
+    "arte_url": "https://export-download.canva.com/I1GFU/DAHZadI1GFU/-1/0/0001-214441502907087828.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQYCGKMUH4R7NKVBA%2F20261028%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261028T235457Z&X-Amz-Expires=68933&X-Amz-Signature=211d141ef3570edbe4a76ca627f0685bfad1b1d6ac95a2109c3cbdc30a8b9fda&X-Amz-SignedHeaders=host%3Bx-amz-expected-bucket-owner&response-expires=Thu%2C%2029%20Oct%202026%2019%3A03%3A50%20GMT"
   },
   {
     "seed_id": "disco-sites-2026-w45-3",
@@ -39,6 +39,7 @@
       "instagram",
       "linkedin"
     ],
-    "arte_url": "https://www.canva.com/d/Vg5vcliD5vWhf8T"
+    "arte_url": "/brand/ref/lista-5-sinais.png",
+    "arte_nota": "Arte aprovada como referência do padrão visual (lista numerada)."
   }
 ]
