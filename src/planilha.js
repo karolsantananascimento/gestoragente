@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
-import { getCliente, createItem, listItems, kitCompleto } from './content.js';
+import { getCliente, createItem, editItem, listItems, kitCompleto } from './content.js';
 
 // Importa pautas já prontas de uma planilha da agência (CSV com colunas ID, Data, Formato, Arte, Legenda, Prompt).
 // Cada linha vira um item "Em arte" (Hugo → Luiz → aprovação humana → Mariana). Idempotente: o ID da planilha fica em item.origem.
@@ -43,6 +43,8 @@ export function lerPlanilhaPauta(csv) {
 }
 
 const formatoDe = (f) => (/carrossel/i.test(f) ? 'carrossel' : /reels?/i.test(f) ? 'reels' : /stor/i.test(f) ? 'story' : 'feed');
+// "Capa: título" / "2: título" por linha vira o roteiro de lâminas do carrossel.
+const slidesDe = (arte) => arte.split('\n').map((x) => x.replace(/^\s*(?:capa|slide)?\s*\d*\s*:\s*/i, '').trim()).filter(Boolean).slice(0, 10).map((x) => (x.length <= 120 ? { titulo: x, texto: '' } : { titulo: x.slice(0, 117).replace(/\s+\S*$/, '') + '…', texto: x }));
 const hojeRecife = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
 const somaDias = (iso, n) => new Date(Date.parse(iso + 'T12:00:00Z') + n * 86400_000).toISOString().slice(0, 10);
 
@@ -51,28 +53,42 @@ export function importarLinhas(clienteRef, linhas, { de, ate, fonte = 'planilha'
   if (!cl) return { error: 'Cliente não encontrado.' };
   if (!kitCompleto(cl.marca)) return { error: `O kit de marca de ${cl.nome} está incompleto. Preencha a aba Marca antes de importar pautas.` };
   const jaTem = new Set(listItems(null, cl.id).map((c) => c.origem).filter(Boolean));
-  const criados = [], pulados = [];
+  const criados = [], pulados = [], atualizados = [];
+  const legendaDe = (t) => t.replace(/o link:\s*\[LINK\]/i, 'o link da bio.').replace(/\s*\[LINK\]/g, ' Link na bio.').replace(/\s{2,}/g, ' ').trim();
+  const briefingDe = (l) => [
+    `Formato: ${l.formato || 'feed'}. Seguir o kit de marca de ${cl.nome} (cores, fontes e logo oficiais).`,
+    l.arte ? `TEXTO NA ARTE (como veio da agência, um slide/cena por linha):\n${l.arte}` : '',
+    l.prompt ? `PROMPT DO CRIATIVO (agência):\n${l.prompt}` : '',
+    `Origem: planilha da agência, item ${l.id || '—'}. Resolver [LINK]/[PREENCHER] antes de publicar.`,
+    /\[PREENCHER\]/i.test(l.arte + l.legenda) ? 'ATENÇÃO: há trecho [PREENCHER] (depoimento/caso) que precisa de dado real da cliente antes de publicar.' : '',
+  ].filter(Boolean).join('\n\n');
   for (const l of linhas) {
     if ((de && l.data < de) || (ate && l.data > ate)) continue;
     const origem = `${fonte}:${l.id || l.data + ':' + trunc(l.legenda, 30)}`;
-    if (jaTem.has(origem)) { pulados.push(l.id); continue; }
-    const pendente = /\[PREENCHER\]/i.test(l.arte + l.legenda);
-    const legenda = l.legenda.replace(/o link:\s*\[LINK\]/i, 'o link da bio.').replace(/\s*\[LINK\]/g, ' Link na bio.').replace(/\s{2,}/g, ' ').trim();
+    const fmt = formatoDe(l.formato);
+    if (jaTem.has(origem)) {
+      // Pauta já importada e ainda sem arte aprovada, mas a planilha mudou o formato (ex.: Reels → Carrossel): atualiza.
+      const ex = listItems(null, cl.id).find((c) => c.origem === origem);
+      const edit = ex && ['em_arte', 'ajustes'].includes(ex.status) && !ex.arte_url;
+      if (edit && fmt === 'carrossel' && ex.formato === fmt && !ex.slides?.length) { // carrosséis importados antes do roteiro por lâmina existir
+        if (!editItem(ex.id, { slides: slidesDe(l.arte) }, by).error) atualizados.push(ex.id);
+        continue;
+      }
+      if (!(edit && ex.formato !== fmt)) { pulados.push(l.id); continue; }
+      const ed = editItem(ex.id, { formato: fmt, legenda: legendaDe(l.legenda), briefing_arte: briefingDe(l), slides: fmt === 'carrossel' ? slidesDe(l.arte) : [] }, by);
+      if (!ed.error) atualizados.push(ex.id);
+      continue;
+    }
+    const legenda = legendaDe(l.legenda);
     const primeira = l.arte.split('\n')[0].replace(/^Capa:\s*/i, '').trim();
-    const briefing = [
-      `Formato: ${l.formato || 'feed'}. Seguir o kit de marca de ${cl.nome} (cores, fontes e logo oficiais).`,
-      l.arte ? `TEXTO NA ARTE (como veio da agência, um slide/cena por linha):\n${l.arte}` : '',
-      l.prompt ? `PROMPT DO CRIATIVO (agência):\n${l.prompt}` : '',
-      `Origem: planilha da agência, item ${l.id || '—'}. Resolver [LINK]/[PREENCHER] antes de publicar.`,
-      pendente ? 'ATENÇÃO: há trecho [PREENCHER] (depoimento/caso) que precisa de dado real da cliente antes de publicar.' : '',
-    ].filter(Boolean).join('\n\n');
-    const r = createItem({ cliente: cl.id, titulo: trunc(`${l.id ? l.id + ' · ' : ''}${primeira}`, 80), legenda, briefing_arte: briefing, canais: ['instagram'], formato: formatoDe(l.formato), data_publicacao: l.data, objetivo: 'Pauta da agência (planilha)' }, by);
+    const briefing = briefingDe(l);
+    const r = createItem({ cliente: cl.id, titulo: trunc(`${l.id ? l.id + ' · ' : ''}${primeira}`, 80), legenda, briefing_arte: briefing, canais: ['instagram'], formato: fmt, slides: fmt === 'carrossel' ? slidesDe(l.arte) : undefined, data_publicacao: l.data, objetivo: 'Pauta da agência (planilha)' }, by);
     if (r.error) { pulados.push(`${l.id}: ${r.error}`); continue; }
     r.item.origem = origem;
     criados.push(r.item.id);
   }
-  if (criados.length) { store.saveContent(); store.log({ type: 'pauta_importada', cliente: cl.id, qtd: criados.length, by }); }
-  return { criados: criados.length, pulados: pulados.length, ids: criados };
+  if (criados.length || atualizados.length) { store.saveContent(); store.log({ type: 'pauta_importada', cliente: cl.id, qtd: criados.length, by }); }
+  return { criados: criados.length, atualizados: atualizados.length, pulados: pulados.length, ids: criados };
 }
 
 export function importarCsv(clienteRef, csv, opts = {}) {

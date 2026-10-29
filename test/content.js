@@ -270,5 +270,20 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   console.log('ok carrossel');
 }
 
+
+// ---- planilha: carrossel vira roteiro e Reels → Carrossel atualiza a pauta ainda sem arte
+{
+  const { importarCsv } = await import('../src/planilha.js');
+  const c = await import('../src/content.js');
+  const head = 'T\n\nID,Data,Formato,Arte,Legenda,Prompt\n';
+  const r1 = importarCsv('operizy', head + 'Z-1,"sex., 30/10/2026",Reels,"Gancho\nTeste",Veja. [LINK],P\n', { fonte: 'zz' });
+  const r2 = importarCsv('operizy', head + 'Z-1,"sex., 30/10/2026",Carrossel,"Capa: Gancho\n2: Ponto um\n3: Comente X",Veja. [LINK],P\n', { fonte: 'zz' });
+  const it = c.listItems(null, 'operizy').find((x) => x.origem === 'zz:Z-1');
+  if (r1.criados !== 1 || r2.atualizados !== 1 || it.formato !== 'carrossel' || it.slides.length !== 3 || it.slides[1].titulo !== 'Ponto um') throw new Error('Reels→Carrossel não atualizou: ' + JSON.stringify([r1, r2, it.slides]));
+  const r3 = importarCsv('operizy', head + 'Z-1,"sex., 30/10/2026",Carrossel,"Capa: Gancho\n2: Ponto um\n3: Comente X",Veja. [LINK],P\n', { fonte: 'zz' });
+  if (r3.criados !== 0 || r3.atualizados !== 0) throw new Error('reimportação não é idempotente');
+  console.log('ok planilha carrossel');
+}
+
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);
