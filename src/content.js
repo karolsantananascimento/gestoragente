@@ -138,10 +138,12 @@ export async function submitArt(id, { arte_url, observacoes }, by) {
 export function requestChanges(id, nota, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
-  if (it.status !== 'aguardando_aprovacao') return { error: 'Só dá para pedir ajustes enquanto aguarda aprovação.' };
+  if (!['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) return { error: 'Só dá para pedir ajustes antes da aprovação.' };
+  const texto = String(nota || '').trim();
+  if (!texto) return { error: 'Descreva o que deve ser ajustado.' };
+  it.feedback = ((it.status === 'ajustes' && it.feedback ? it.feedback + ' | ' : '') + texto).slice(0, 1000);
   it.status = 'ajustes';
-  it.feedback = String(nota || '').slice(0, 500);
-  hist(it, by, `Ajustes pedidos: ${it.feedback || '(sem observação)'}`);
+  hist(it, by, `Ajustes pedidos: ${texto}`);
   store.saveContent();
   store.log({ type: 'content_changes', id, by });
   return { item: it };
@@ -309,4 +311,32 @@ export async function importSeeds() {
     store.saveContent(); n++;
   }
   return n;
+}
+
+// --- Pedidos feitos no painel (a usuária comanda o time sem abrir o Claude) ---
+export function createRequest(p, by) {
+  const texto = String(p.texto || '').trim();
+  if (texto.length < 8) return { error: 'Descreva o pedido (o que o post deve dizer, tema, objetivo).' };
+  const ch = p.canais && p.canais.length ? cleanChannels(p.canais) : { list: ['instagram'] };
+  if (ch.error) return ch;
+  let data = '';
+  if (p.data_publicacao) { if (!parseWhen(p.data_publicacao)) return { error: 'Data inválida. Use AAAA-MM-DD ou AAAA-MM-DDTHH:MM.' }; data = p.data_publicacao; }
+  const r = { id: crypto.randomBytes(6).toString('hex'), tipo: 'pauta', texto: texto.slice(0, 1500), canais: ch.list, data_publicacao: data, status: 'aberto', por: by, em: now() };
+  store.addPedido(r);
+  store.log({ type: 'pedido_criado', id: r.id, by });
+  return { pedido: r };
+}
+export const listRequests = (status) => store.pedidos().filter((r) => !status || r.status === status);
+export function closeRequest(id, itemId, by) {
+  const r = store.pedidos().find((x) => x.id === id);
+  if (!r) return { error: 'Pedido não encontrado.' };
+  store.updatePedido(id, { status: 'atendido', item_id: itemId || null, atendido_por: by, atendido_em: now() });
+  return { pedido: store.pedidos().find((x) => x.id === id) };
+}
+export function cancelRequest(id, by) {
+  const r = store.pedidos().find((x) => x.id === id);
+  if (!r) return { error: 'Pedido não encontrado.' };
+  if (r.status !== 'aberto') return { error: 'Este pedido já foi atendido ou cancelado.' };
+  store.updatePedido(id, { status: 'cancelado', atendido_por: by, atendido_em: now() });
+  return { pedido: store.pedidos().find((x) => x.id === id) };
 }

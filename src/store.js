@@ -23,6 +23,7 @@ const normalize = (s) => {
   s.media ||= {};
   s.settings ||= {};
   s.seeded ||= [];
+  s.pedidos ||= [];
   return s;
 };
 
@@ -117,6 +118,9 @@ export const store = {
   setSettings(p) { Object.assign(load().settings, p); save(); return this.settings(); },
   seeded: () => load().seeded,
   markSeeded(id) { load().seeded.push(id); save(); },
+  pedidos: () => load().pedidos,
+  addPedido(x) { load().pedidos.unshift(x); load().pedidos = load().pedidos.slice(0, 200); save(); return x; },
+  updatePedido(id, patch) { const x = load().pedidos.find((p) => p.id === id); if (x) { Object.assign(x, patch); save(); } return x; },
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
   // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).

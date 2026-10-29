@@ -108,6 +108,22 @@ try {
   const n = c.createItem({ titulo: 'a', legenda: 'b', briefing_arte: 'c', canais: 'instagram' }, 'x').item;
   await c.submitArt(n.id, { arte_url: 'https://x.com/a.png' }, 'luiz');
   ok((await c.approveItem(n.id, 'adm')).error?.includes('data'), 'não aprova sem data de publicação');
+
+  // Pedidos escritos no painel
+  ok(c.createRequest({ texto: 'curto' }, 'u@x.com').error, 'pedido muito curto é recusado');
+  ok(c.createRequest({ texto: 'Post sobre site lento para a Disco', canais: 'orkut' }, 'u@x.com').error, 'pedido com canal inválido é recusado');
+  const rq = c.createRequest({ texto: 'Post sobre site lento para a Disco', canais: 'instagram' }, 'u@x.com').pedido;
+  const tasks = await callTool('time_proximas_tarefas', {}, 'mcp');
+  ok(tasks.pedidos_da_usuaria?.pedidos?.some((p) => p.pedido_id === rq.id), 'pedido aparece nas tarefas do time');
+  const np = await callTool('hugo_criar_pauta', { titulo: 'Site lento', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01', pedido_id: rq.id }, 'mcp');
+  ok(np.status === 'ok' && c.listRequests('aberto').length === 0 && c.listRequests('atendido')[0]?.item_id === np.conteudo.id, 'criar pauta com pedido_id fecha o pedido');
+  const rq2 = c.createRequest({ texto: 'Outro post para cancelar depois' }, 'u@x.com').pedido;
+  ok(c.cancelRequest(rq2.id, 'u@x.com').pedido.status === 'cancelado', 'pedido pode ser cancelado');
+  // ajuste de criativo antes da aprovação
+  ok(c.requestChanges(np.conteudo.id, '', 'u@x.com').error, 'ajuste exige descrição');
+  const aj = c.requestChanges(np.conteudo.id, 'trocar a foto', 'u@x.com');
+  ok(aj.item?.status === 'ajustes' && aj.item.feedback === 'trocar a foto', 'ajuste pode ser pedido logo na etapa em arte');
+  ok(c.requestChanges(np.conteudo.id, 'título menor', 'u@x.com').item.feedback === 'trocar a foto | título menor', 'ajustes pendentes se acumulam');
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');

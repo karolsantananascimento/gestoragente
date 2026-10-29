@@ -2,7 +2,7 @@ import { store } from './store.js';
 import { gerarImagem } from './images.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
-import { createItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, STATUS } from './content.js';
+import { createItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, listRequests, closeRequest, STATUS } from './content.js';
 
 const view = (c) => ({
   id: c.id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
@@ -22,14 +22,22 @@ export const teamTools = [
       const n = Math.min(Math.max(Number(semanas) || 2, 1), 6);
       const plano = planoSemanas(n);
       const por = (s) => listItems(s).map((c) => ({ id: c.id, titulo: c.titulo, canais: c.canais, data_publicacao: c.data_publicacao, formato: c.formato, ajustes_pedidos: c.feedback }));
+      const pedidos = listRequests('aberto').map((r) => ({ pedido_id: r.id, pedido: r.texto, canais: r.canais, data_sugerida: r.data_publicacao || undefined, feito_por: r.por }));
       return {
         meta_semanal: plano[0]?.meta,
+        pedidos_da_usuaria: pedidos.length ? { tarefa: 'PRIORIDADE: a usuária escreveu estes pedidos no painel. Hugo cria uma pauta para cada um com hugo_criar_pauta passando pedido_id (fecha o pedido). Depois o Luiz faz a arte.', pedidos } : undefined,
         hugo: { tarefa: 'Criar as pautas que faltam com hugo_criar_pauta (legenda + briefing da arte), usando as datas sugeridas. Consulte marca_ver e conteudo_listar para não repetir temas; varie entre posts de autoridade e de storytelling.', semanas: plano.filter((w) => w.faltam > 0) },
         luiz: { tarefa: 'Criar a arte de cada item no Canva e registrar com luiz_registrar_arte.', pendentes: [...por('em_arte'), ...por('ajustes')] },
         mariana: { tarefa: 'Reagendar com mariana_agendar os itens abaixo (aprovados que não foram agendados ou deram erro).', pendentes: [...por('aprovado'), ...por('erro')] },
         aguardando_aprovacao_humana: por('aguardando_aprovacao').length,
       };
     },
+  },
+  {
+    name: 'pedidos_listar', risk: 'read', agent: 'hugo,luiz',
+    description: 'Pedidos escritos pela usuária no painel (criar pauta). Também aparecem em time_proximas_tarefas. Ajustes de criativos chegam em conteudo_listar com status "ajustes" (campo ajustes_pedidos).',
+    params: {},
+    handler: async () => listRequests('aberto').map((r) => ({ pedido_id: r.id, pedido: r.texto, canais: r.canais, data_sugerida: r.data_publicacao || undefined, feito_por: r.por, em: r.em })),
   },
   {
     name: 'time_agentes', risk: 'read', agent: 'todos',
@@ -63,8 +71,13 @@ export const teamTools = [
       formato: { type: 'string', desc: 'feed, carrossel, story, reels (padrão feed)' },
       objetivo: { type: 'string', desc: 'Objetivo do post' },
       marca: { type: 'string', desc: 'Marca/cliente do post (padrão: a marca do kit)' },
+      pedido_id: { type: 'string', desc: 'ID do pedido do painel que esta pauta atende (fecha o pedido)' },
     },
-    handler: async (a) => wrap(createItem(a, 'hugo')),
+    handler: async (a) => {
+      const r = createItem(a, 'hugo');
+      if (!r.error && a.pedido_id) closeRequest(a.pedido_id, r.item.id, 'hugo');
+      return wrap(r);
+    },
   },
   {
     name: 'luiz_registrar_arte', risk: 'internal', agent: 'luiz',

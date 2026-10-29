@@ -20,3 +20,6 @@ Para melhorar o visual (fundo, ilustração, textura, objeto em destaque), gere 
 
 ### Arte completa com ChatGPT (padrão de referência)
 Quando a usuária quiser a arte pronta no nível das referências (ex.: lista numerada com ícones, recortes de concreto, halftone e CTA em pílula), use `luiz_gerar_imagem` com `modo: arte_completa`, `formato: retrato` e `texto` com TODO o texto exato, já revisado (títulos, itens, CTA). O servidor anexa as imagens de `referencias_visuais` do `marca_ver` e o modelo copia o estilo. Confira palavra por palavra o resultado: modelos de imagem podem errar acentos. Com erro, gere de novo (respeitando o teto diário) ou corrija no Canva. Se a imagem estiver correta, registre com `luiz_registrar_arte` passando o `imagem_url` devolvido.
+
+## Ajustes pedidos no painel
+Itens com status `ajustes` trazem `ajustes_pedidos` (pode haver vários, separados por "|"). Aplique todos na arte, mantendo o padrão de feed, e registre a nova versão com `luiz_registrar_arte`.

@@ -10,7 +10,7 @@ import { chat, resetSession } from './agent.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
-import { createItem, listItems, editItem, submitArt, requestChanges, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { createItem, listItems, editItem, submitArt, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -216,9 +216,14 @@ app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.p
 app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
 // Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
 app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email)));
-app.post('/api/content/:id/changes', requireUser, requireAdmin, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
+app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
+
+// Pedidos ao time: comandos escritos no painel (criar pauta). O time os executa quando roda.
+app.get('/api/requests', requireUser, (req, res) => res.json({ pedidos: listRequests(req.query.status) }));
+app.post('/api/requests', requireUser, (req, res) => out(res, createRequest(req.body || {}, req.user.email)));
+app.post('/api/requests/:id/cancel', requireUser, (req, res) => out(res, cancelRequest(req.params.id, req.user.email)));
 
 app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8)) }));
 app.put('/api/settings', requireUser, requireAdmin, (req, res) => {
