@@ -27,6 +27,10 @@ const ok = (cond, msg) => { console.log(`${cond ? 'OK  ' : 'FALHA'} ${msg}`); if
 const future = new Date(Date.now() + 3 * 86400e3).toISOString();
 
 try {
+  // kit da marca padrão (Disco) chega ao Luiz
+  const mk = await callTool('marca_ver', {});
+  ok(mk.nome === 'Disco' && /#78D600/.test(mk.cores) && /ANTON/i.test(mk.fontes) && mk.logo_url === 'https://app.exemplo.com/brand/disco-logo-branco-verde.svg', 'marca_ver entrega o kit Disco (cores, fontes, estilo, logo) ao Luiz');
+
   // Hugo cria pela ferramenta
   let r = await callTool('hugo_criar_pauta', { titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
   ok(r.status === 'ok' && r.conteudo.status === 'em_arte', 'Hugo cria a pauta e ela nasce em "em_arte"');

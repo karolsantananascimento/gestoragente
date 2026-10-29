@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import pg from 'pg';
+import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 
 // Persistência: Postgres quando DATABASE_URL existe (recomendado, sobrevive a deploys);
@@ -112,6 +113,11 @@ export const store = {
   saveContent() { save(); },
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
-  brand: () => load().brand,
+  // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).
+  brand: () => {
+    const b = load().brand;
+    if (Object.keys(b).length) return b;
+    try { return JSON.parse(fs.readFileSync(fileURLToPath(new URL('./brandDefault.json', import.meta.url)), 'utf8')); } catch { return {}; }
+  },
   setBrand(b) { load().brand = b; save(); return b; },
 };

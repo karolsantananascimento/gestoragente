@@ -1,4 +1,5 @@
 import { store } from './store.js';
+import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
 import { createItem, submitArt, scheduleItem, listItems, cronograma, STATUS } from './content.js';
 
@@ -24,7 +25,7 @@ export const teamTools = [
     name: 'marca_ver', risk: 'read', agent: 'hugo,luiz',
     description: 'Devolve o kit da marca (tom de voz, cores, fontes, regras de uso do logo, links). Luiz deve seguir à risca; Hugo usa o tom de voz.',
     params: {},
-    handler: async () => { const b = store.brand(); return Object.keys(b).length ? b : { aviso: 'Kit da marca ainda vazio. Peça à administradora para preencher na aba Marca do painel.' }; },
+    handler: async () => { const b = { ...store.brand() }; if (b.logo_url?.startsWith('/')) b.logo_url = `${config.publicUrl}${b.logo_url}`; return Object.keys(b).length ? b : { aviso: 'Kit da marca ainda vazio. Peça à administradora para preencher na aba Marca do painel.' }; },
   },
   {
     name: 'conteudo_listar', risk: 'read', agent: 'hugo,luiz,mariana',

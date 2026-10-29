@@ -150,12 +150,13 @@
   <p class="flow">Padrões da marca que o Luiz segue e o Hugo usa no tom de voz. Só administradores editam.</p>
   <form class="form" id="brandForm">
     <label>Nome da marca<input name="nome"></label>
+    <label>Frentes / unidades<textarea name="frentes" rows="4"></textarea></label>
     <label>Tom de voz<textarea name="tom_de_voz" placeholder="Ex.: próximo, direto, sem jargão, emojis com moderação"></textarea></label>
     <label>Público<textarea name="publico"></textarea></label>
-    <label>Cores (hex e uso)<textarea name="cores" placeholder="Ex.: Principal #7C5CFF; Fundo #0F1115; Destaque #2FBF71"></textarea></label>
-    <label>Fontes<input name="fontes" placeholder="Ex.: Títulos Poppins Bold; texto Inter"></label>
+    <label>Cores (hex e uso)<textarea name="cores" rows="6" placeholder="Ex.: Principal #7C5CFF; Fundo #0F1115; Destaque #2FBF71"></textarea></label>
+    <label>Fontes<textarea name="fontes" rows="4" placeholder="Ex.: Títulos Poppins Bold; texto Inter"></textarea></label>
     <label>Link do logo (https)<input name="logo_url"></label>
-    <label>Regras visuais<textarea name="regras_visuais" placeholder="Ex.: logo no canto inferior direito; fotos reais; margem mínima"></textarea></label>
+    <label>Regras visuais e estilo<textarea name="regras_visuais" rows="14" placeholder="Ex.: logo no canto inferior direito; fotos reais; margem mínima"></textarea></label>
     <label>Proibido<textarea name="proibido" placeholder="Ex.: promessas de resultado; cores fora da paleta"></textarea></label>
     <label>Outros links (manual da marca, pasta de assets)<textarea name="links"></textarea></label>
     <div class="err" id="brandErr"></div>
