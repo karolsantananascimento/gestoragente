@@ -119,3 +119,9 @@ Integrações da Mariana (variáveis no Render, todas opcionais):
 - A arte precisa ser um link público https (JPG/PNG).
 
 Persistência: sem `DATABASE_URL` os dados ficam em arquivo e somem a cada reinício no plano gratuito. Com `DATABASE_URL` (Postgres) equipe, conteúdo e marca ficam salvos.
+
+
+## Imagens com ChatGPT (Luiz)
+1. Crie uma chave em platform.openai.com (API keys) e cadastre **somente no Render → Environment** como `OPENAI_API_KEY`. Nunca cole a chave no chat nem no GitHub.
+2. Opcional: `OPENAI_IMAGE_MODEL` (padrão `gpt-image-1`), `OPENAI_IMAGE_QUALITY` (`low`, `medium`, `high`; padrão `medium`) e `IMAGE_DAILY_CAP` (teto de imagens por dia; padrão 20).
+3. O Luiz usa a ferramenta `luiz_gerar_imagem` para criar o fundo/ilustração (sem texto), envia ao Canva e compõe título em Anton, logo e CTA lá. Com `DRY_RUN=true` nada é gerado nem cobrado.

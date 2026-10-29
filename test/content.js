@@ -6,6 +6,8 @@ process.env.META_ACCESS_TOKEN = 'tk';
 process.env.META_PAGE_ID = 'P1';
 process.env.META_PAGE_ACCESS_TOKEN = 'pt';
 process.env.INSTAGRAM_USER_ID = 'IG1';
+process.env.OPENAI_API_KEY = 'sk-teste';
+process.env.IMAGE_DAILY_CAP = '2';
 process.env.PUBLIC_URL = 'https://app.exemplo.com';
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 
@@ -14,6 +16,7 @@ globalThis.fetch = async (url, opts = {}) => {
   calls.push({ url: String(url), body: String(opts.body || '') });
   const u = String(url);
   if (u.startsWith('https://cdn.exemplo.com')) return new Response(Buffer.from('89504e47', 'hex'), { status: 200, headers: { 'content-type': 'image/png' } });
+  if (u.includes('api.openai.com/v1/images')) return new Response(JSON.stringify({ data: [{ b64_json: Buffer.from('jpg').toString('base64') }] }), { status: 200, headers: { 'content-type': 'application/json' } });
   const body = u.endsWith('/photos') ? { id: 'ph1', post_id: 'P1_99' } : u.endsWith('/media') ? { id: 'cont1' } : { id: 'media9' };
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 };
@@ -87,6 +90,14 @@ try {
   const done = store.getContent(id);
   ok(calls.some((x) => x.url.endsWith('/IG1/media_publish')), 'na hora marcada o agendador publica no Instagram');
   ok(done.canais_status.instagram.status === 'publicado' && done.status === 'publicado', 'conteúdo termina como publicado');
+
+  // Luiz gera imagem com o ChatGPT (OpenAI), com teto diário
+  const g = await callTool('luiz_gerar_imagem', { prompt: 'orbe verde sobre fundo preto', formato: 'retrato' }, 'mcp');
+  ok(g.status === 'ok' && /^https:\/\/app\.exemplo\.com\/media\/[a-f0-9]{32}$/.test(g.imagem_url), 'luiz_gerar_imagem devolve link público da imagem');
+  const oa = calls.find((x) => x.url.includes('api.openai.com'));
+  ok(oa && JSON.parse(oa.body).size === '1024x1536' && /NÃO escreva texto/.test(JSON.parse(oa.body).prompt), 'pedido à OpenAI leva formato e regras da marca (sem texto na imagem)');
+  await callTool('luiz_gerar_imagem', { prompt: 'x' }, 'mcp');
+  ok((await callTool('luiz_gerar_imagem', { prompt: 'y' }, 'mcp')).error?.includes('Teto diário'), 'teto diário de imagens é respeitado');
 
   // data sem fuso = Recife
   ok(c.parseWhen('2026-11-03T10:00').toISOString() === '2026-11-03T13:00:00.000Z', 'datas sem fuso valem em horário de Recife (UTC-3)');

@@ -24,6 +24,10 @@ export const config = {
   dataDir: process.env.DATA_DIR || './data',
   // Opcional: Postgres para os dados não se perderem em reinícios (Render, Supabase, Neon...).
   databaseUrl: process.env.DATABASE_URL || '',
+  openaiKey: process.env.OPENAI_API_KEY || '',
+  openaiImageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+  openaiImageQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
+  imageDailyCap: Number(process.env.IMAGE_DAILY_CAP || 20),
   // Redes sociais (Mariana). Todas opcionais; sem credencial o canal fica como "sem integração".
   social: {
     fbPageId: process.env.META_PAGE_ID || '',

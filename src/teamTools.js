@@ -1,4 +1,5 @@
 import { store } from './store.js';
+import { gerarImagem } from './images.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
 import { createItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, STATUS } from './content.js';
@@ -74,6 +75,15 @@ export const teamTools = [
       observacoes: { type: 'string', desc: 'Observações sobre a arte (opcional)' },
     },
     handler: async ({ id, arte_url, observacoes }) => wrap(await submitArt(id, { arte_url, observacoes }, 'luiz')),
+  },
+  {
+    name: 'luiz_gerar_imagem', risk: 'internal', agent: 'luiz',
+    description: 'LUIZ gera com o ChatGPT (OpenAI) uma imagem de fundo/ilustração no estilo da marca, SEM texto. Devolve um link público; envie ao Canva com upload-asset-from-url e componha título, logo e CTA lá. Tem teto diário (IMAGE_DAILY_CAP).',
+    params: {
+      prompt: { type: 'string', desc: 'Descrição da imagem (cena, objetos, clima). Não peça texto na imagem.', required: true },
+      formato: { type: 'string', desc: 'retrato (feed 4:5 / story), quadrado ou paisagem', enum: ['retrato', 'quadrado', 'paisagem'] },
+    },
+    handler: async (a) => gerarImagem(a),
   },
   {
     name: 'mariana_agendar', risk: 'internal', agent: 'mariana',

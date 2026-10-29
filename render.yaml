@@ -66,6 +66,10 @@ services:
         value: v23.0
       - key: DATABASE_URL
         sync: false          # opcional: Postgres (Render, Supabase, Neon) para não perder equipe e conteúdo
+      - key: OPENAI_API_KEY
+        sync: false          # Luiz: gera imagens com o ChatGPT (opcional)
+      - key: IMAGE_DAILY_CAP
+        value: "20"
       - key: META_PAGE_ID
         sync: false          # Mariana: página do Facebook
       - key: META_PAGE_ACCESS_TOKEN

@@ -13,3 +13,7 @@ Nos ajustes pedidos, refaça no mesmo design (`edit-design`) e exporte e registr
 
 
 Quando a marca for a **Disco**: use o kit de marca do Canva "Disco Mídia" e siga o estilo do `marca_ver` (fundo preto, fotos P&B de alto contraste, títulos em Anton caixa-alta, destaque em verde, formas orbitais e halftone, CTA em pílula). Acento por frente: Criativo = laranja, Mídia = lilás/verde, Tech = violeta.
+
+
+## Imagens geradas com o ChatGPT
+Para melhorar o visual (fundo, ilustração, textura, objeto em destaque), gere a imagem com `luiz_gerar_imagem` (prompt descrevendo cena e clima; `formato` retrato para feed 4:5 e story). Ela sai no estilo da marca e **sem texto**. Depois: `upload-asset-from-url` com o link devolvido, insira no design do Canva (`insert_fill`/`update_fill`) por trás do texto e aplique título em Anton, logo e CTA no Canva. Se a ferramenta responder que a chave não está configurada, avise a usuária e siga só com o Canva. Respeite o teto diário e não gere variações à toa.
