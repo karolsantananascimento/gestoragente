@@ -6,6 +6,8 @@ import { config } from './config.js';
 import { agentTools, callTool } from './tools.js';
 import { toJsonSchema } from './schema.js';
 import { pendingActions } from './guardrails.js';
+import { store } from './store.js';
+import { listItems } from './content.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const prompt = (n) => fs.readFileSync(path.join(here, '..', 'prompts', `${n}.md`), 'utf8');
@@ -24,18 +26,54 @@ const toolDefs = agentTools.map((t) => ({
   input_schema: toJsonSchema(t.params || {}),
 }));
 
-function system() {
+function system(clienteNome = '') {
   const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Recife', dateStyle: 'full' });
   const modo = config.dryRun
     ? 'MODO SIMULAÇÃO: nenhuma alteração será feita nas contas reais, mesmo após aprovação.'
     : 'MODO REAL: ações aprovadas alteram contas reais.';
   const tetos = `Tetos ativos: orçamento diário máx. R$ ${config.caps.maxDailyBudgetBRL}, aumento máx. +${config.caps.maxBudgetIncreasePct}% por ação, até ${config.caps.maxActivationsPerDay} ativações/dia.`;
-  return `${masterPrompt()}\n\n---\nHoje é ${hoje}. ${modo} ${tetos}`;
+  return `${masterPrompt()}\n\n---\nHoje é ${hoje}. ${modo} ${tetos}${clienteNome ? `\nCliente em foco no painel: ${clienteNome}. Para pautas, pedidos e artes use sempre cliente="${clienteNome}" (a menos que a usuária cite outro) e siga o kit de marca dele (marca_ver).` : ''}`;
 }
 
-export async function chat(sessionId, userMessage, who = 'chat') {
+// Automação: o Hugo (IA do próprio servidor) atende os pedidos abertos de um cliente criando as pautas.
+// Só usa ferramentas de equipe (nada de anúncios, nada de aprovação). A arte continua com o Luiz no Canva (conector do Claude).
+const TEAM_AUTO = ['pedidos_listar', 'marca_ver', 'fontes_listar', 'conteudo_listar', 'hugo_criar_pauta', 'time_proximas_tarefas'];
+const autoDefs = toolDefs.filter((t) => TEAM_AUTO.includes(t.name));
+const running = new Set();
+export const autoDisponivel = () => !!config.anthropicKey;
+
+export async function atenderPedidos(clienteId) {
+  if (!config.anthropicKey || running.has(clienteId)) return { status: 'ignorado' };
+  running.add(clienteId);
+  const antes = listItems(null, clienteId).length;
+  try {
+    const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Recife', dateStyle: 'full' });
+    const sys = `${prompt('hugo')}\n\n---\n${prompt('squad')}\n\nHoje é ${hoje}. Você é o Hugo rodando automaticamente dentro do sistema. Use só as ferramentas disponíveis. Nunca aprove nem publique nada.`;
+    const history = [{ role: 'user', content: `Atenda agora TODOS os pedidos abertos do cliente "${store.cliente(clienteId).nome}": chame pedidos_listar (cliente) e marca_ver; se houver fontes_de_pauta chame fontes_listar; para cada pedido crie a pauta com hugo_criar_pauta (cliente, pedido_id, canais, data_publicacao no formato AAAA-MM-DDTHH:MM em horário de Recife, formato, legenda completa com CTA e hashtags no tom do cliente, briefing_arte detalhado). Se o pedido não trouxer data, use as datas sugeridas de time_proximas_tarefas. Ao final responda com uma linha por pauta criada.` }];
+    for (let turn = 0; turn < 14; turn++) {
+      const res = await anthropic().messages.create({ model: config.model, max_tokens: 3500, system: sys, tools: autoDefs, messages: history });
+      history.push({ role: 'assistant', content: res.content });
+      const uses = res.content.filter((b) => b.type === 'tool_use');
+      if (res.stop_reason !== 'tool_use' || !uses.length) break;
+      const results = [];
+      for (const u of uses) {
+        const out = TEAM_AUTO.includes(u.name) ? await callTool(u.name, u.input, 'auto:hugo') : { status: 'erro', erro: 'Ferramenta não permitida na automação.' };
+        results.push({ type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(out).slice(0, 30000) });
+      }
+      history.push({ role: 'user', content: results });
+    }
+    const criadas = listItems(null, clienteId).length - antes;
+    store.log({ type: 'auto_hugo', cliente: clienteId, pautas_criadas: criadas });
+    return { status: 'ok', criadas };
+  } catch (e) {
+    store.log({ type: 'auto_hugo_erro', cliente: clienteId, erro: String(e.message).slice(0, 200) });
+    return { status: 'erro', erro: e.message };
+  } finally { running.delete(clienteId); }
+}
+
+export async function chat(sessionId, userMessage, who = 'chat', clienteNome = '') {
   if (!config.anthropicKey) {
-    return { reply: 'O chat com IA deste painel é opcional e precisa da variável ANTHROPIC_API_KEY. Enquanto ela não existir, use os botões acima do campo de texto (Contas, Campanhas e Desempenho do Meta) ou converse com o agente dentro do Claude, pelo conector "Agente de Tráfego".', pending: pendingActions() };
+    return { reply: 'Entendo estes comandos mesmo sem IA: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para conversar livremente sobre campanhas, configure ANTHROPIC_API_KEY no Render, ou use o agente dentro do Claude pelo conector "Agente de Tráfego". Os botões acima (Contas, Campanhas e Desempenho do Meta) também funcionam.', pending: pendingActions() };
   }
   const history = sessions.get(sessionId) || [];
   history.push({ role: 'user', content: userMessage });
@@ -45,7 +83,7 @@ export async function chat(sessionId, userMessage, who = 'chat') {
     const res = await anthropic().messages.create({
       model: config.model,
       max_tokens: 3000,
-      system: system(),
+      system: system(clienteNome),
       tools: toolDefs,
       messages: history,
     });

@@ -6,7 +6,8 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { config, platformStatus, socialStatus } from './config.js';
 import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
-import { chat, resetSession } from './agent.js';
+import { chat, resetSession, atenderPedidos, autoDisponivel } from './agent.js';
+import { runCommand } from './commands.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
@@ -198,10 +199,21 @@ app.get('/api/status', requireUser, (req, res) =>
   res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey }));
 
 app.post('/api/chat', requireUser, async (req, res) => {
-  const { sessionId = 'default', message } = req.body || {};
+  const { sessionId = 'default', message, cliente } = req.body || {};
   if (!message || typeof message !== 'string') return res.status(400).json({ error: 'Mensagem vazia.' });
   try {
-    res.json(await chat(`${req.user.email}:${sessionId}`, message, req.user.email));
+    // 1) comandos de conteúdo (criar pauta, ajustar criativo, listar) funcionam mesmo sem IA
+    const cmd = runCommand({ texto: message, cliente, by: req.user.email });
+    if (cmd.handled) {
+      let reply = cmd.reply;
+      if (cmd.pedido) {
+        if (autoDisponivel()) { atenderPedidos(cmd.cliente_id).catch(() => {}); reply += ' O Hugo já está escrevendo a pauta: ela aparece em "Pauta pronta · Em arte" em até 1–2 minutos.'; }
+        else reply += ' Para o time executar, clique em "Rodar a squad" na aba Conteúdo e cole o comando no Claude (ou configure ANTHROPIC_API_KEY no Render para o Hugo executar sozinho).';
+      }
+      store.log({ type: 'comando', by: req.user.email, cliente: cmd.cliente_id || null });
+      return res.json({ reply, pending: pendingActions(), comando: true });
+    }
+    res.json(await chat(`${req.user.email}:${sessionId}`, message, req.user.email, getCliente(cliente)?.nome));
   } catch (e) {
     console.error('[chat]', e);
     res.status(500).json({ error: e.message });
@@ -242,7 +254,11 @@ app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out
 
 // Pedidos ao time: comandos escritos no painel (criar pauta). O time os executa quando roda.
 app.get('/api/requests', requireUser, (req, res) => res.json({ pedidos: listRequests(req.query.status, req.query.cliente) }));
-app.post('/api/requests', requireUser, (req, res) => out(res, createRequest(req.body || {}, req.user.email)));
+app.post('/api/requests', requireUser, (req, res) => {
+  const r = createRequest(req.body || {}, req.user.email);
+  if (r.pedido && autoDisponivel()) { atenderPedidos(r.pedido.cliente_id).catch(() => {}); r.automatico = true; }
+  out(res, r);
+});
 app.post('/api/requests/:id/cancel', requireUser, (req, res) => out(res, cancelRequest(req.params.id, req.user.email)));
 
 app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8), req.query.cliente) }));

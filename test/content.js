@@ -175,6 +175,40 @@ try {
   const fl = await callTool('fontes_listar', { cliente: 'Lumiere' }, 'mcp');
   ok(fl.fontes.length === 2 && /Recomendações/.test(fl.fontes[0].texto) && /REFERÊNCIA|referência/.test(fl.aviso), 'Hugo recebe o texto das fontes com aviso de que é só referência');
   ok(listSources('Disco').length === 0, 'fontes são separadas por cliente');
+
+  // Caixa de diálogo: comandos sem IA
+  const { runCommand, findDate } = await import('../src/commands.js');
+  const c1 = runCommand({ texto: 'Crie um post de carrossel sobre prova social para a Operizy na quinta no instagram e facebook', cliente: 'Disco', by: 'u@x.com' });
+  ok(c1.handled && c1.pedido?.cliente_id === 'operizy' && c1.pedido.canais.join() === 'instagram,facebook' && /^\d{4}-\d\d-\d\d$/.test(c1.pedido.data_publicacao), 'comando "criar post" vira pedido do cliente citado, com canais e data');
+  ok(findDate('dia 05/11/2030') === '2030-11-05' && findDate('em 2031-02-03') === '2031-02-03', 'entende datas dd/mm/aaaa e ISO');
+  const c2 = runCommand({ texto: 'quero uma pauta sobre bastidores', cliente: 'Lumiere', by: 'u@x.com' });
+  ok(c2.pedido?.cliente_id === 'lumiere', 'sem citar cliente usa o cliente em foco no painel');
+  const alvo = c.createItem({ cliente: 'Lumiere', titulo: 'Bastidores do ateliê', legenda: 'l', briefing_arte: 'b', canais: 'instagram', data_publicacao: '2030-01-01' }, 'hugo').item;
+  const c3 = runCommand({ texto: 'ajustar o criativo de bastidores: trocar a foto e deixar o título menor', cliente: 'Lumiere', by: 'u@x.com' });
+  ok(c3.handled && store.getContent(alvo.id).status === 'ajustes' && /trocar a foto/.test(store.getContent(alvo.id).feedback), 'comando "ajustar criativo" aplica o ajuste no item certo');
+  ok(/botão/.test(runCommand({ texto: 'aprova e publica o post da Disco', cliente: 'Disco', by: 'u' }).reply), 'pedir para aprovar pelo chat é recusado (só no botão)');
+  ok(/aguardando aprovação/.test(runCommand({ texto: 'listar pauta', cliente: 'Disco', by: 'u' }).reply), 'comando listar resume a situação do cliente');
+  ok(!runCommand({ texto: 'qual o melhor horário para anunciar?', cliente: 'Disco', by: 'u' }).handled, 'perguntas livres não são tratadas como comando (vão para a IA)');
+
+  // Automação: com chave da Anthropic, o Hugo atende o pedido sozinho
+  process.env.ANTHROPIC_API_KEY = 'sk-ant-teste';
+  const { config } = await import('../src/config.js'); config.anthropicKey = 'sk-ant-teste';
+  const pedidoAuto = c.createRequest({ cliente: 'Disco', texto: 'Post sobre cases de matrícula para a Disco' }, 'u').pedido;
+  let passo = 0;
+  const f0 = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (!String(url).includes('api.anthropic.com')) return f0(url, opts);
+    passo++;
+    const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
+    const base = { id: 'm', type: 'message', role: 'assistant', model: 'x', usage: { input_tokens: 1, output_tokens: 1 } };
+    if (passo === 1) return j({ ...base, stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'hugo_criar_pauta', input: { cliente: 'Disco', pedido_id: pedidoAuto.id, titulo: 'Cases de matrícula', legenda: 'Legenda', briefing_arte: 'Briefing', canais: ['instagram'], data_publicacao: '2030-03-01T11:00' } }] });
+    return j({ ...base, stop_reason: 'end_turn', content: [{ type: 'text', text: 'Criei 1 pauta.' }] });
+  };
+  const { atenderPedidos } = await import('../src/agent.js');
+  const ar = await atenderPedidos('disco');
+  globalThis.fetch = f0;
+  ok(ar.status === 'ok' && ar.criadas === 1 && c.listRequests('atendido', 'Disco').some((x) => x.id === pedidoAuto.id), 'automação: o Hugo cria a pauta e fecha o pedido sozinho');
+  config.anthropicKey = '';
 } catch (e) { console.error('ERRO NO TESTE:', e); fails++; }
 fs.rmSync('./data/content-test', { recursive: true, force: true });
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');

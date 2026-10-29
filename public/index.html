@@ -343,7 +343,7 @@ async function boot() {
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
   await loadClients(); await loadStatus(); await loadPending();
-  if (!$('#log').children.length) add('ai', 'Oi! Me diga o que você quer fazer: analisar uma conta, criar uma campanha, aplicar negativas, ajustar orçamento. Tudo que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
+  if (!$('#log').children.length) add('ai', 'Oi! Comandos de conteúdo funcionam aqui: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta". Para campanhas (analisar conta, negativas, orçamento) o que gasta dinheiro fica na fila ao lado esperando a aprovação de um administrador.');
 }
 async function setSession(r) { token = r.token; store_.set('tk', token, $('#remember').checked); await boot(); }
 
@@ -426,7 +426,7 @@ $('#form').onsubmit = async (e) => {
   $('#input').value = ''; add('me', text);
   const wait = add('ai', 'Pensando…'); $('#send').disabled = true;
   try {
-    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sid, message: text }) });
+    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ sessionId: sid, message: text, cliente: CUR }) });
     wait.textContent = r.reply || '(sem resposta)';
     renderPending(r.pending || []);
   } catch (err) { wait.textContent = 'Erro: ' + err.message; }
@@ -690,8 +690,8 @@ async function loadRequests() {
 $('#reqSend').onclick = async () => {
   $('#reqNote').textContent = '';
   try {
-    await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
-    $('#reqText').value = ''; $('#reqNote').textContent = 'Pedido enviado. Clique em "Rodar o time" para o time atender.'; loadRequests();
+    const r = await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
+    $('#reqText').value = ''; $('#reqNote').textContent = r.automatico ? 'Pedido enviado. O Hugo já está criando a pauta (1–2 min).' : 'Pedido enviado. Clique em "Rodar a squad" para o time atender.'; loadRequests();
   } catch (e) { $('#reqNote').textContent = e.message; }
 };
 async function loadItems() {
