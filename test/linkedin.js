@@ -4,7 +4,7 @@ process.env.DATA_DIR = './data/li-test'; process.env.DRY_RUN = 'false';
 process.env.LINKEDIN_CLIENT_ID = 'cid'; process.env.LINKEDIN_CLIENT_SECRET = 'sec';
 fs.rmSync('./data/li-test', { recursive: true, force: true });
 const { store } = await import('../src/store.js'); await store.init();
-const li = await import('../src/platforms/linkedin.js');
+const li = await import('../src/platforms/linkedinPost.js');
 const { adapters, redesDe } = await import('../src/platforms/social.js');
 const calls = [];
 globalThis.fetch = async (url, opts = {}) => {

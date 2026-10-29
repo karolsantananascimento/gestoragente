@@ -2,7 +2,7 @@ import { config, socialStatus } from '../config.js';
 import { httpJson } from '../http.js';
 import { store } from '../store.js';
 import * as reddit from './reddit.js';
-import * as linkedin from './linkedin.js';
+import * as linkedin from './linkedinPost.js';
 
 // Adaptadores das redes sociais usados pela Mariana. Cada um expõe:
 //   configured(): bool

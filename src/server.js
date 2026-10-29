@@ -8,7 +8,7 @@ import { store } from './store.js';
 import { buildMcpServer } from './mcp.js';
 import { diagnostico } from './platforms/social.js';
 import * as reddit from './platforms/reddit.js';
-import * as linkedin from './platforms/linkedin.js';
+import * as linkedin from './platforms/linkedinPost.js';
 import { importarPautasDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
 import { runCommand } from './commands.js';
