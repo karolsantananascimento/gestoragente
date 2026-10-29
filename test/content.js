@@ -285,5 +285,14 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   console.log('ok planilha carrossel');
 }
 
+
+// ---- erros da IA viram avisos claros
+{
+  const { msgIA } = await import('../src/agent.js');
+  if (!/sem crédito/.test(msgIA(new Error('400 {"message":"Your credit balance is too low to access the Anthropic API"}')))) throw new Error('msgIA não reconheceu falta de crédito');
+  if (!/recusada/.test(msgIA(new Error('401 invalid x-api-key')))) throw new Error('msgIA não reconheceu chave inválida');
+  console.log('ok msgIA');
+}
+
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);

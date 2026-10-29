@@ -12,7 +12,7 @@ import { revisar } from './revisao.js';
 import { runTrafego } from './trafegoCmd.js';
 import * as linkedin from './platforms/linkedinPost.js';
 import { importarPautasDeArquivo } from './planilha.js';
-import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos } from './agent.js';
+import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos, iaStatus, iaComProblema, msgIA, marcarIA } from './agent.js';
 import { runCommand } from './commands.js';
 import { criarRascunhoDoPedido } from './rascunho.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
@@ -205,7 +205,7 @@ app.delete('/api/users/:email', requireUser, requireAdmin, (req, res) => {
 
 // --- Agente e fila de aprovação ---
 app.get('/api/status', requireUser, (req, res) =>
-  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey, automacao: autoDisponivel(), rodando: autoRodando(store.cliente(req.query.cliente)?.id) }));
+  res.json({ modo: config.dryRun ? 'SIMULAÇÃO' : 'REAL', tetos: config.caps, plataformas: platformStatus(), redes: redesDe(req.query.cliente), armazenamento: store.mode(), chat: !!config.anthropicKey, automacao: autoDisponivel(), ia_erro: iaComProblema() ? iaStatus.erro : '', rodando: autoRodando(store.cliente(req.query.cliente)?.id) }));
 
 app.get('/api/social/check', requireUser, requireAdmin, async (req, res) => { try { res.json(await diagnostico(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
 
@@ -253,7 +253,8 @@ app.post('/api/chat', requireUser, async (req, res) => {
     res.json(await chat(`${req.user.email}:${sessionId}`, message, req.user.email, getCliente(cliente)?.nome));
   } catch (e) {
     console.error('[chat]', e);
-    res.status(500).json({ error: e.message });
+    marcarIA(e);
+    res.status(500).json({ error: msgIA(e) });
   }
 });
 app.post('/api/reset', requireUser, (req, res) => { resetSession(`${req.user.email}:${req.body?.sessionId || 'default'}`); res.json({ ok: true }); });
@@ -305,10 +306,20 @@ app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out
 function dispararPedido(pedido) {
   const cl = getCliente(pedido.cliente_id);
   if (cl && !kitCompleto(cl.marca)) return { modo: 'bloqueado', texto: `O kit de marca de ${cl.nome} está incompleto: preencha a aba Marca para o time criar a pauta.` };
-  if (autoDisponivel()) { atenderPedidos(pedido.cliente_id).catch(() => {}); return { modo: 'ia', texto: 'O Hugo já está escrevendo a pauta: ela aparece em "Pauta pronta · Em arte" em até 1–2 minutos.' }; }
+  if (autoDisponivel() && !iaComProblema()) {
+    // Com IA o Hugo escreve; se a IA falhar (sem crédito, chave inválida) ou não criar nada, o pedido não fica parado: vira rascunho.
+    atenderPedidos(pedido.cliente_id).then((r) => {
+      // IA falhou (sem crédito, chave inválida): todos os pedidos abertos do cliente viram rascunho. Se rodou mas este pedido seguiu aberto, só ele.
+      const abertos = listRequests('aberto', pedido.cliente_id).filter((p) => r?.status === 'erro' || p.id === pedido.id);
+      if (r?.status === 'ja_rodando') return;
+      for (const p of abertos) { const d = criarRascunhoDoPedido(p); store.log({ type: 'pedido_rascunho_fallback', id: p.id, motivo: r?.erro || r?.status, ok: !d.error }); }
+    }).catch(() => {});
+    return { modo: 'ia', texto: 'O Hugo está escrevendo a pauta: ela aparece em "Em arte" em até 1–2 minutos. Se a IA falhar, o sistema cria um rascunho no lugar.' };
+  }
+  const aviso = iaComProblema() ? ` (IA indisponível: ${iaStatus.erro})` : '';
   const r = criarRascunhoDoPedido(pedido);
   if (r.error) return { modo: 'erro', texto: r.error };
-  return { modo: 'rascunho', item: r.item, texto: `Pauta criada agora em "Pauta pronta · Em arte" (rascunho automático${r.data ? `, data ${r.data.split('T')[0].split('-').reverse().join('/')}` : ''}). Revise e edite o texto; o Hugo com IA pode refinar depois.` };
+  return { modo: 'rascunho', item: r.item, texto: `Pauta criada agora em "Em arte" (rascunho automático${r.data ? `, data ${r.data.split('T')[0].split('-').reverse().join('/')}` : ''}). Revise e edite o texto; o Hugo com IA pode refinar depois.${aviso}` };
 }
 
 // Pedidos ao time: comandos escritos no painel (criar pauta). O time os executa quando roda.
@@ -397,7 +408,7 @@ app.get('/media/:id', (req, res) => {
   res.set('content-type', m.type).set('cache-control', 'public, max-age=86400').send(Buffer.from(m.data, 'base64'));
 });
 
-app.use(express.static(path.join(here, '..', 'public')));
+app.use(express.static(path.join(here, '..', 'public'), { setHeaders: (res, f) => { if (/\.html$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } })); // o painel sempre carrega a versão mais nova
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }

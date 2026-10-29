@@ -41,6 +41,18 @@ const TEAM_AUTO = ['conteudo_revisar', 'hugo_atualizar_pauta', 'pedidos_listar',
 const autoDefs = toolDefs.filter((t) => TEAM_AUTO.includes(t.name));
 const running = new Set();
 export const autoDisponivel = () => !!config.anthropicKey;
+// Estado da IA: erros de chave/crédito viram aviso claro e fazem o sistema usar o rascunho sem IA em vez de falhar calado.
+export const iaStatus = { erro: '', at: 0 };
+export function msgIA(e) {
+  const m = String(e?.message || e || '');
+  if (/credit balance|billing|purchase credits/i.test(m)) return 'A conta da API da Anthropic está sem crédito. Adicione créditos em console.anthropic.com → Plans & Billing; enquanto isso o sistema cria rascunhos sem IA.';
+  if (/401|invalid x-api-key|authentication|invalid api key/i.test(m)) return 'A chave ANTHROPIC_API_KEY foi recusada (inválida ou revogada). Gere outra em console.anthropic.com e atualize no Render.';
+  if (/429|rate.?limit|overloaded/i.test(m)) return 'A API da Anthropic está limitando as chamadas agora. Tente de novo em instantes.';
+  return m.slice(0, 200);
+}
+export const marcarIA = (e) => { if (!e) { iaStatus.erro = ''; return; } iaStatus.erro = msgIA(e); iaStatus.at = Date.now(); };
+// IA "com problema" só por 10 min: depois tenta de novo.
+export const iaComProblema = () => !!iaStatus.erro && Date.now() - iaStatus.at < 10 * 60e3;
 export const autoRodando = (id) => running.has(id);
 // Roda todos os clientes com kit completo (uso: início do servidor e rotina diária).
 export async function rodarTodos(opts) {
@@ -77,10 +89,12 @@ export async function atenderPedidos(clienteId, { completarMeta = false } = {}) 
     }
     const criadas = listItems(null, clienteId).length - antes;
     store.log({ type: 'auto_hugo', cliente: clienteId, pautas_criadas: criadas });
+    marcarIA(null);
     return { status: 'ok', criadas };
   } catch (e) {
     store.log({ type: 'auto_hugo_erro', cliente: clienteId, erro: String(e.message).slice(0, 200) });
-    return { status: 'erro', erro: e.message };
+    marcarIA(e);
+    return { status: 'erro', erro: msgIA(e) };
   } finally { running.delete(clienteId); }
 }
 
@@ -88,6 +102,7 @@ export async function chat(sessionId, userMessage, who = 'chat', clienteNome = '
   if (!config.anthropicKey) {
     return { reply: 'Entendo estes comandos mesmo sem IA: "criar pauta de [tema] para [cliente] na quinta", "ajustar criativo [título]: trocar a foto", "listar pauta"; e, para o Meta Ads: "pausar campanha \"nome\"", "ativar campanha \"nome\"", "orçamento da campanha \"nome\" para 50" e "aumentar orçamento da campanha \"nome\" em 10%". Para conversar livremente sobre campanhas, configure ANTHROPIC_API_KEY no Render, ou use o agente dentro do Claude pelo conector "Agente de Tráfego". Os botões acima (Contas, Campanhas e Desempenho do Meta) também funcionam.', pending: pendingActions() };
   }
+  if (iaComProblema()) return { reply: `A IA está indisponível agora. ${iaStatus.erro}\n\nOs comandos fixos continuam funcionando (criar pauta, ajustar criativo, listar pauta, pausar/ativar campanha e orçamento).`, pending: pendingActions() };
   const history = sessions.get(sessionId) || [];
   history.push({ role: 'user', content: userMessage });
 

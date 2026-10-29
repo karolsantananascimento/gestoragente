@@ -210,6 +210,7 @@
     </div>
   </div>
 </header>
+<div class="alert" id="iaAlert" style="margin:0;border-radius:0"></div>
 <nav id="tabs">
   <button data-tab="conteudo" class="on">🗂 Conteúdo <span class="badge" id="bdgConteudo"></span></button>
   <button data-tab="chat">💬 Solicitações</button>
@@ -602,6 +603,7 @@ async function loadStatus() {
   const on = Object.entries(s.plataformas).filter(([, v]) => v).map(([k]) => k);
   $('#pg').textContent = on.length ? 'Conectado: ' + on.join(', ') : 'Nenhuma plataforma conectada';
   $('#pg').className = 'pill' + (on.length ? ' on' : '');
+  $('#iaAlert').textContent = s.ia_erro ? '⚠ IA indisponível: ' + s.ia_erro : '';
   if (s.armazenamento === 'arquivo') $('#pg').title = 'Dados em arquivo: podem se perder em reinícios no plano gratuito. Configure DATABASE_URL.';
 }
 
@@ -1371,7 +1373,7 @@ $('#itemForm').onsubmit = async (e) => {
 };
 
 /* ---------- init ---------- */
-setInterval(() => { if (me) { loadPending().catch(() => {}); if (!$('#v-conteudo').classList.contains('hidden')) loadItems().catch(() => {}); } }, 15000);
+setInterval(() => { if (me) { loadPending().catch(() => {}); loadStatus().catch(() => {}); if (!$('#v-conteudo').classList.contains('hidden')) loadItems().catch(() => {}); } }, 15000);
 if (token && !inviteToken && !signupMode) boot().catch(() => logout());
 </script>
 </body>
