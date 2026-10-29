@@ -37,7 +37,7 @@ export function redesDe(clienteId) {
   const c = contasDe(clienteId); const base = socialStatus();
   const tok = !!(config.meta.token || config.social.fbPageToken);
   return {
-    facebook: !!(c.fbPageId && (c.padrao ? base.facebook : tok)),
+    facebook: !!(c.fbPageId && (tok || (c.padrao && base.facebook))),
     instagram: !!(c.igUserId && tok),
     linkedin: base.linkedin && c.padrao, tiktok: false,
   };
