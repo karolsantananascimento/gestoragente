@@ -273,15 +273,8 @@
       </section>
       <section class="sec">
         <div class="sech"><h3>🚀 Subir campanha</h3></div>
-        <div class="sub">Nasce sempre pausada e só vai ao Meta depois que um administrador aprovar. Os tetos de orçamento valem.</div>
-        <form id="newCamp" class="form">
-          <label>Nome<input name="nome" required placeholder="Ex.: Disco | Leads | Nov"></label>
-          <div class="grid2" style="grid-template-columns:1fr 1fr">
-            <label>Objetivo<select name="objetivo"><option value="OUTCOME_LEADS">Leads</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_TRAFFIC">Tráfego</option><option value="OUTCOME_ENGAGEMENT">Engajamento</option><option value="OUTCOME_AWARENESS">Reconhecimento</option></select></label>
-            <label>Orçamento/dia (R$)<input name="orc" type="number" min="1" step="1" placeholder="50"></label>
-          </div>
-          <div class="row"><button>Propor criação</button></div>
-        </form>
+        <div class="sub">Fluxo completo: campanha, público, anúncio e imagem numa só proposta. Tudo nasce pausado e só vai ao Meta depois que um administrador aprovar. Os tetos de orçamento valem.</div>
+        <div class="row"><button id="campNew" type="button">➕ Nova campanha</button></div>
         <details class="panel" style="margin-top:10px"><summary>✨ Montar com IA a partir de um briefing</summary>
           <div class="in"><textarea id="aiBrief" rows="3" placeholder="Ex.: campanha de leads para a Disco, R$ 40/dia, público lojistas de 25 a 45 anos no Brasil, foco em gestão de tráfego"></textarea>
           <div class="row"><button id="aiBuild" type="button">Montar proposta</button></div></div>
@@ -390,6 +383,52 @@
     </div>
     <div class="err" id="itemErr"></div>
     <div class="row"><button>Salvar</button><button type="button" class="ghost" id="itemClose">Cancelar</button></div>
+  </form>
+</div>
+
+
+<!-- Nova campanha (fluxo completo) -->
+<div class="overlay dim hidden" id="campModal">
+  <form class="box wide modal form" id="campForm" style="max-width:760px">
+    <h2>Nova campanha · fluxo completo</h2>
+    <div class="note">Cria campanha, conjunto (público), criativo e anúncio, tudo pausado. Você revisa o resumo na aprovação.</div>
+    <div class="sec">
+      <h3>1. Campanha</h3>
+      <label>Nome<input name="nome" required placeholder="Ex.: Disco | Leads | Nov"></label>
+      <div class="grid2">
+        <label>Objetivo<select name="objetivo"><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Leads (contatos)</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option></select></label>
+        <label>Orçamento por dia (R$)<input name="orc" type="number" min="1" step="1" required placeholder="40"></label>
+        <label id="lbDestino">Destino do clique<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option></select></label>
+        <label id="lbUrl">Link de destino<input name="url" type="url" placeholder="https://..."></label>
+        <label id="lbPixel" class="hidden">Pixel do Meta (obrigatório para Leads/Vendas no site)<input name="pixel" placeholder="ID do pixel"></label>
+      </div>
+    </div>
+    <div class="sec">
+      <h3>2. Público e período</h3>
+      <div class="grid2">
+        <label>Países (códigos, separados por vírgula)<input name="paises" value="BR"></label>
+        <label>Gênero<select name="genero"><option value="todos">Todos</option><option value="feminino">Feminino</option><option value="masculino">Masculino</option></select></label>
+        <label>Idade mínima<input name="imin" type="number" min="13" max="65" value="18"></label>
+        <label>Idade máxima<input name="imax" type="number" min="13" max="65" value="65"></label>
+        <label>Início (opcional)<input name="inicio" type="datetime-local"></label>
+        <label>Término (opcional)<input name="fim" type="datetime-local"></label>
+      </div>
+    </div>
+    <div class="sec">
+      <h3>3. Anúncio</h3>
+      <label>Texto principal<textarea name="texto" rows="3" required placeholder="O texto que aparece acima da imagem"></textarea></label>
+      <div class="grid2">
+        <label>Título (opcional)<input name="titulo" maxlength="80"></label>
+        <label>Botão<select name="cta"><option value="LEARN_MORE">Saiba mais</option><option value="SIGN_UP">Cadastre-se</option><option value="SHOP_NOW">Comprar</option><option value="CONTACT_US">Fale conosco</option><option value="GET_QUOTE">Solicitar orçamento</option><option value="SUBSCRIBE">Assinar</option><option value="DOWNLOAD">Baixar</option><option value="APPLY_NOW">Inscreva-se</option></select></label>
+      </div>
+      <label>Descrição curta (opcional)<input name="descricao" maxlength="120"></label>
+      <div class="lbl2">Imagem do anúncio</div>
+      <div class="row"><button type="button" class="ghost" id="campImg">📤 Enviar imagem</button><select id="campArte" title="Usar a arte de um conteúdo"><option value="">…ou usar uma arte do Conteúdo</option></select></div>
+      <img id="campPrev" class="hidden" alt="Prévia" style="max-height:160px;border-radius:10px;border:1px solid var(--line);margin-top:8px">
+      <input type="hidden" name="imagem">
+    </div>
+    <div class="err" id="campErr"></div>
+    <div class="row"><button>Propor campanha completa</button><button type="button" class="ghost" id="campClose">Cancelar</button></div>
   </form>
 </div>
 
@@ -711,7 +750,7 @@ async function propor(name, args, titulo) {
 const campanhaAcoes = (c) => {
   const a = [];
   const pausada = c.status === 'PAUSED';
-  a.push(pausada ? ['▶ Ativar', () => propor('meta_pausar_ativar', { id: c.id, status: 'ACTIVE' }, `Ativar "${c.nome}"`)] : ['⏸ Pausar', () => propor('meta_pausar_ativar', { id: c.id, status: 'PAUSED' }, `Pausar "${c.nome}"`)]);
+  a.push(pausada ? ['▶ Ativar tudo', () => propor('meta_ativar_estrutura', { id: c.id }, `Ativar "${c.nome}" (campanha, conjuntos e anúncios)`)] : ['⏸ Pausar', () => propor('meta_pausar_ativar', { id: c.id, status: 'PAUSED' }, `Pausar "${c.nome}"`)]);
   if (c.orcamento_dia_brl) {
     a.push(['＋10%', () => propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: Math.round(c.orcamento_dia_brl * 1.1 * 100) / 100 }, `Orçamento de "${c.nome}" +10%`)]);
     a.push(['－10%', () => propor('meta_ajustar_orcamento', { id: c.id, novo_orcamento_brl: Math.round(c.orcamento_dia_brl * 0.9 * 100) / 100 }, `Orçamento de "${c.nome}" −10%`)]);
@@ -821,12 +860,42 @@ $('#tAI').onclick = () => {
   const box = mkEl('div', null, 'tlog'); out.appendChild(box);
   enviarAoAgente(`Analise a conta de anúncios do Meta ${acc} no período ${$('#tPer').selectedOptions[0].textContent} (meta_desempenho por campanha e por conjunto). Diga o que está bom, o que está ruim e proponha otimizações concretas (pausar, ajustar orçamento, público) como propostas para aprovação, sem executar nada.`, box, $('#tAI'), sid + '-t');
 };
-$('#newCamp').onsubmit = async (e) => {
-  e.preventDefault(); const f = e.target.elements;
-  const args = { nome: f.nome.value.trim(), objetivo: f.objetivo.value, ad_account_id: $('#tAcc').value || undefined };
-  if (f.orc.value) args.orcamento_diario_brl = Number(f.orc.value);
-  const r = await propor('meta_criar_campanha', args, `Criar campanha "${args.nome}"`);
-  if (r) e.target.reset();
+/* ---------- nova campanha (fluxo completo) ---------- */
+const campForm = () => $('#campForm').elements;
+function campRefresh() {
+  const f = campForm(); const whats = f.destino.value === 'whatsapp';
+  if (whats && f.objetivo.value !== 'OUTCOME_LEADS') f.destino.value = 'site';
+  const w = f.destino.value === 'whatsapp';
+  show($('#lbUrl'), !w); f.url.required = !w;
+  show($('#lbPixel'), !w && /LEADS|SALES/.test(f.objetivo.value));
+  f.destino.querySelector('[value=whatsapp]').disabled = f.objetivo.value !== 'OUTCOME_LEADS';
+}
+$('#campForm').elements.objetivo.onchange = campRefresh; $('#campForm').elements.destino.onchange = campRefresh;
+function campImagem(url) { const f = campForm(); f.imagem.value = url || ''; const im = $('#campPrev'); if (url) { im.src = url; im.referrerPolicy = 'no-referrer'; } show(im, !!url); }
+$('#campNew').onclick = async () => {
+  $('#campForm').reset(); $('#campErr').textContent = ''; campImagem(''); campRefresh();
+  show($('#campModal'), true);
+  const sel = $('#campArte'); sel.length = 1;
+  try { const r = await api('/api/content?' + qc()); for (const it of r.items.filter((x) => x.arte_url && !['cancelado'].includes(x.status))) { const o = mkEl('option', it.titulo.slice(0, 60)); o.value = (it.arte_urls?.length ? it.arte_urls[0] : it.arte_url); sel.appendChild(o); } } catch {}
+};
+$('#campClose').onclick = () => show($('#campModal'), false);
+$('#campArte').onchange = () => campImagem($('#campArte').value);
+$('#campImg').onclick = async () => {
+  const files = await pickImages(false); if (!files.length) return;
+  try { toast('Enviando imagem…'); const r = await api('/api/media/upload', { method: 'POST', body: JSON.stringify({ file: files[0] }) }); campImagem(r.url); $('#campArte').value = ''; }
+  catch (e) { $('#campErr').textContent = e.message; }
+};
+$('#campForm').onsubmit = async (e) => {
+  e.preventDefault(); $('#campErr').textContent = ''; const f = campForm();
+  if (!f.imagem.value) { $('#campErr').textContent = 'Envie ou escolha a imagem do anúncio.'; return; }
+  const args = { nome: f.nome.value.trim(), objetivo: f.objetivo.value, orcamento_diario_brl: Number(f.orc.value), destino: f.destino.value, texto_principal: f.texto.value.trim(), imagem_url: f.imagem.value, cta: f.cta.value, paises: f.paises.value.split(/[\s,;]+/).filter(Boolean), idade_min: Number(f.imin.value) || 18, idade_max: Number(f.imax.value) || 65, genero: f.genero.value, cliente: CUR, ad_account_id: $('#tAcc').value || undefined };
+  if (f.destino.value === 'site') args.url_destino = f.url.value.trim();
+  if (f.pixel.value.trim()) args.pixel_id = f.pixel.value.trim();
+  if (f.titulo.value.trim()) args.titulo = f.titulo.value.trim(); if (f.descricao.value.trim()) args.descricao = f.descricao.value.trim();
+  if (f.inicio.value) args.inicio = new Date(f.inicio.value).toISOString(); if (f.fim.value) args.termina_em = new Date(f.fim.value).toISOString();
+  const b = e.target.querySelector('button:not(.ghost)'); b.disabled = true;
+  const r = await propor('meta_subir_campanha_completa', args, `Subir campanha "${args.nome}"`);
+  b.disabled = false; if (r) show($('#campModal'), false);
 };
 $('#aiBuild').onclick = () => {
   const b = $('#aiBrief').value.trim(); if (!b) return toast('Descreva a campanha.', 'bad');

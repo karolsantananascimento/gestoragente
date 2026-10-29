@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { httpJson, NotConfigured } from '../http.js';
+import { contasDe } from './social.js';
 
 // Só o token é obrigatório. A conta de anúncio pode vir de META_AD_ACCOUNT_ID ou ser informada em cada chamada.
 function requireMeta() {
@@ -210,3 +211,127 @@ export const metaTools = [
       }),
   },
 ];
+
+// ---------- Fluxo completo: campanha → conjunto → criativo → anúncio (tudo PAUSADO, uma única aprovação) ----------
+const OBJ_FLUXO = {
+  OUTCOME_TRAFFIC: { goal: 'LINK_CLICKS', rotulo: 'Tráfego' },
+  OUTCOME_AWARENESS: { goal: 'REACH', rotulo: 'Reconhecimento' },
+  OUTCOME_LEADS: { goal: 'OFFSITE_CONVERSIONS', evento: 'LEAD', rotulo: 'Leads' },
+  OUTCOME_SALES: { goal: 'OFFSITE_CONVERSIONS', evento: 'PURCHASE', rotulo: 'Vendas' },
+};
+const CTAS = ['LEARN_MORE', 'SIGN_UP', 'SHOP_NOW', 'CONTACT_US', 'GET_QUOTE', 'SUBSCRIBE', 'DOWNLOAD', 'APPLY_NOW', 'BOOK_TRAVEL'];
+const httpsUrl = (u) => /^https:\/\/[^\s]+$/i.test(String(u || ''));
+const pixelDe = (a) => a.pixel_id || config.meta.pixelId || '';
+const paginaDe = (a) => { const c = contasDe(a.cliente); return { page: a.page_id || c.fbPageId || '', ig: c.igUserId || '' }; };
+
+function validarFluxo(a) {
+  const o = OBJ_FLUXO[a.objetivo];
+  if (!String(a.nome || '').trim()) return 'Informe o nome da campanha.';
+  if (!o) return `Objetivo "${a.objetivo}" não é suportado no fluxo completo. Use: ${Object.keys(OBJ_FLUXO).join(', ')}.`;
+  if (!(Number(a.orcamento_diario_brl) > 0)) return 'Informe o orçamento diário em reais.';
+  if (!String(a.texto_principal || '').trim()) return 'Informe o texto principal do anúncio.';
+  if (!httpsUrl(a.imagem_url)) return 'A imagem do anúncio precisa ser um link https público (JPG/PNG).';
+  const whats = a.destino === 'whatsapp';
+  if (whats && a.objetivo !== 'OUTCOME_LEADS') return 'Destino WhatsApp só funciona com o objetivo Leads.';
+  if (!whats && !httpsUrl(a.url_destino)) return 'Informe o link de destino (https://) do anúncio.';
+  if (!whats && o.evento && !pixelDe(a)) return `O objetivo ${o.rotulo} para site precisa do pixel do Meta (informe pixel_id ou configure META_PIXEL_ID). Sem pixel, use Tráfego ou o destino WhatsApp.`;
+  const imin = a.idade_min ?? 18, imax = a.idade_max ?? 65;
+  if (imin < 13 || imax > 65 || imin > imax) return 'Faixa de idade inválida (13 a 65, mínima menor que a máxima).';
+  if ((a.paises || []).some((c) => !/^[A-Za-z]{2}$/.test(c))) return 'Países devem ser códigos de 2 letras (ex.: BR).';
+  if (a.cta && !CTAS.includes(a.cta)) return `CTA inválido. Use: ${CTAS.join(', ')}.`;
+  for (const [k, v] of [['inicio', a.inicio], ['termina_em', a.termina_em]]) if (v && Number.isNaN(new Date(v).getTime())) return `Data inválida em ${k}.`;
+  if (a.termina_em && new Date(a.termina_em).getTime() < Date.now()) return 'A data de término já passou.';
+  if (!paginaDe(a).page) return 'Não achei a página do Facebook para anunciar: cadastre-a na aba Marca do cliente (ou informe page_id).';
+  return '';
+}
+
+metaTools.push(
+  {
+    name: 'meta_subir_campanha_completa',
+    platform: 'meta',
+    risk: 'write',
+    description: 'FLUXO COMPLETO de campanha no Meta Ads: cria a campanha (orçamento diário na campanha), o conjunto (público, idade, gênero, países, datas), o criativo (imagem, texto, título, CTA, link) e o anúncio. TUDO nasce PAUSADO e só vai ao ar depois de ativado (meta_ativar_estrutura). Uma única aprovação humana cobre a criação inteira. Objetivos: OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_LEADS e OUTCOME_SALES (os dois últimos para site exigem pixel; Leads também aceita destino whatsapp).',
+    params: {
+      nome: { type: 'string', desc: 'Nome da campanha', required: true },
+      objetivo: { type: 'string', enum: Object.keys(OBJ_FLUXO), desc: 'Objetivo', required: true },
+      orcamento_diario_brl: { type: 'number', desc: 'Orçamento diário em reais', required: true },
+      texto_principal: { type: 'string', desc: 'Texto principal do anúncio (legenda)', required: true },
+      imagem_url: { type: 'string', desc: 'Link https público da imagem (JPG/PNG), de preferência 1080x1350 ou 1080x1080', required: true },
+      destino: { type: 'string', enum: ['site', 'whatsapp'], desc: 'Para onde o clique leva (padrão site)' },
+      url_destino: { type: 'string', desc: 'Link https de destino (obrigatório quando destino = site)' },
+      titulo: { type: 'string', desc: 'Título do anúncio (opcional)' },
+      descricao: { type: 'string', desc: 'Descrição curta (opcional)' },
+      cta: { type: 'string', enum: CTAS, desc: 'Botão de chamada (padrão LEARN_MORE)' },
+      paises: { type: 'string[]', desc: 'Códigos de país, ex.: BR (padrão BR)' },
+      idade_min: { type: 'number', desc: 'Idade mínima 13 a 65 (padrão 18)' },
+      idade_max: { type: 'number', desc: 'Idade máxima 13 a 65 (padrão 65)' },
+      genero: { type: 'string', enum: ['todos', 'masculino', 'feminino'], desc: 'Gênero (padrão todos)' },
+      inicio: { type: 'string', desc: 'Início ISO (opcional; ao ativar começa na hora)' },
+      termina_em: { type: 'string', desc: 'Término ISO (opcional)' },
+      pixel_id: { type: 'string', desc: 'Pixel do Meta (obrigatório para Leads/Vendas no site)' },
+      cliente: { type: 'string', desc: 'Cliente (para achar a página do Facebook e o Instagram)' },
+      page_id: { type: 'string', desc: 'Página do Facebook (opcional; padrão a do cliente)' },
+      ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
+    },
+    budgetBRL: (a) => Number(a.orcamento_diario_brl),
+    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${a.destino === 'whatsapp' ? 'WhatsApp' : 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
+    precheck: async (a) => {
+      const erro = validarFluxo(a); if (erro) return { error: erro };
+      const { page, ig } = paginaDe(a);
+      const pg = await get(page, { fields: 'name' });
+      acct(a.ad_account_id);
+      const aviso = [`Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
+      if (a.destino === 'whatsapp') aviso.push('WhatsApp: exige número do WhatsApp Business conectado à página (fluxo ainda não validado em conta real)');
+      return { warn: aviso.join(' · ') + '. Tudo será criado PAUSADO.' };
+    },
+    handler: async (a) => {
+      const conta = acct(a.ad_account_id); const o = OBJ_FLUXO[a.objetivo]; const { page, ig } = paginaDe(a);
+      const whats = a.destino === 'whatsapp'; const criado = {};
+      const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { throw new Error(`Falhou na etapa "${nome}": ${e.message}.${Object.keys(criado).length ? ` Já criado (PAUSADO): ${Object.entries(criado).map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ''}`); } };
+      const camp = await etapa('campanha', () => post(`${conta}/campaigns`, { name: a.nome, objective: a.objetivo, status: 'PAUSED', special_ad_categories: '[]', daily_budget: cents(a.orcamento_diario_brl), bid_strategy: 'LOWEST_COST_WITHOUT_CAP' }));
+      criado.campanha = camp.id;
+      const targeting = { geo_locations: { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
+      if (a.genero && a.genero !== 'todos') targeting.genders = [a.genero === 'masculino' ? 1 : 2];
+      const conj = { name: `${a.nome} | Conjunto`, campaign_id: camp.id, status: 'PAUSED', billing_event: 'IMPRESSIONS', targeting: JSON.stringify(targeting), optimization_goal: whats ? 'CONVERSATIONS' : o.goal };
+      if (whats) { conj.destination_type = 'WHATSAPP'; conj.promoted_object = JSON.stringify({ page_id: page }); }
+      else if (o.evento) conj.promoted_object = JSON.stringify({ pixel_id: pixelDe(a), custom_event_type: o.evento });
+      if (a.inicio) conj.start_time = new Date(a.inicio).toISOString();
+      if (a.termina_em) conj.end_time = new Date(a.termina_em).toISOString();
+      const set = await etapa('conjunto de anúncios', () => post(`${conta}/adsets`, conj));
+      criado.conjunto = set.id;
+      const link = whats ? 'https://api.whatsapp.com/send' : a.url_destino;
+      const ld = { message: a.texto_principal, link, picture: a.imagem_url, call_to_action: whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : { type: a.cta || 'LEARN_MORE', value: { link } } };
+      if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
+      const spec = { page_id: page, link_data: ld }; if (ig) spec.instagram_user_id = ig;
+      const cri = await etapa('criativo', () => post(`${conta}/adcreatives`, { name: `${a.nome} | Criativo`, object_story_spec: JSON.stringify(spec) }));
+      criado.criativo = cri.id;
+      const ad = await etapa('anúncio', () => post(`${conta}/ads`, { name: `${a.nome} | Anúncio 1`, adset_id: set.id, creative: JSON.stringify({ creative_id: cri.id }), status: 'PAUSED' }));
+      criado.anuncio = ad.id;
+      return { status: 'criada_pausada', campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
+    },
+  },
+  {
+    name: 'meta_ativar_estrutura',
+    platform: 'meta',
+    risk: 'write',
+    description: 'ATIVA uma campanha criada pelo fluxo completo: a campanha e os conjuntos e anúncios que estiverem pausados dentro dela. Passa por aprovação humana e conta no limite diário de ativações. Nunca exclui nada.',
+    params: { id: { type: 'string', desc: 'ID da campanha', required: true } },
+    isActivation: () => true,
+    summarize: (a) => `Meta: ATIVAR a campanha ${a.id} com seus conjuntos e anúncios pausados (começa a gastar)`,
+    precheck: async (a) => {
+      const c = await get(a.id, { fields: 'name,status,daily_budget' });
+      const sets = await get(`${a.id}/adsets`, { fields: 'id,status', limit: '50' }); const ads = await get(`${a.id}/ads`, { fields: 'id,status', limit: '100' });
+      const n = (l) => (l.data || []).filter((x) => x.status === 'PAUSED').length;
+      return { warn: `"${c.name}" (${c.status}${c.daily_budget ? `, R$ ${Number(c.daily_budget) / 100}/dia` : ''}): serão ativados ${n(sets)} conjunto(s) e ${n(ads)} anúncio(s) pausados. O gasto começa após a revisão do Meta.` };
+    },
+    handler: async ({ id }) => {
+      const ativados = { conjuntos: [], anuncios: [] };
+      await post(id, { status: 'ACTIVE' });
+      const sets = await get(`${id}/adsets`, { fields: 'id,status', limit: '50' });
+      for (const x of (sets.data || []).filter((x) => x.status === 'PAUSED')) { await post(x.id, { status: 'ACTIVE' }); ativados.conjuntos.push(x.id); }
+      const ads = await get(`${id}/ads`, { fields: 'id,status', limit: '100' });
+      for (const x of (ads.data || []).filter((x) => x.status === 'PAUSED')) { await post(x.id, { status: 'ACTIVE' }); ativados.anuncios.push(x.id); }
+      return { status: 'ativada', campanha_id: id, ...ativados };
+    },
+  }
+);

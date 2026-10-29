@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node test/smoke.js && node test/google.js && node test/content.js && node test/social.js && node test/reddit.js && node test/linkedin.js && node test/trafego.js && node test/auth.js"
+    "test": "node test/smoke.js && node test/google.js && node test/content.js && node test/social.js && node test/reddit.js && node test/linkedin.js && node test/trafego.js && node test/campanha.js && node test/auth.js"
   },
   "engines": {
     "node": ">=20"

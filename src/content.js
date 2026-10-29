@@ -414,6 +414,21 @@ export function cancelRequest(id, by) {
   return { pedido: store.pedidos().find((x) => x.id === id) };
 }
 
+// Guarda uma imagem enviada pelo painel (data URL) como JPEG no nosso servidor e devolve o link público estável.
+export async function guardarImagem(dataUrl) {
+  const origin = config.publicUrl;
+  if (!origin) return { error: 'PUBLIC_URL não está configurada: não há como guardar a imagem enviada.' };
+  const m = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) return { error: 'Envie uma imagem PNG, JPG ou WebP.' };
+  let buf;
+  try { const sharp = (await import('sharp')).default; buf = await sharp(Buffer.from(m[2], 'base64')).flatten({ background: '#ffffff' }).jpeg({ quality: 92, mozjpeg: true }).toBuffer(); }
+  catch { return { error: 'Não consegui ler a imagem.' }; }
+  if (buf.length > MAX_IMG) return { error: 'A imagem passa de 4 MB depois de otimizar. Reduza o tamanho.' };
+  const id = crypto.randomBytes(16).toString('hex');
+  store.setMedia(id, { type: 'image/jpeg', data: buf.toString('base64'), at: new Date().toISOString() });
+  return { url: `${origin}/media/${id}` };
+}
+
 // Envio das lâminas direto do painel: imagens (data URL) viram JPEG, ficam no nosso servidor e seguem para aprovação como arte do carrossel.
 export async function uploadSlides(id, files, observacoes, by) {
   const it = store.getContent(id);

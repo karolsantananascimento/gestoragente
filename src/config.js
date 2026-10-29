@@ -57,6 +57,7 @@ export const config = {
     token: process.env.META_ACCESS_TOKEN || '',
     adAccountId: process.env.META_AD_ACCOUNT_ID || '',
     version: process.env.META_API_VERSION || 'v23.0',
+    pixelId: process.env.META_PIXEL_ID || '',
   },
   linkedin: {
     token: process.env.LINKEDIN_ACCESS_TOKEN || '',

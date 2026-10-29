@@ -142,3 +142,7 @@ Atenção: o Reddit exige aprovação de acesso à API para apps novos e cada su
 2. No Render defina `LINKEDIN_CLIENT_ID` e `LINKEDIN_CLIENT_SECRET`.
 3. No painel (Marca → Publicação) clique em **Conectar LinkedIn**, autorize, depois em **Usar meu perfil** no cliente que vai publicar e em **Salvar marca**. Cada cliente só publica com o autor cadastrado.
 4. O token vale cerca de 60 dias: o painel avisa e basta reconectar. Para publicar numa **página** é preciso o produto de páginas (w_organization_social, aprovação do LinkedIn) e informar o URN `urn:li:organization:ID`.
+
+
+## Subir campanhas pelo painel (Meta)
+Na aba Tráfego, "Nova campanha" cria campanha, conjunto, criativo e anúncio, tudo pausado, com uma única aprovação. Requisitos: token do Meta com `ads_management`, a página do Facebook do cliente cadastrada na aba Marca (ou META_PAGE_ID para a Disco) e, para Leads/Vendas no site, o pixel (campo no formulário ou variável opcional `META_PIXEL_ID`). O destino WhatsApp exige um número do WhatsApp Business conectado à página.
