@@ -7,6 +7,7 @@ import { store } from './store.js';
 import { httpJson } from './http.js';
 import { parseCsv } from './planilha.js';
 import * as wa from './platforms/whatsapp.js';
+import * as dm from './platforms/metaDm.js';
 
 // Felipe Macedo — SDR (pré-vendas) com IA. Modelo: SDR conversacional BANT/SPIN (como 11x Alice, Artisan Ava, HubSpot Breeze, salesbots do Kommo):
 // recebe lead de campanha → primeiro contato (template aprovado) → conversa curta e uma pergunta por vez → qualifica → entrega ao humano.
@@ -75,14 +76,15 @@ export const listarLeads = (f = {}) => store.vendas().leads
   .filter((l) => (!f.cliente || l.cliente_id === store.cliente(f.cliente)?.id) && (!f.status || l.status === f.status) && (!f.origem || l.origem === f.origem))
   .sort((a, b) => String(b.atualizado_em).localeCompare(String(a.atualizado_em)));
 export const getLead = (id) => store.vendas().leads.find((l) => l.id === id);
-const resumo = (l) => ({ id: l.id, cliente_id: l.cliente_id, nome: l.nome, telefone: l.telefone, email: l.email, origem: l.origem, campanha: l.campanha, status: l.status, status_texto: STATUS[l.status], score: l.score, consentimento: l.consentimento, humano: !!l.humano, qualificacao: l.qualificacao, resumo: l.resumo, criado_em: l.criado_em, atualizado_em: l.atualizado_em, ultima: l.mensagens.at(-1) ? { de: l.mensagens.at(-1).de, texto: trunc(l.mensagens.at(-1).texto, 120), at: l.mensagens.at(-1).at } : null, total_mensagens: l.mensagens.length });
+const resumo = (l) => ({ id: l.id, canal: l.canal || 'whatsapp', cliente_id: l.cliente_id, nome: l.nome, telefone: l.telefone, email: l.email, origem: l.origem, campanha: l.campanha, status: l.status, status_texto: STATUS[l.status], score: l.score, consentimento: l.consentimento, humano: !!l.humano, qualificacao: l.qualificacao, resumo: l.resumo, criado_em: l.criado_em, atualizado_em: l.atualizado_em, ultima: l.mensagens.at(-1) ? { de: l.mensagens.at(-1).de, texto: trunc(l.mensagens.at(-1).texto, 120), at: l.mensagens.at(-1).at } : null, total_mensagens: l.mensagens.length });
 export const viewLead = resumo;
 
 export function addLead(d = {}, by = 'sistema') {
   const cli = store.cliente(d.cliente) || clientePadraoVendas();
-  const tel = normalizarTelefone(d.telefone);
-  if (!tel) return { error: 'Telefone inválido (use DDD + número).' };
-  const existente = store.vendas().leads.find((l) => l.cliente_id === cli.id && l.telefone === tel);
+  const canal = ['instagram', 'facebook'].includes(d.canal) ? d.canal : 'whatsapp';
+  const tel = canal === 'whatsapp' ? normalizarTelefone(d.telefone) : trunc(d.contato_id, 60);
+  if (!tel) return { error: canal === 'whatsapp' ? 'Telefone inválido (use DDD + número).' : 'Sem identificador da conta.' };
+  const existente = store.vendas().leads.find((l) => l.cliente_id === cli.id && (l.canal || 'whatsapp') === canal && l.telefone === tel);
   if (existente) {
     for (const k of ['nome', 'email', 'campanha']) if (!existente[k] && d[k]) existente[k] = trunc(d[k], 120);
     if (d.consentimento === true) existente.consentimento = true;
@@ -90,7 +92,7 @@ export function addLead(d = {}, by = 'sistema') {
     return { lead: existente, duplicado: true };
   }
   const l = {
-    id: uid(), cliente_id: cli.id, nome: trunc(d.nome, 120), telefone: tel, email: trunc(d.email, 160), origem: trunc(d.origem || 'manual', 40), campanha: trunc(d.campanha, 160),
+    id: uid(), canal, cliente_id: cli.id, nome: trunc(d.nome, 120), telefone: tel, email: trunc(d.email, 160), origem: trunc(d.origem || 'manual', 40), campanha: trunc(d.campanha, 160),
     consentimento: d.consentimento === true, status: 'novo', score: 0, qualificacao: {}, resumo: '', humano: false, etapa: 0, followups: 0,
     mensagens: [], criado_em: agora(), atualizado_em: agora(), por: by, respostas_dia: { dia: '', n: 0 },
   };
@@ -127,9 +129,10 @@ const dentroDaJanela = (l) => !!l.ultima_entrada && Date.now() - new Date(l.ulti
 
 async function enviarTexto(l, texto, de = 'felipe') {
   if (l.status === 'optout') return { error: 'Lead pediu para parar.' };
-  if (!dentroDaJanela(l)) return { error: 'Fora da janela de 24h do WhatsApp: só é possível enviar um template aprovado.' };
+  const canal = l.canal || 'whatsapp';
+  if (!dentroDaJanela(l)) return { error: canal === 'whatsapp' ? 'Fora da janela de 24h do WhatsApp: só é possível enviar um template aprovado.' : 'Fora da janela de 24h do Instagram/Messenger: só dá para responder quem escreveu há menos de 24h.' };
   if (config.dryRun) { registrar(l, de, texto, { simulado: true }); store.saveVendas(); return { ok: true, simulado: true }; }
-  try { const r = await wa.enviarTexto(l.telefone, texto); registrar(l, de, texto, { wa_id: r?.messages?.[0]?.id }); store.saveVendas(); return { ok: true }; }
+  try { const r = canal === 'whatsapp' ? await wa.enviarTexto(l.telefone, texto) : await dm.enviarTexto(l.telefone, texto); registrar(l, de, texto, { wa_id: r?.messages?.[0]?.id || r?.message_id }); store.saveVendas(); return { ok: true }; }
   catch (e) { registrar(l, 'sistema', `Falha ao enviar: ${trunc(e.message, 200)}`, { erro: true }); store.saveVendas(); return { error: e.message }; }
 }
 function contaTemplatesHoje() {
@@ -145,6 +148,7 @@ export async function enviarTemplateLead(l, { template, motivo = 'primeiro_conta
   const cfg = getConfig(l.cliente_id);
   const nome = template || cfg.template || config.whatsapp.template;
   if (!nome) return { error: 'Nenhum template aprovado configurado (WHATSAPP_TEMPLATE ou o campo Template no painel).' };
+  if ((l.canal || 'whatsapp') !== 'whatsapp') return { error: 'Primeiro contato ativo só existe no WhatsApp; no Instagram/Messenger o Felipe responde quem escreve primeiro.' };
   if (l.consentimento !== true) return { error: 'Lead sem consentimento registrado.' };
   if (['optout', 'humano'].includes(l.status)) return { error: `Lead está como "${STATUS[l.status]}".` };
   const c = contaTemplatesHoje();
@@ -165,14 +169,14 @@ export async function enviarTemplateLead(l, { template, motivo = 'primeiro_conta
 const emFila = new Map();
 const serializar = (id, fn) => { const p = (emFila.get(id) || Promise.resolve()).catch(() => {}).then(fn); emFila.set(id, p); p.finally(() => { if (emFila.get(id) === p) emFila.delete(id); }).catch(() => {}); return p; };
 
-export function receberMensagem({ id, de, nome, texto, tipo = 'text', at } = {}) {
-  const tel = normalizarTelefone(de);
+export function receberMensagem({ canal = 'whatsapp', id, de, nome, texto, tipo = 'text', at } = {}) {
+  const tel = canal === 'whatsapp' ? normalizarTelefone(de) : trunc(de, 60);
   if (!tel) return Promise.resolve({ ignorado: true });
   const v = store.vendas(); v.vistos ||= [];
   if (id) { if (v.vistos.includes(id)) return Promise.resolve({ duplicada: true }); v.vistos.push(id); if (v.vistos.length > 500) v.vistos.splice(0, v.vistos.length - 500); }
-  let l = v.leads.filter((x) => x.telefone === tel).sort((a, b) => String(b.contatado_em || b.criado_em).localeCompare(String(a.contatado_em || a.criado_em)))[0];
+  let l = v.leads.filter((x) => x.telefone === tel && (x.canal || 'whatsapp') === canal).sort((a, b) => String(b.contatado_em || b.criado_em).localeCompare(String(a.contatado_em || a.criado_em)))[0];
   if (!l) {
-    const r = addLead({ telefone: tel, nome, origem: 'whatsapp', consentimento: true }, 'whatsapp'); // quem escreve primeiro está iniciando a conversa
+    const r = addLead({ canal, telefone: tel, contato_id: tel, nome, origem: canal, consentimento: true }, canal); // quem escreve primeiro está iniciando a conversa
     l = r.lead;
   }
   if (!l.nome && nome) l.nome = trunc(nome, 120);
@@ -182,7 +186,7 @@ export function receberMensagem({ id, de, nome, texto, tipo = 'text', at } = {})
 async function processarEntrada(l, { id, texto, tipo, at }) {
   l.ultima_entrada = at || agora(); l.followups = 0; l.consentimento = true;
   registrar(l, 'lead', texto || `[${tipo}]`, { wa_id: id });
-  if (id && !config.dryRun && wa.configurado()) wa.marcarLida(id);
+  if (id && !config.dryRun && (l.canal || 'whatsapp') === 'whatsapp' && wa.configurado()) wa.marcarLida(id);
   if (OPTOUT.test(texto)) {
     l.status = 'optout'; store.saveVendas();
     store.log({ type: 'lead_optout', lead: l.id });
@@ -341,7 +345,7 @@ export function decidirDisparo(id, aprovar, by) {
 
 // ---------- Ciclo automático (a cada minuto) ----------
 export async function tick() {
-  if (!config.dryRun && !wa.configurado()) return { parado: 'whatsapp não configurado' };
+  if (!config.dryRun && !wa.configurado() && !dm.configurado()) return { parado: 'canais não configurados' };
   const v = store.vendas(); let feitos = 0;
   // 1) disparos aprovados
   for (const d of v.disparos.filter((x) => ['aprovado', 'enviando'].includes(x.estado))) {
@@ -359,7 +363,7 @@ export async function tick() {
     store.saveVendas();
   }
   // 2) primeiro contato de leads de campanha (cliente ativo, horário comercial)
-  for (const l of v.leads.filter((x) => x.status === 'novo' && x.consentimento === true && (x.falhas || 0) < 3 && x.origem !== 'whatsapp' && x.origem !== 'crm')) {
+  for (const l of v.leads.filter((x) => x.status === 'novo' && x.consentimento === true && (x.falhas || 0) < 3 && (x.canal || 'whatsapp') === 'whatsapp' && x.origem !== 'whatsapp' && x.origem !== 'crm')) {
     const cfg = getConfig(l.cliente_id);
     if (!cfg.ativo || !dentroDoHorario(cfg)) continue;
     if (limiteDisparosRestante() <= 0 || feitos >= 15) break;
@@ -409,8 +413,8 @@ export function painel(clienteRef) {
   const base = config.publicUrl || '';
   return {
     cliente: { id: cli.id, nome: cli.nome },
-    conexao: { whatsapp: wa.configurado(), template: !!(getConfig(cli.id).template || config.whatsapp.template), assinatura: !!config.whatsapp.appSecret, verify: !!config.whatsapp.verifyToken, hook_key: !!config.vendas.hookKey, ia: !!config.anthropicKey, modo: config.dryRun ? 'simulação' : 'real' },
-    urls: { whatsapp: `${base}/hooks/whatsapp`, meta_leads: `${base}/hooks/meta-leads`, leads: `${base}/hooks/lead` },
+    conexao: { whatsapp: wa.configurado(), meta_dm: dm.configurado() && !!config.whatsapp.appSecret, template: !!(getConfig(cli.id).template || config.whatsapp.template), assinatura: !!config.whatsapp.appSecret, verify: !!config.whatsapp.verifyToken, hook_key: !!config.vendas.hookKey, ia: !!config.anthropicKey, modo: config.dryRun ? 'simulação' : 'real' },
+    urls: { whatsapp: `${base}/hooks/whatsapp`, meta_dm: `${base}/hooks/meta-dm`, meta_leads: `${base}/hooks/meta-leads`, leads: `${base}/hooks/lead` },
     kpis: { total: leads.length, novos: cont('novo'), em_conversa: cont('em_conversa') + cont('contatado'), qualificados: cont('qualificado'), humano: cont('humano'), desqualificados: cont('desqualificado'), optout: cont('optout'), templates_hoje: contaTemplatesHoje().n, limite_dia: config.vendas.maxDisparosDia },
     config: getConfig(cli.id),
     disparos: store.vendas().disparos.filter((d) => d.cliente_id === cli.id).slice(0, 10).map((d) => ({ ...d, ids: undefined, restantes: d.ids.length })),

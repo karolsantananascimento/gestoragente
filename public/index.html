@@ -1024,9 +1024,9 @@ async function loadVendas() {
   const p = await api('/api/vendas?' + qc()); V_CFG = p.config;
   const c = p.conexao, conn = $('#vConn'); conn.innerHTML = '';
   const chip = (t, ok) => { const x = mkEl('span', (ok ? '✓ ' : '✗ ') + t, 'chip ' + (ok ? 'okk' : 'late')); return x; };
-  const lin = mkEl('div', '', 'chips'); lin.append(chip('WhatsApp', c.whatsapp), chip('Template aprovado', c.template), chip('Assinatura do webhook', c.assinatura), chip('IA (Anthropic)', c.ia), mkEl('span', 'Modo ' + c.modo, 'chip'));
+  const lin = mkEl('div', '', 'chips'); lin.append(chip('WhatsApp', c.whatsapp), chip('Instagram/Messenger', c.meta_dm), chip('Template aprovado', c.template), chip('Assinatura do webhook', c.assinatura), chip('IA (Anthropic)', c.ia), mkEl('span', 'Modo ' + c.modo, 'chip'));
   conn.append(lin);
-  const urls = mkEl('div', 'Webhooks (cole na Meta): WhatsApp → ' + p.urls.whatsapp + ' · Lead Ads → ' + p.urls.meta_leads + ' · qualquer formulário/CRM → ' + p.urls.leads + '?key=SUA_CHAVE', 'note'); conn.append(urls);
+  const urls = mkEl('div', 'Webhooks (cole na Meta): WhatsApp → ' + p.urls.whatsapp + ' · Instagram e Messenger (DM) → ' + p.urls.meta_dm + ' · Lead Ads → ' + p.urls.meta_leads + ' · qualquer formulário/CRM → ' + p.urls.leads + '?key=SUA_CHAVE', 'note'); conn.append(urls);
   if (!c.whatsapp) conn.append(mkEl('div', 'Falta conectar o WhatsApp: defina WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET e WHATSAPP_TEMPLATE no Render (passo a passo no SETUP.md).', 'note'));
   if (!p.config.ativo) conn.append(mkEl('div', 'Felipe está desativado para ' + p.cliente.nome + ': ele responde quem escreve, mas só aborda leads de campanha depois de ativado em ⚙️ Configurar.', 'note'));
   const k = p.kpis, kp = $('#vKpis'); kp.innerHTML = '';
@@ -1048,7 +1048,7 @@ async function loadVendas() {
   const h = mkEl('tr'); for (const t of ['Lead', 'Telefone', 'Origem', 'Status', 'Score', 'Última mensagem', '']) h.append(mkEl('th', t)); tb.append(h);
   for (const l of leads) {
     const r = mkEl('tr'); r.style.cursor = 'pointer';
-    r.append(mkEl('td', l.nome || '(sem nome)'), mkEl('td', l.telefone), mkEl('td', l.origem + (l.campanha ? ' · ' + l.campanha : '')), mkEl('td', V_ST[l.status] || l.status), mkEl('td', l.score ? String(l.score) : '–'), mkEl('td', l.ultima ? `${l.ultima.de}: ${l.ultima.texto}` : ''), mkEl('td', l.ultima ? quando(l.ultima.at) : ''));
+    r.append(mkEl('td', l.nome || '(sem nome)'), mkEl('td', (l.canal && l.canal !== 'whatsapp' ? (l.canal === 'instagram' ? 'IG ' : 'FB ') : '') + (l.canal && l.canal !== 'whatsapp' ? '' : l.telefone)), mkEl('td', l.origem + (l.campanha ? ' · ' + l.campanha : '')), mkEl('td', V_ST[l.status] || l.status), mkEl('td', l.score ? String(l.score) : '–'), mkEl('td', l.ultima ? `${l.ultima.de}: ${l.ultima.texto}` : ''), mkEl('td', l.ultima ? quando(l.ultima.at) : ''));
     r.onclick = () => abrirLead(l.id); tb.append(r);
   }
   $('#vVazio').textContent = leads.length ? '' : 'Nenhum lead ainda. Importe uma lista, conecte os Lead Ads ou envie leads pelo webhook.';

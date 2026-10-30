@@ -4,13 +4,14 @@ import crypto from 'node:crypto';
 process.env.DATA_DIR = './data/vendas-test';
 process.env.DRY_RUN = 'false';
 process.env.WHATSAPP_TOKEN = 'wt'; process.env.WHATSAPP_PHONE_ID = 'PH1'; process.env.WHATSAPP_APP_SECRET = 'segredo-teste'; process.env.WHATSAPP_VERIFY_TOKEN = 'vt'; process.env.WHATSAPP_TEMPLATE = 'boas_vindas';
+process.env.META_PAGE_ACCESS_TOKEN = 'pt';
 process.env.VENDAS_MAX_DISPAROS_DIA = '3';
 fs.rmSync('./data/vendas-test', { recursive: true, force: true });
 let fails = 0; const ok = (c, m) => { console.log(c ? 'ok   ' : 'FALHA', m); if (!c) fails++; };
 const enviados = []; let passoIA = 0; let iaModo = 'off';
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url); const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
-  if (u.includes('graph.facebook.com') && u.endsWith('/messages')) { const b = JSON.parse(opts.body); if (b.status === 'read') return j({ success: true }); enviados.push(b); return j({ messages: [{ id: 'wamid.' + enviados.length }] }); }
+  if (u.includes('graph.facebook.com') && /\/messages(\?|$)/.test(u)) { const b = JSON.parse(opts.body); b.__url = u; if (b.status === 'read') return j({ success: true }); enviados.push(b); return j({ messages: [{ id: 'wamid.' + enviados.length }] }); }
   if (u.includes('api.anthropic.com')) {
     const base = { id: 'm', type: 'message', role: 'assistant', model: 'x', usage: { input_tokens: 1, output_tokens: 1 } };
     if (iaModo === 'credito') return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low' } }), { status: 400, headers: { 'content-type': 'application/json' } });
@@ -88,5 +89,19 @@ const t0 = enviados.length; await v.tick();
 const hojeN = enviados.slice(t0).filter((x) => x.type === 'template').length;
 ok(hojeN >= 1 && hojeN <= 3, `disparo aprovado envia respeitando o teto diário (${hojeN})`);
 ok(v.limiteDisparosRestante() === 0 || hojeN < 3, 'contador diário é atualizado');
+
+// Instagram / Messenger (DM)
+const dmx = await import('../src/platforms/metaDm.js');
+const igMsgs = dmx.extrairMensagens({ object: 'instagram', entry: [{ id: 'IGPAGE', messaging: [{ sender: { id: 'IGSID1' }, message: { mid: 'm1', text: 'Oi, quero saber da loja' }, timestamp: Date.now() }, { sender: { id: 'IGPAGE' }, message: { mid: 'm2', text: 'eco', is_echo: true } }] }] });
+ok(igMsgs.length === 1 && igMsgs[0].canal === 'instagram' && igMsgs[0].de === 'IGSID1', 'DM do Instagram é extraída e ecos são ignorados');
+ok(dmx.extrairMensagens({ object: 'page', entry: [{ id: 'P', messaging: [{ sender: { id: 'PSID9' }, message: { mid: 'm3', text: 'olá' } }] }] })[0]?.canal === 'facebook', 'DM do Messenger vira canal facebook');
+config.anthropicKey = '';
+const nIg = enviados.length;
+await v.receberMensagem(igMsgs[0]);
+const ig = v.listarLeads().find((l) => l.canal === 'instagram');
+ok(ig && ig.status === 'em_conversa' && enviados.length === nIg + 1 && enviados.at(-1).recipient?.id === 'IGSID1' && enviados.at(-1).__url.includes('/me/messages'), 'Felipe responde DM do Instagram pela API de mensagens da página');
+await v.receberMensagem({ canal: 'facebook', id: 'm9', de: 'PSID9', texto: 'PARAR' });
+ok(v.listarLeads().find((l) => l.canal === 'facebook').status === 'optout', 'PARAR também vale no Messenger');
+ok((await v.contatarAgora(ig.id)).error?.includes('WhatsApp'), 'não existe primeiro contato ativo por DM');
 console.log(fails ? `\n${fails} FALHA(S)` : '\nvendas: tudo certo');
 process.exit(fails ? 1 : 0);

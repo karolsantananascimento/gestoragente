@@ -164,3 +164,9 @@ Aba **💼 Vendas**. Felipe recebe leads (Lead Ads da Meta, formulários/CRM por
 - Qualquer formulário/CRM: `POST https://SEU-APP/hooks/lead?key=VENDAS_HOOK_KEY` com `{nome, telefone, email, campanha, cliente}`
 
 **Regras embutidas:** só fala com quem tem consentimento (lead de formulário ou quem escreveu primeiro; listas do CRM exigem marcar a confirmação LGPD); "PARAR" encerra e bloqueia; avisa que é assistente virtual; não inventa preço; contato ativo só das 8h às 20h (Recife, sem domingo; configurável); fora das 24h do WhatsApp só template; no máximo 2 follow-ups; disparo em massa só depois de aprovação de um administrador e dentro do limite diário; quando um humano assume, Felipe só registra.
+
+### Instagram Direct e Messenger (Facebook) no Felipe
+- Webhook: `https://SEU-APP/hooks/meta-dm` (mesmo `WHATSAPP_VERIFY_TOKEN` e `WHATSAPP_APP_SECRET`). No app da Meta, produto **Messenger/Instagram**, assine os campos `messages` da Página (objeto *page*) e da conta do Instagram (objeto *instagram*).
+- Usa `META_PAGE_ACCESS_TOKEN` (token da Página, com `pages_messaging` e `instagram_manage_messages`; em produção a Meta exige App Review dessas permissões).
+- Regras da Meta: o Felipe só responde quem escreveu primeiro e em até 24h. Não existe DM ativo a frio. Quem comenta/clica num anúncio "Enviar mensagem" entra aqui.
+- **LinkedIn:** a LinkedIn não oferece API aberta de mensagens (só para parceiros aprovados), e automatizar DM por fora viola os termos e leva a banimento. Leads de formulário do LinkedIn entram por `POST /hooks/lead` (via Zapier/CRM, `origem: "linkedin"`) e são abordados por WhatsApp.

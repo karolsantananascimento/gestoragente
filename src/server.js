@@ -2,6 +2,7 @@ import path from 'node:path';
 import * as vendas from './vendas.js';
 import { receberMensagem, receberLeadsMeta, receberLeadGenerico } from './vendas.js';
 import * as wa from './platforms/whatsapp.js';
+import * as metaDm from './platforms/metaDm.js';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -84,12 +85,18 @@ app.get('/health', (_req, res) => res.json({ ok: true, modo: config.dryRun ? 'dr
 // --- Felipe Macedo (vendas): webhooks públicos (assinados / com chave) e painel ---
 const hookLimite = new Map();
 const hookOk = (req) => { const k = req.ip; const now = Date.now(); const a = hookLimite.get(k); if (!a || now > a.reset) { hookLimite.set(k, { n: 1, reset: now + 60e3 }); return true; } return ++a.n <= 240; };
-app.get(['/hooks/whatsapp', '/hooks/meta-leads'], (req, res) => { const c = wa.verificarChallenge(req.query); return c === null ? res.status(403).end() : res.type('text/plain').send(c); });
+app.get(['/hooks/whatsapp', '/hooks/meta-leads', '/hooks/meta-dm'], (req, res) => { const c = wa.verificarChallenge(req.query); return c === null ? res.status(403).end() : res.type('text/plain').send(c); });
 app.post('/hooks/whatsapp', (req, res) => {
   if (!hookOk(req)) return res.status(429).end();
   if (!wa.assinaturaValida(req.rawBody, req.get('x-hub-signature-256'))) return res.status(401).end();
   res.sendStatus(200); // responde já; a Meta reenvia se demorar
   for (const m of wa.extrairMensagens(req.body)) receberMensagem(m).catch((e) => console.error('[felipe]', e.message));
+});
+app.post('/hooks/meta-dm', (req, res) => {
+  if (!hookOk(req)) return res.status(429).end();
+  if (!wa.assinaturaValida(req.rawBody, req.get('x-hub-signature-256'))) return res.status(401).end();
+  res.sendStatus(200);
+  for (const m of metaDm.extrairMensagens(req.body)) receberMensagem(m).catch((e) => console.error('[felipe]', e.message));
 });
 app.post('/hooks/meta-leads', (req, res) => {
   if (!hookOk(req)) return res.status(429).end();
