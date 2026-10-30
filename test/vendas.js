@@ -12,6 +12,7 @@ const enviados = []; let passoIA = 0; let iaModo = 'off';
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url); const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
   if (u.includes('graph.facebook.com') && /\/messages(\?|$)/.test(u)) { const b = JSON.parse(opts.body); b.__url = u; if (b.status === 'read') return j({ success: true }); enviados.push(b); return j({ messages: [{ id: 'wamid.' + enviados.length }] }); }
+  if (/graph\.facebook\.com\/v[\d.]+\/me\?/.test(u)) return j({ id: 'PG1', name: 'Disco', instagram_business_account: { id: 'IG1', username: 'bydiscomidia' } });
   if (u.includes('api.anthropic.com')) {
     const base = { id: 'm', type: 'message', role: 'assistant', model: 'x', usage: { input_tokens: 1, output_tokens: 1 } };
     if (iaModo === 'credito') return new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low' } }), { status: 400, headers: { 'content-type': 'application/json' } });
@@ -99,7 +100,7 @@ config.anthropicKey = '';
 const nIg = enviados.length;
 await v.receberMensagem(igMsgs[0]);
 const ig = v.listarLeads().find((l) => l.canal === 'instagram');
-ok(ig && ig.status === 'em_conversa' && enviados.length === nIg + 1 && enviados.at(-1).recipient?.id === 'IGSID1' && enviados.at(-1).__url.includes('/me/messages'), 'Felipe responde DM do Instagram pela API de mensagens da página');
+ok(ig && ig.status === 'em_conversa' && enviados.length === nIg + 1 && enviados.at(-1).recipient?.id === 'IGSID1' && enviados.at(-1).__url.includes('/PG1/messages'), 'Felipe responde DM do Instagram pela API de mensagens da página');
 await v.receberMensagem({ canal: 'facebook', id: 'm9', de: 'PSID9', texto: 'PARAR' });
 ok(v.listarLeads().find((l) => l.canal === 'facebook').status === 'optout', 'PARAR também vale no Messenger');
 ok((await v.contatarAgora(ig.id)).error?.includes('WhatsApp'), 'não existe primeiro contato ativo por DM');
