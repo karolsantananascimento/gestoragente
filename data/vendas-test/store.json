@@ -2,98 +2,98 @@
   "actions": [],
   "audit": [
     {
-      "at": "2026-10-30T18:06:35.216Z",
+      "at": "2026-10-30T18:12:16.424Z",
       "type": "lead_optout",
-      "lead": "d75598a9bbe3"
+      "lead": "27837d89b5bd"
     },
     {
-      "at": "2026-10-30T18:06:35.214Z",
+      "at": "2026-10-30T18:12:16.423Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "facebook",
       "by": "facebook"
     },
     {
-      "at": "2026-10-30T18:06:35.209Z",
+      "at": "2026-10-30T18:12:16.415Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "instagram",
       "by": "instagram"
     },
     {
-      "at": "2026-10-30T18:06:32.797Z",
+      "at": "2026-10-30T18:12:14.001Z",
       "type": "disparo_aprovado",
-      "id": "81fda7632821",
+      "id": "57724e2f5d5a",
       "by": "adm"
     },
     {
-      "at": "2026-10-30T18:06:32.795Z",
+      "at": "2026-10-30T18:12:13.999Z",
       "type": "disparo_proposto",
       "cliente": "Disco",
       "total": 3,
       "by": "u"
     },
     {
-      "at": "2026-10-30T18:06:32.793Z",
+      "at": "2026-10-30T18:12:13.997Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "crm",
       "by": "painel"
     },
     {
-      "at": "2026-10-30T18:06:32.792Z",
+      "at": "2026-10-30T18:12:13.995Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "crm",
       "by": "painel"
     },
     {
-      "at": "2026-10-30T18:06:32.791Z",
+      "at": "2026-10-30T18:12:13.994Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "crm",
       "by": "painel"
     },
     {
-      "at": "2026-10-30T18:06:32.789Z",
+      "at": "2026-10-30T18:12:13.992Z",
       "type": "lead_optout",
-      "lead": "22bc996f8731"
+      "lead": "8d266fb336e0"
     },
     {
-      "at": "2026-10-30T18:06:32.785Z",
+      "at": "2026-10-30T18:12:13.986Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "meta_lead_ads",
       "by": "sistema"
     },
     {
-      "at": "2026-10-30T18:06:32.781Z",
+      "at": "2026-10-30T18:12:13.981Z",
       "type": "lead_qualificado",
-      "lead": "cef4554b7da9",
+      "lead": "8b8a58484d4c",
       "score": 72
     },
     {
-      "at": "2026-10-30T18:06:32.733Z",
+      "at": "2026-10-30T18:12:13.918Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "meta_lead_ads",
       "by": "sistema"
     },
     {
-      "at": "2026-10-30T18:06:32.729Z",
+      "at": "2026-10-30T18:12:13.913Z",
       "type": "lead_qualificado",
-      "lead": "304403f7f9e4",
+      "lead": "058f2c0ac41f",
       "score": 60
     },
     {
-      "at": "2026-10-30T18:06:32.721Z",
+      "at": "2026-10-30T18:12:13.905Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "crm",
       "by": "sistema"
     },
     {
-      "at": "2026-10-30T18:06:32.693Z",
+      "at": "2026-10-30T18:12:13.880Z",
       "type": "lead_novo",
       "cliente": "Disco",
       "origem": "meta_lead_ads",
@@ -112,7 +112,7 @@
   "vendas": {
     "leads": [
       {
-        "id": "304403f7f9e4",
+        "id": "058f2c0ac41f",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "Ana Souza",
@@ -147,83 +147,83 @@
           {
             "de": "felipe",
             "texto": "[template boas_vindas] Olá Ana, aqui é o Felipe da Disco.",
-            "at": "2026-10-30T18:06:32.720Z",
+            "at": "2026-10-30T18:12:13.903Z",
             "template": "boas_vindas",
             "motivo": "primeiro_contato"
           },
           {
             "de": "lead",
             "texto": "oi, vi o anúncio",
-            "at": "2026-10-30T18:06:32.722Z",
+            "at": "2026-10-30T18:12:13.906Z",
             "wa_id": "w1"
           },
           {
             "de": "felipe",
             "texto": "Olá, Ana! Aqui é o Felipe, assistente virtual da Disco. Posso te fazer 3 perguntas rápidas para entender como ajudar?\n\nQual é o principal desafio que você quer resolver hoje?",
-            "at": "2026-10-30T18:06:32.724Z",
+            "at": "2026-10-30T18:12:13.907Z",
             "wa_id": "wamid.2"
           },
           {
             "de": "lead",
             "texto": "preciso de loja virtual",
-            "at": "2026-10-30T18:06:32.725Z",
+            "at": "2026-10-30T18:12:13.908Z",
             "wa_id": "w2"
           },
           {
             "de": "felipe",
             "texto": "Para quando você pretende resolver isso?",
-            "at": "2026-10-30T18:06:32.726Z",
+            "at": "2026-10-30T18:12:13.909Z",
             "wa_id": "wamid.3"
           },
           {
             "de": "lead",
             "texto": "este mês",
-            "at": "2026-10-30T18:06:32.727Z",
+            "at": "2026-10-30T18:12:13.911Z",
             "wa_id": "w3"
           },
           {
             "de": "felipe",
             "texto": "Você é quem decide ou mais alguém participa da decisão?",
-            "at": "2026-10-30T18:06:32.727Z",
+            "at": "2026-10-30T18:12:13.911Z",
             "wa_id": "wamid.4"
           },
           {
             "de": "lead",
             "texto": "eu decido",
-            "at": "2026-10-30T18:06:32.728Z",
+            "at": "2026-10-30T18:12:13.913Z",
             "wa_id": "w4"
           },
           {
             "de": "felipe",
             "texto": "Obrigado pelas respostas! Um especialista da nossa equipe vai continuar com você por aqui.",
-            "at": "2026-10-30T18:06:32.730Z",
+            "at": "2026-10-30T18:12:13.915Z",
             "wa_id": "wamid.5"
           },
           {
             "de": "sistema",
             "texto": "adm assumiu a conversa.",
-            "at": "2026-10-30T18:06:32.731Z"
+            "at": "2026-10-30T18:12:13.916Z"
           },
           {
             "de": "lead",
             "texto": "e o preço?",
-            "at": "2026-10-30T18:06:32.732Z",
+            "at": "2026-10-30T18:12:13.916Z",
             "wa_id": "w5"
           }
         ],
-        "criado_em": "2026-10-30T18:06:32.693Z",
-        "atualizado_em": "2026-10-30T18:06:32.732Z",
+        "criado_em": "2026-10-30T18:12:13.879Z",
+        "atualizado_em": "2026-10-30T18:12:13.916Z",
         "por": "sistema",
         "respostas_dia": {
           "dia": "2026-10-30",
           "n": 4
         },
-        "contatado_em": "2026-10-30T18:06:32.720Z",
-        "ultima_entrada": "2026-10-30T18:06:32.732Z",
-        "qualificado_em": "2026-10-30T18:06:32.729Z"
+        "contatado_em": "2026-10-30T18:12:13.903Z",
+        "ultima_entrada": "2026-10-30T18:12:13.916Z",
+        "qualificado_em": "2026-10-30T18:12:13.913Z"
       },
       {
-        "id": "28357725981f",
+        "id": "64f1621ccdab",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "Sem",
@@ -240,8 +240,8 @@
         "etapa": 0,
         "followups": 0,
         "mensagens": [],
-        "criado_em": "2026-10-30T18:06:32.721Z",
-        "atualizado_em": "2026-10-30T18:06:32.721Z",
+        "criado_em": "2026-10-30T18:12:13.904Z",
+        "atualizado_em": "2026-10-30T18:12:13.904Z",
         "por": "sistema",
         "respostas_dia": {
           "dia": "",
@@ -249,7 +249,7 @@
         }
       },
       {
-        "id": "cef4554b7da9",
+        "id": "8b8a58484d4c",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "Caio",
@@ -272,28 +272,28 @@
           {
             "de": "lead",
             "texto": "Quero uma loja virtual ainda este mês",
-            "at": "2026-10-30T18:06:32.734Z",
+            "at": "2026-10-30T18:12:13.918Z",
             "wa_id": "w6"
           },
           {
             "de": "felipe",
             "texto": "Perfeito! Vou pedir para a equipe te chamar ainda hoje.",
-            "at": "2026-10-30T18:06:32.783Z",
+            "at": "2026-10-30T18:12:13.984Z",
             "wa_id": "wamid.6"
           }
         ],
-        "criado_em": "2026-10-30T18:06:32.733Z",
-        "atualizado_em": "2026-10-30T18:06:32.783Z",
+        "criado_em": "2026-10-30T18:12:13.917Z",
+        "atualizado_em": "2026-10-30T18:12:13.984Z",
         "por": "sistema",
         "respostas_dia": {
           "dia": "2026-10-30",
           "n": 1
         },
-        "ultima_entrada": "2026-10-30T18:06:32.734Z",
-        "qualificado_em": "2026-10-30T18:06:32.781Z"
+        "ultima_entrada": "2026-10-30T18:12:13.918Z",
+        "qualificado_em": "2026-10-30T18:12:13.981Z"
       },
       {
-        "id": "22bc996f8731",
+        "id": "8d266fb336e0",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "Duda",
@@ -315,34 +315,34 @@
           {
             "de": "lead",
             "texto": "olá",
-            "at": "2026-10-30T18:06:32.785Z",
+            "at": "2026-10-30T18:12:13.987Z",
             "wa_id": "w7"
           },
           {
             "de": "felipe",
             "texto": "Olá, Duda! Aqui é o Felipe, assistente virtual da Disco. Posso te fazer 3 perguntas rápidas para entender como ajudar?\n\nQual é o principal desafio que você quer resolver hoje?",
-            "at": "2026-10-30T18:06:32.787Z",
+            "at": "2026-10-30T18:12:13.989Z",
             "wa_id": "wamid.7"
           },
           {
             "de": "lead",
             "texto": "PARAR",
-            "at": "2026-10-30T18:06:32.788Z",
+            "at": "2026-10-30T18:12:13.991Z",
             "wa_id": "w8"
           }
         ],
-        "criado_em": "2026-10-30T18:06:32.784Z",
-        "atualizado_em": "2026-10-30T18:06:32.788Z",
+        "criado_em": "2026-10-30T18:12:13.986Z",
+        "atualizado_em": "2026-10-30T18:12:13.991Z",
         "por": "sistema",
         "respostas_dia": {
           "dia": "2026-10-30",
           "n": 1
         },
-        "ultima_entrada": "2026-10-30T18:06:32.788Z",
+        "ultima_entrada": "2026-10-30T18:12:13.991Z",
         "ia_erro": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low\"}}"
       },
       {
-        "id": "3bdb731fed8a",
+        "id": "373da0d4a9cd",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "A",
@@ -362,22 +362,22 @@
           {
             "de": "felipe",
             "texto": "[template boas_vindas] Olá A, aqui é o Felipe da Disco.",
-            "at": "2026-10-30T18:06:32.799Z",
+            "at": "2026-10-30T18:12:14.006Z",
             "template": "boas_vindas",
             "motivo": "disparo"
           }
         ],
-        "criado_em": "2026-10-30T18:06:32.790Z",
-        "atualizado_em": "2026-10-30T18:06:32.799Z",
+        "criado_em": "2026-10-30T18:12:13.993Z",
+        "atualizado_em": "2026-10-30T18:12:14.006Z",
         "por": "painel",
         "respostas_dia": {
           "dia": "",
           "n": 0
         },
-        "contatado_em": "2026-10-30T18:06:32.799Z"
+        "contatado_em": "2026-10-30T18:12:14.006Z"
       },
       {
-        "id": "4e03fedef92c",
+        "id": "e31309ad096b",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "B",
@@ -397,22 +397,22 @@
           {
             "de": "felipe",
             "texto": "[template boas_vindas] Olá B, aqui é o Felipe da Disco.",
-            "at": "2026-10-30T18:06:34.002Z",
+            "at": "2026-10-30T18:12:15.208Z",
             "template": "boas_vindas",
             "motivo": "disparo"
           }
         ],
-        "criado_em": "2026-10-30T18:06:32.792Z",
-        "atualizado_em": "2026-10-30T18:06:34.002Z",
+        "criado_em": "2026-10-30T18:12:13.995Z",
+        "atualizado_em": "2026-10-30T18:12:15.208Z",
         "por": "painel",
         "respostas_dia": {
           "dia": "",
           "n": 0
         },
-        "contatado_em": "2026-10-30T18:06:34.002Z"
+        "contatado_em": "2026-10-30T18:12:15.208Z"
       },
       {
-        "id": "fb971b1c1cec",
+        "id": "bc7de26c45ae",
         "canal": "whatsapp",
         "cliente_id": "disco",
         "nome": "C",
@@ -429,8 +429,8 @@
         "etapa": 0,
         "followups": 0,
         "mensagens": [],
-        "criado_em": "2026-10-30T18:06:32.793Z",
-        "atualizado_em": "2026-10-30T18:06:32.793Z",
+        "criado_em": "2026-10-30T18:12:13.996Z",
+        "atualizado_em": "2026-10-30T18:12:13.996Z",
         "por": "painel",
         "respostas_dia": {
           "dia": "",
@@ -438,7 +438,7 @@
         }
       },
       {
-        "id": "e532add58449",
+        "id": "1a89c8252cb2",
         "canal": "instagram",
         "cliente_id": "disco",
         "nome": "",
@@ -460,27 +460,27 @@
           {
             "de": "lead",
             "texto": "Oi, quero saber da loja",
-            "at": "2026-10-30T18:06:35.210Z",
+            "at": "2026-10-30T18:12:16.416Z",
             "wa_id": "m1"
           },
           {
             "de": "felipe",
             "texto": "Olá! Aqui é o Felipe, assistente virtual da Disco. Posso te fazer 3 perguntas rápidas para entender como ajudar?\n\nQual é o principal desafio que você quer resolver hoje?",
-            "at": "2026-10-30T18:06:35.211Z",
+            "at": "2026-10-30T18:12:16.416Z",
             "wa_id": "wamid.10"
           }
         ],
-        "criado_em": "2026-10-30T18:06:35.208Z",
-        "atualizado_em": "2026-10-30T18:06:35.211Z",
+        "criado_em": "2026-10-30T18:12:16.414Z",
+        "atualizado_em": "2026-10-30T18:12:16.416Z",
         "por": "instagram",
         "respostas_dia": {
           "dia": "2026-10-30",
           "n": 1
         },
-        "ultima_entrada": "2026-10-30T18:06:35.208Z"
+        "ultima_entrada": "2026-10-30T18:12:16.413Z"
       },
       {
-        "id": "d75598a9bbe3",
+        "id": "27837d89b5bd",
         "canal": "facebook",
         "cliente_id": "disco",
         "nome": "",
@@ -500,18 +500,18 @@
           {
             "de": "lead",
             "texto": "PARAR",
-            "at": "2026-10-30T18:06:35.215Z",
+            "at": "2026-10-30T18:12:16.424Z",
             "wa_id": "m9"
           }
         ],
-        "criado_em": "2026-10-30T18:06:35.214Z",
-        "atualizado_em": "2026-10-30T18:06:35.215Z",
+        "criado_em": "2026-10-30T18:12:16.422Z",
+        "atualizado_em": "2026-10-30T18:12:16.424Z",
         "por": "facebook",
         "respostas_dia": {
           "dia": "",
           "n": 0
         },
-        "ultima_entrada": "2026-10-30T18:06:35.215Z"
+        "ultima_entrada": "2026-10-30T18:12:16.424Z"
       }
     ],
     "config": {
@@ -523,7 +523,7 @@
     },
     "disparos": [
       {
-        "id": "81fda7632821",
+        "id": "57724e2f5d5a",
         "cliente_id": "disco",
         "nome": "Disparo 30/10/2026",
         "filtro": {
@@ -531,15 +531,15 @@
         },
         "template": "boas_vindas",
         "ids": [
-          "fb971b1c1cec"
+          "bc7de26c45ae"
         ],
         "enviados": 2,
         "falhas": 1,
         "estado": "enviando",
         "por": "u",
-        "criado_em": "2026-10-30T18:06:32.794Z",
+        "criado_em": "2026-10-30T18:12:13.998Z",
         "decidido_por": "adm",
-        "decidido_em": "2026-10-30T18:06:32.797Z",
+        "decidido_em": "2026-10-30T18:12:14.001Z",
         "pausado": "limite diário"
       }
     ],
@@ -567,7 +567,7 @@
       "meta_semanal": 2,
       "padrao": true,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.690Z",
+      "criado_em": "2026-10-30T18:12:13.877Z",
       "marca": {
         "nome": "Disco",
         "frentes": "Hub criativo com 3 frentes:\n• Disco Criativo — conteúdo e planejamento (cor de apoio: laranja)\n• Disco Mídia — tráfego, estratégia, dados e aquisição de clientes (cor de apoio: lilás claro)\n• Disco Tech — desenvolvimento de SaaS (cor de apoio: violeta)\nAssinaturas usadas: \"Companhia criativa · Criativo · Mídia · Tech · Insights\"; \"Marketing que move o seu negócio\"; \"Criatividade, mídia e tecnologia para tirar marcas e negócios do lugar\".",
@@ -595,7 +595,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.691Z",
+      "criado_em": "2026-10-30T18:12:13.878Z",
       "marca": {
         "nome": "Michie Farfan"
       }
@@ -606,7 +606,7 @@
       "meta_semanal": 7,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.691Z",
+      "criado_em": "2026-10-30T18:12:13.878Z",
       "marca": {
         "nome": "Operizy",
         "identidade": "Operizy é uma plataforma brasileira de loja virtual para varejo e atacado (operada pela GWC Tecnologia, Jaboatão dos Guararapes, PE). Promessa central: sua loja inteira, em um lugar só: loja, atendimento, automações e canais de venda no mesmo painel, sem apps de terceiros, sem código e sem depender de agência. Personalidade: direta, confiante, prática e levemente provocadora; fala de igual para igual com o lojista. Valores: simplicidade, autonomia do lojista, tudo em um só lugar, venda que não espera por você.\nDiferenciais que o site defende: atacado e varejo na mesma loja (um catálogo, um estoque, um painel); Izy, a IA da plataforma (analisa a loja, cria produto a partir de foto, monta promoções, prevê estoque, atende 24h); 41+ automações prontas por WhatsApp e e-mail; mais de 30 apps nativos incluídos; dropshipping e Trade (rede de revenda); um fornecedor, uma fatura, um suporte; 7 dias grátis sem cartão.",
@@ -629,7 +629,7 @@
       "meta_semanal": 3,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.691Z",
+      "criado_em": "2026-10-30T18:12:13.878Z",
       "marca": {
         "nome": "Senhorita Moça"
       }
@@ -640,7 +640,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.691Z",
+      "criado_em": "2026-10-30T18:12:13.878Z",
       "marca": {
         "nome": "Lumiere"
       }
@@ -651,7 +651,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:32.691Z",
+      "criado_em": "2026-10-30T18:12:13.878Z",
       "marca": {
         "nome": "ContraFluxo Pratas"
       }

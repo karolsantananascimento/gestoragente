@@ -21,3 +21,29 @@ export function extrairMensagens(body) {
   }
   return out;
 }
+
+// Diagnóstico e vínculo: confere a Página/Instagram do token e assina a Página no app para receber as DMs.
+const q = (path, params = {}) => `${G()}/${path}?${new URLSearchParams({ access_token: token(), ...params })}`;
+export async function status() {
+  if (!token()) throw new NotConfigured('Meta DM', ['META_PAGE_ACCESS_TOKEN']);
+  const out = { pagina: null, instagram: null, assinaturas: [], app_webhook: !!(config.whatsapp.appId && config.whatsapp.appSecret && config.whatsapp.verifyToken) };
+  try { const p = await httpJson(q('me', { fields: 'id,name,instagram_business_account{id,username}' })); out.pagina = { id: p.id, nome: p.name }; out.instagram = p.instagram_business_account ? { id: p.instagram_business_account.id, usuario: p.instagram_business_account.username } : null; }
+  catch (e) { out.erro = e.message; return out; }
+  try { const a = await httpJson(q('me/subscribed_apps')); out.assinaturas = (a.data || []).map((x) => ({ app: x.name || x.id, campos: x.subscribed_fields || [] })); } catch (e) { out.erro_assinaturas = e.message; }
+  return out;
+}
+export async function vincular(publicUrl) {
+  if (!token()) throw new NotConfigured('Meta DM', ['META_PAGE_ACCESS_TOKEN']);
+  const r = { pagina: false, app_webhook: null };
+  await httpJson(q('me/subscribed_apps', { subscribed_fields: 'messages,messaging_postbacks' }), { method: 'POST' });
+  r.pagina = true;
+  const w = config.whatsapp;
+  if (w.appId && w.appSecret && w.verifyToken && /^https:/.test(publicUrl || '')) {
+    r.app_webhook = [];
+    for (const object of ['page', 'instagram']) {
+      try { await httpJson(`${G()}/${w.appId}/subscriptions`, { method: 'POST', form: { object, callback_url: `${publicUrl}/hooks/meta-dm`, fields: 'messages', verify_token: w.verifyToken, access_token: `${w.appId}|${w.appSecret}` } }); r.app_webhook.push({ object, ok: true }); }
+      catch (e) { r.app_webhook.push({ object, ok: false, erro: String(e.message).slice(0, 200) }); }
+    }
+  }
+  return r;
+}

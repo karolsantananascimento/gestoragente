@@ -114,6 +114,10 @@ const vOut = (res, r) => (r.error ? res.status(400).json({ error: r.error }) : r
 app.get('/api/vendas', requireUser, (req, res) => res.json(vendas.painel(req.query.cliente)));
 app.get('/api/vendas/leads', requireUser, (req, res) => res.json({ leads: vendas.listarLeads({ cliente: req.query.cliente || store.cliente()?.id, status: req.query.status }).slice(0, 300).map(vendas.viewLead) }));
 app.get('/api/vendas/leads/:id', requireUser, (req, res) => { const l = vendas.getLead(req.params.id); return l ? res.json({ lead: { ...vendas.viewLead(l), mensagens: l.mensagens, etapa: l.etapa, motivo_humano: l.motivo_humano } }) : res.status(404).json({ error: 'Lead não encontrado.' }); });
+app.get('/api/vendas/meta-dm', requireUser, requireAdmin, async (_req, res) => { try { res.json(await metaDm.status()); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.post('/api/vendas/meta-dm/vincular', requireUser, requireAdmin, async (req, res) => {
+  try { const r = await metaDm.vincular(config.publicUrl); store.log({ type: 'meta_dm_vinculado', by: req.user.email }); res.json({ ...r, status: await metaDm.status() }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.post('/api/vendas/leads', requireUser, requireAdmin, (req, res) => vOut(res, vendas.addLead({ ...req.body, origem: 'manual', consentimento: req.body?.consentimento === true }, req.user.email)));
 app.post('/api/vendas/import', requireUser, requireAdmin, (req, res) => {
   if (req.body?.consentimento !== true) return res.status(400).json({ error: 'Confirme que estes contatos autorizaram receber mensagens (LGPD).' });

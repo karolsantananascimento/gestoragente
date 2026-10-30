@@ -170,3 +170,5 @@ Aba **💼 Vendas**. Felipe recebe leads (Lead Ads da Meta, formulários/CRM por
 - Usa `META_PAGE_ACCESS_TOKEN` (token da Página, com `pages_messaging` e `instagram_manage_messages`; em produção a Meta exige App Review dessas permissões).
 - Regras da Meta: o Felipe só responde quem escreveu primeiro e em até 24h. Não existe DM ativo a frio. Quem comenta/clica num anúncio "Enviar mensagem" entra aqui.
 - **LinkedIn:** a LinkedIn não oferece API aberta de mensagens (só para parceiros aprovados), e automatizar DM por fora viola os termos e leva a banimento. Leads de formulário do LinkedIn entram por `POST /hooks/lead` (via Zapier/CRM, `origem: "linkedin"`) e são abordados por WhatsApp.
+
+Botão **🔗 Vincular Instagram/Facebook** (aba Vendas): assina a Página do `META_PAGE_ACCESS_TOKEN` para entregar as DMs ao app e mostra a Página e o @ do Instagram encontrados. Se `META_APP_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` e `PUBLIC_URL` (https) estiverem no Render, ele também cadastra o webhook `/hooks/meta-dm` no app (objetos page e instagram).

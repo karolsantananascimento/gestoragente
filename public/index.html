@@ -325,7 +325,7 @@
 
 <div class="view hidden" id="v-vendas">
   <div class="pagehead"><div><h2 class="ptitle">Vendas · Felipe Macedo</h2><div class="flow"><span>Felipe recebe leads das campanhas, conversa no WhatsApp e pré-qualifica. Quem fecha é a equipe.</span></div></div>
-    <div class="row"><button id="vImportBtn">📥 Importar lista do CRM</button><button id="vDispBtn">📣 Propor disparo</button><button id="vCfgBtn">⚙️ Configurar Felipe</button></div></div>
+    <div class="row"><button id="vImportBtn">📥 Importar lista do CRM</button><button id="vDispBtn">📣 Propor disparo</button><button id="vDmBtn">🔗 Vincular Instagram/Facebook</button><button id="vCfgBtn">⚙️ Configurar Felipe</button></div></div>
   <div class="card" id="vConn" style="margin-bottom:12px"></div>
   <div class="kpis" id="vKpis"></div>
   <div class="card" id="vDisp" style="margin-bottom:12px"></div>
@@ -1072,6 +1072,14 @@ $('#vmHum').onclick = () => vAcao('/humano', { humano: !V_LEAD.humano });
 $('#vmCont').onclick = () => vAcao('/contatar');
 $('#vmQual').onclick = () => vAcao('/status', { status: 'qualificado' });
 $('#vmOpt').onclick = () => vAcao('/status', { status: 'optout' });
+$('#vDmBtn').onclick = async () => {
+  if (me?.role !== 'admin') return toast('Só administradores vinculam canais.', 'bad');
+  try {
+    const r = await api('/api/vendas/meta-dm/vincular', { method: 'POST' }); const st = r.status || {};
+    const ap = (r.app_webhook || []).map((x) => x.object + (x.ok ? ' ok' : ' falhou: ' + x.erro)).join('; ');
+    toast(`Página ${st.pagina?.nome || '?'} vinculada. Instagram: ${st.instagram ? '@' + st.instagram.usuario : 'não encontrado na Página'}.${ap ? ' Webhook do app: ' + ap : ' Falta cadastrar o webhook no app da Meta (META_APP_ID no Render ou manual).'}`, st.instagram ? 'ok' : 'bad');
+  } catch (e) { toast(e.message, 'bad'); }
+};
 $('#vImportBtn').onclick = () => { $('#vImpMsg').textContent = ''; show($('#vImpModal'), true); };
 $('#vImpClose').onclick = () => show($('#vImpModal'), false);
 $('#vFile').onchange = async (e) => { const f = e.target.files[0]; if (f) $('#vImpForm').csv.value = await f.text(); };

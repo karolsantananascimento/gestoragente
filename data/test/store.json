@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "id": "6cad2def",
+      "id": "77817a56",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -13,8 +13,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-30T18:06:29.608Z",
-      "executedAt": "2026-10-30T18:06:29.609Z",
+      "createdAt": "2026-10-30T18:12:12.161Z",
+      "executedAt": "2026-10-30T18:12:12.164Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 101",
@@ -27,7 +27,7 @@
       "simulated": true
     },
     {
-      "id": "2fba6207",
+      "id": "5a4cc615",
       "tool": "meta_pausar_ativar",
       "platform": "meta",
       "args": {
@@ -39,8 +39,8 @@
       "activation": true,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-30T18:06:29.606Z",
-      "executedAt": "2026-10-30T18:06:29.607Z",
+      "createdAt": "2026-10-30T18:12:12.156Z",
+      "executedAt": "2026-10-30T18:12:12.157Z",
       "result": {
         "simulado": true,
         "aconteceria": "Meta: ATIVAR objeto 100",
@@ -53,7 +53,7 @@
       "simulated": true
     },
     {
-      "id": "84012bd6",
+      "id": "5b2fa684",
       "tool": "google_criar_campanha_pesquisa",
       "platform": "google",
       "args": {
@@ -67,10 +67,10 @@
       "activation": false,
       "status": "pending",
       "source": "agent",
-      "createdAt": "2026-10-30T18:06:29.603Z"
+      "createdAt": "2026-10-30T18:12:12.150Z"
     },
     {
-      "id": "376fc0af",
+      "id": "5b1c7314",
       "tool": "google_pausar_ativar_campanha",
       "platform": "google",
       "args": {
@@ -83,8 +83,8 @@
       "activation": false,
       "status": "executed",
       "source": "agent",
-      "createdAt": "2026-10-30T18:06:29.600Z",
-      "executedAt": "2026-10-30T18:06:29.605Z",
+      "createdAt": "2026-10-30T18:12:12.141Z",
+      "executedAt": "2026-10-30T18:12:12.153Z",
       "result": {
         "simulado": true,
         "aconteceria": "Google: PAUSAR campanha 99 (conta 1234567890)",
@@ -100,7 +100,7 @@
   ],
   "audit": [
     {
-      "at": "2026-10-30T18:06:29.613Z",
+      "at": "2026-10-30T18:12:12.167Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -113,7 +113,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.612Z",
+      "at": "2026-10-30T18:12:12.166Z",
       "type": "blocked",
       "tool": "meta_pausar_ativar",
       "args": {
@@ -126,9 +126,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.611Z",
+      "at": "2026-10-30T18:12:12.165Z",
       "type": "simulated",
-      "id": "6cad2def",
+      "id": "77817a56",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -146,9 +146,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-30T18:06:29.608Z",
+      "at": "2026-10-30T18:12:12.162Z",
       "type": "proposed",
-      "id": "6cad2def",
+      "id": "77817a56",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "101",
@@ -157,9 +157,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.608Z",
+      "at": "2026-10-30T18:12:12.159Z",
       "type": "simulated",
-      "id": "2fba6207",
+      "id": "5a4cc615",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -177,9 +177,9 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-30T18:06:29.607Z",
+      "at": "2026-10-30T18:12:12.156Z",
       "type": "proposed",
-      "id": "2fba6207",
+      "id": "5a4cc615",
       "tool": "meta_pausar_ativar",
       "args": {
         "id": "100",
@@ -188,9 +188,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.606Z",
+      "at": "2026-10-30T18:12:12.154Z",
       "type": "simulated",
-      "id": "376fc0af",
+      "id": "5b1c7314",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -210,7 +210,7 @@
       "by": "teste"
     },
     {
-      "at": "2026-10-30T18:06:29.604Z",
+      "at": "2026-10-30T18:12:12.152Z",
       "type": "blocked",
       "tool": "google_criar_grupo_com_anuncio",
       "args": {
@@ -234,9 +234,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.604Z",
+      "at": "2026-10-30T18:12:12.151Z",
       "type": "proposed",
-      "id": "84012bd6",
+      "id": "5b2fa684",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
         "customer_id": "1234567890",
@@ -247,7 +247,7 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.602Z",
+      "at": "2026-10-30T18:12:12.148Z",
       "type": "blocked",
       "tool": "google_criar_campanha_pesquisa",
       "args": {
@@ -262,9 +262,9 @@
       "source": "agent"
     },
     {
-      "at": "2026-10-30T18:06:29.602Z",
+      "at": "2026-10-30T18:12:12.147Z",
       "type": "proposed",
-      "id": "376fc0af",
+      "id": "5b1c7314",
       "tool": "google_pausar_ativar_campanha",
       "args": {
         "customer_id": "1234567890",
@@ -295,7 +295,7 @@
       "meta_semanal": 2,
       "padrao": true,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.143Z",
       "marca": {
         "nome": "Disco",
         "frentes": "Hub criativo com 3 frentes:\n• Disco Criativo — conteúdo e planejamento (cor de apoio: laranja)\n• Disco Mídia — tráfego, estratégia, dados e aquisição de clientes (cor de apoio: lilás claro)\n• Disco Tech — desenvolvimento de SaaS (cor de apoio: violeta)\nAssinaturas usadas: \"Companhia criativa · Criativo · Mídia · Tech · Insights\"; \"Marketing que move o seu negócio\"; \"Criatividade, mídia e tecnologia para tirar marcas e negócios do lugar\".",
@@ -323,7 +323,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.144Z",
       "marca": {
         "nome": "Michie Farfan"
       }
@@ -334,7 +334,7 @@
       "meta_semanal": 7,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.144Z",
       "marca": {
         "nome": "Operizy",
         "identidade": "Operizy é uma plataforma brasileira de loja virtual para varejo e atacado (operada pela GWC Tecnologia, Jaboatão dos Guararapes, PE). Promessa central: sua loja inteira, em um lugar só: loja, atendimento, automações e canais de venda no mesmo painel, sem apps de terceiros, sem código e sem depender de agência. Personalidade: direta, confiante, prática e levemente provocadora; fala de igual para igual com o lojista. Valores: simplicidade, autonomia do lojista, tudo em um só lugar, venda que não espera por você.\nDiferenciais que o site defende: atacado e varejo na mesma loja (um catálogo, um estoque, um painel); Izy, a IA da plataforma (analisa a loja, cria produto a partir de foto, monta promoções, prevê estoque, atende 24h); 41+ automações prontas por WhatsApp e e-mail; mais de 30 apps nativos incluídos; dropshipping e Trade (rede de revenda); um fornecedor, uma fatura, um suporte; 7 dias grátis sem cartão.",
@@ -357,7 +357,7 @@
       "meta_semanal": 3,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.144Z",
       "marca": {
         "nome": "Senhorita Moça"
       }
@@ -368,7 +368,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.144Z",
       "marca": {
         "nome": "Lumiere"
       }
@@ -379,7 +379,7 @@
       "meta_semanal": 2,
       "padrao": false,
       "contas": {},
-      "criado_em": "2026-10-30T18:06:29.601Z",
+      "criado_em": "2026-10-30T18:12:12.144Z",
       "marca": {
         "nome": "ContraFluxo Pratas"
       }

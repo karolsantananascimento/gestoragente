@@ -44,6 +44,7 @@ export const config = {
     token: process.env.WHATSAPP_TOKEN || '',
     phoneId: process.env.WHATSAPP_PHONE_ID || '',
     verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
+    appId: process.env.META_APP_ID || '',
     appSecret: process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || '',
     template: process.env.WHATSAPP_TEMPLATE || '',
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'pt_BR',
