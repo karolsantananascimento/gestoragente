@@ -44,6 +44,13 @@ export const AGENTS = [
       ];
     },
   },
+  {
+    id: 'felipe', nome: 'Felipe Macedo', cargo: 'Vendedor / SDR (IA)', emoji: '💼',
+    funcao: 'Recebe leads das campanhas, responde no WhatsApp, aborda listas do CRM (com consentimento e aprovação) e pré-qualifica conversando, passando os bons leads para a equipe.',
+    entrega: 'Leads qualificados com resumo, score e conversa completa',
+    ferramentas: 'felipe_listar_leads, felipe_ver_conversa',
+    integracoes: () => { const p = platformStatus(); return [{ nome: 'WhatsApp Business', ok: !!p.whatsapp }]; },
+  },
 ];
 
 export const teamInfo = () => AGENTS.map(({ integracoes, ...a }) => ({ ...a, integracoes: integracoes() }));

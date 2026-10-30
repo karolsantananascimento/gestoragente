@@ -1,4 +1,7 @@
 import path from 'node:path';
+import * as vendas from './vendas.js';
+import { receberMensagem, receberLeadsMeta, receberLeadGenerico } from './vendas.js';
+import * as wa from './platforms/whatsapp.js';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -33,7 +36,7 @@ const app = express();
 app.set('trust proxy', 1); // Render termina o HTTPS num proxy
 app.use('/api/media/upload', express.json({ limit: '12mb' }));
 app.use('/api/content/:id/upload', express.json({ limit: '40mb' })); // imagens dos slides em base64
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '1mb', verify: (req, _res, buf) => { if (req.originalUrl.startsWith('/hooks/')) req.rawBody = buf; } }));
 
 const safeEq = (a, b) => {
   const x = Buffer.from(String(a || ''));
@@ -77,6 +80,46 @@ const fail = (key) => {
 };
 
 app.get('/health', (_req, res) => res.json({ ok: true, modo: config.dryRun ? 'dry-run' : 'real' }));
+
+// --- Felipe Macedo (vendas): webhooks públicos (assinados / com chave) e painel ---
+const hookLimite = new Map();
+const hookOk = (req) => { const k = req.ip; const now = Date.now(); const a = hookLimite.get(k); if (!a || now > a.reset) { hookLimite.set(k, { n: 1, reset: now + 60e3 }); return true; } return ++a.n <= 240; };
+app.get(['/hooks/whatsapp', '/hooks/meta-leads'], (req, res) => { const c = wa.verificarChallenge(req.query); return c === null ? res.status(403).end() : res.type('text/plain').send(c); });
+app.post('/hooks/whatsapp', (req, res) => {
+  if (!hookOk(req)) return res.status(429).end();
+  if (!wa.assinaturaValida(req.rawBody, req.get('x-hub-signature-256'))) return res.status(401).end();
+  res.sendStatus(200); // responde já; a Meta reenvia se demorar
+  for (const m of wa.extrairMensagens(req.body)) receberMensagem(m).catch((e) => console.error('[felipe]', e.message));
+});
+app.post('/hooks/meta-leads', (req, res) => {
+  if (!hookOk(req)) return res.status(429).end();
+  if (!wa.assinaturaValida(req.rawBody, req.get('x-hub-signature-256'))) return res.status(401).end();
+  res.sendStatus(200);
+  receberLeadsMeta(req.body).catch((e) => console.error('[felipe]', e.message));
+});
+app.post('/hooks/lead', (req, res) => {
+  if (!hookOk(req)) return res.status(429).end();
+  const k = req.get('x-hook-key') || req.query.key;
+  if (!config.vendas.hookKey || !safeEq(k, config.vendas.hookKey)) return res.status(401).json({ error: 'Chave inválida.' });
+  res.json(receberLeadGenerico(req.body));
+});
+const vOut = (res, r) => (r.error ? res.status(400).json({ error: r.error }) : res.json(r.lead ? { lead: vendas.viewLead(r.lead) } : r));
+app.get('/api/vendas', requireUser, (req, res) => res.json(vendas.painel(req.query.cliente)));
+app.get('/api/vendas/leads', requireUser, (req, res) => res.json({ leads: vendas.listarLeads({ cliente: req.query.cliente || store.cliente()?.id, status: req.query.status }).slice(0, 300).map(vendas.viewLead) }));
+app.get('/api/vendas/leads/:id', requireUser, (req, res) => { const l = vendas.getLead(req.params.id); return l ? res.json({ lead: { ...vendas.viewLead(l), mensagens: l.mensagens, etapa: l.etapa, motivo_humano: l.motivo_humano } }) : res.status(404).json({ error: 'Lead não encontrado.' }); });
+app.post('/api/vendas/leads', requireUser, requireAdmin, (req, res) => vOut(res, vendas.addLead({ ...req.body, origem: 'manual', consentimento: req.body?.consentimento === true }, req.user.email)));
+app.post('/api/vendas/import', requireUser, requireAdmin, (req, res) => {
+  if (req.body?.consentimento !== true) return res.status(400).json({ error: 'Confirme que estes contatos autorizaram receber mensagens (LGPD).' });
+  vOut(res, vendas.importarCsv(req.body.cliente, req.body.csv, { consentimento: true, by: req.user.email }));
+});
+app.post('/api/vendas/leads/:id/mensagem', requireUser, requireAdmin, async (req, res) => vOut(res, await vendas.responderManual(req.params.id, req.body?.texto, req.user.email)));
+app.post('/api/vendas/leads/:id/humano', requireUser, requireAdmin, (req, res) => vOut(res, vendas.definirHumano(req.params.id, req.body?.humano !== false, req.user.email)));
+app.post('/api/vendas/leads/:id/status', requireUser, requireAdmin, (req, res) => vOut(res, vendas.marcarStatus(req.params.id, req.body?.status, req.user.email)));
+app.post('/api/vendas/leads/:id/contatar', requireUser, requireAdmin, async (req, res) => vOut(res, await vendas.contatarAgora(req.params.id)));
+app.put('/api/vendas/config', requireUser, requireAdmin, (req, res) => vOut(res, vendas.salvarConfig(req.body?.cliente, req.body || {})));
+app.post('/api/vendas/disparos', requireUser, (req, res) => vOut(res, vendas.proporDisparo({ cliente: req.body?.cliente, nome: req.body?.nome, filtro: req.body?.filtro || {}, template: req.body?.template, by: req.user.email })));
+app.post('/api/vendas/disparos/:id/aprovar', requireUser, requireAdmin, (req, res) => vOut(res, vendas.decidirDisparo(req.params.id, true, req.user.email)));
+app.post('/api/vendas/disparos/:id/cancelar', requireUser, requireAdmin, (req, res) => vOut(res, vendas.decidirDisparo(req.params.id, false, req.user.email)));
 
 // --- MCP (conectar no Claude como conector personalizado) ---
 app.post(['/mcp', '/mcp/:key'], requireMcp, async (req, res) => {
@@ -428,6 +471,7 @@ if (autoDisponivel()) {
 }
 setTimeout(() => tick().catch((e) => console.error('[agendador]', e.message)), 10_000).unref(); // recupera posts vencidos após reinício
 setInterval(() => tick().catch((e) => console.error('[agendador]', e.message)), 60_000).unref();
+setInterval(() => vendas.tick().catch((e) => console.error('[felipe]', e.message)), 60_000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => store.flush().finally(() => process.exit(0)));
 
 app.listen(config.port, () => {

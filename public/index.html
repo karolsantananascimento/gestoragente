@@ -215,6 +215,7 @@
   <button data-tab="conteudo" class="on">🗂 Conteúdo <span class="badge" id="bdgConteudo"></span></button>
   <button data-tab="chat">💬 Solicitações</button>
   <button data-tab="trafego">📈 Tráfego <span class="badge" id="bdgTrafego"></span></button>
+  <button data-tab="vendas">💼 Vendas <span class="badge" id="bdgVendas"></span></button>
   <button data-tab="time">🤝 Time</button>
   <button data-tab="marca">🎨 Marca</button>
 </nav>
@@ -322,6 +323,16 @@
   <div class="board" id="board"></div>
 </div>
 
+<div class="view hidden" id="v-vendas">
+  <div class="pagehead"><div><h2 class="ptitle">Vendas · Felipe Macedo</h2><div class="flow"><span>Felipe recebe leads das campanhas, conversa no WhatsApp e pré-qualifica. Quem fecha é a equipe.</span></div></div>
+    <div class="row"><button id="vImportBtn">📥 Importar lista do CRM</button><button id="vDispBtn">📣 Propor disparo</button><button id="vCfgBtn">⚙️ Configurar Felipe</button></div></div>
+  <div class="card" id="vConn" style="margin-bottom:12px"></div>
+  <div class="kpis" id="vKpis"></div>
+  <div class="card" id="vDisp" style="margin-bottom:12px"></div>
+  <div class="chipsrow" id="vFiltros"></div>
+  <div class="card" style="overflow:auto"><div class="tbl"><table id="vTab" style="width:100%"></table></div><div class="note" id="vVazio"></div></div>
+</div>
+
 <div class="view hidden" id="v-time">
   <div class="pagehead"><div><h2 class="ptitle">Time</h2><div class="flow"><span>Cada agente tem uma função. O resultado aparece aqui e só uma administradora aprova.</span></div></div></div>
   <div class="agents" id="agents"></div>
@@ -389,6 +400,33 @@
 
 
 <!-- Nova campanha (fluxo completo) -->
+<div class="overlay dim hidden" id="vModal"><div class="box wide modal" style="max-width:640px">
+  <div class="row" style="justify-content:space-between"><h2 id="vmNome" style="margin:0"></h2><button id="vmClose">Fechar</button></div>
+  <div class="note" id="vmInfo"></div><div id="vmChat" style="max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:6px;margin:10px 0"></div>
+  <div class="row"><input id="vmTxt" placeholder="Responder como humano (o Felipe pausa)" style="flex:1"><button class="big" id="vmSend">Enviar</button></div>
+  <div class="row" style="margin-top:8px"><button id="vmHum"></button><button id="vmCont">Enviar primeiro contato</button><button id="vmQual">Marcar qualificado</button><button class="no" id="vmOpt">Não contatar mais</button></div>
+  <div class="note" id="vmErr"></div></div></div>
+<div class="overlay dim hidden" id="vImpModal"><form class="box wide modal form" id="vImpForm" style="max-width:600px">
+  <h2>Importar lista do CRM</h2><div class="note">CSV com cabeçalho: nome, telefone (ou celular/whatsapp), email, campanha.</div>
+  <label>Arquivo CSV<input type="file" id="vFile" accept=".csv,text/csv"></label><label>ou cole o CSV<textarea name="csv" rows="6"></textarea></label>
+  <label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" name="cons" style="width:auto"> Confirmo que estes contatos autorizaram receber mensagens da empresa por WhatsApp (LGPD).</label>
+  <div class="row"><button class="big" type="submit">Importar</button><button type="button" id="vImpClose">Cancelar</button></div><div class="note" id="vImpMsg"></div></form></div>
+<div class="overlay dim hidden" id="vDispModal"><form class="box wide modal form" id="vDispForm" style="max-width:560px">
+  <h2>Propor disparo para a lista</h2><div class="note">Só leads com consentimento e que não pediram para parar. Envia o template aprovado pela Meta, em horário comercial, dentro do limite diário. Um administrador precisa aprovar.</div>
+  <label>Nome<input name="nome" placeholder="Ex.: Reativação novembro"></label>
+  <label>Origem dos leads<select name="origem"><option value="">Todas</option><option value="crm">Lista do CRM</option><option value="meta_lead_ads">Campanhas (Lead Ads)</option><option value="manual">Manual</option></select></label>
+  <label>Template aprovado (opcional se já configurado)<input name="template" placeholder="nome_do_template"></label>
+  <div class="row"><button class="big" type="submit">Propor</button><button type="button" id="vDispClose">Cancelar</button></div><div class="note" id="vDispMsg"></div></form></div>
+<div class="overlay dim hidden" id="vCfgModal"><form class="box wide modal form" id="vCfgForm" style="max-width:640px">
+  <h2>Configurar Felipe</h2>
+  <label style="display:flex;gap:8px"><input type="checkbox" name="ativo" style="width:auto"> Felipe ativo para este cliente (faz o primeiro contato dos leads de campanha)</label>
+  <label>Empresa<input name="empresa"></label><label>O que vendemos<textarea name="oferta" rows="3"></textarea></label>
+  <label>Apresentação (1-2 frases)<textarea name="apresentacao" rows="2"></textarea></label><label>Público ideal / critérios para qualificar<textarea name="criterios" rows="3"></textarea></label>
+  <label>Perguntas de qualificação (uma por linha)<textarea name="perguntas" rows="4"></textarea></label>
+  <label>Próximo passo quando qualificado<input name="proximo_passo"></label>
+  <div class="grid2"><label>Template aprovado<input name="template"></label><label>Máx. respostas por lead/dia<input name="max_respostas_dia" type="number" min="1"></label>
+  <label>Horário de contato: início (h)<input name="horario_inicio" type="number" min="0" max="24"></label><label>fim (h)<input name="horario_fim" type="number" min="0" max="24"></label></div>
+  <div class="row"><button class="big" type="submit">Salvar</button><button type="button" id="vCfgClose">Cancelar</button></div><div class="note" id="vCfgMsg"></div></form></div>
 <div class="overlay dim hidden" id="campModal">
   <form class="box wide modal form" id="campForm" style="max-width:760px">
     <h2>Nova campanha · fluxo completo</h2>
@@ -977,14 +1015,100 @@ $('#inviteForm').onsubmit = async (e) => {
 };
 
 
+
+/* ---------- vendas (Felipe) ---------- */
+let V_FILTRO = '', V_LEAD = null, V_CFG = null;
+const V_ST = { novo: 'Novo', contatado: 'Contatado', em_conversa: 'Em conversa', qualificado: 'Qualificado', desqualificado: 'Desqualificado', humano: 'Com humano', sem_resposta: 'Sem resposta', optout: 'Pediu para parar' };
+const quando = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+async function loadVendas() {
+  const p = await api('/api/vendas?' + qc()); V_CFG = p.config;
+  const c = p.conexao, conn = $('#vConn'); conn.innerHTML = '';
+  const chip = (t, ok) => { const x = mkEl('span', (ok ? '✓ ' : '✗ ') + t, 'chip ' + (ok ? 'okk' : 'late')); return x; };
+  const lin = mkEl('div', '', 'chips'); lin.append(chip('WhatsApp', c.whatsapp), chip('Template aprovado', c.template), chip('Assinatura do webhook', c.assinatura), chip('IA (Anthropic)', c.ia), mkEl('span', 'Modo ' + c.modo, 'chip'));
+  conn.append(lin);
+  const urls = mkEl('div', 'Webhooks (cole na Meta): WhatsApp → ' + p.urls.whatsapp + ' · Lead Ads → ' + p.urls.meta_leads + ' · qualquer formulário/CRM → ' + p.urls.leads + '?key=SUA_CHAVE', 'note'); conn.append(urls);
+  if (!c.whatsapp) conn.append(mkEl('div', 'Falta conectar o WhatsApp: defina WHATSAPP_TOKEN, WHATSAPP_PHONE_ID, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET e WHATSAPP_TEMPLATE no Render (passo a passo no SETUP.md).', 'note'));
+  if (!p.config.ativo) conn.append(mkEl('div', 'Felipe está desativado para ' + p.cliente.nome + ': ele responde quem escreve, mas só aborda leads de campanha depois de ativado em ⚙️ Configurar.', 'note'));
+  const k = p.kpis, kp = $('#vKpis'); kp.innerHTML = '';
+  for (const [t, v] of [['Leads', k.total], ['Novos', k.novos], ['Em conversa', k.em_conversa], ['Qualificados', k.qualificados], ['Com humano', k.humano], ['Templates hoje', k.templates_hoje + '/' + k.limite_dia]]) { const d = mkEl('div', '', 'kpi'); d.append(mkEl('small', t), mkEl('b', String(v))); kp.append(d); }
+  const bd = $('#bdgVendas'); bd.textContent = (k.qualificados + k.humano) || ''; bd.classList.toggle('hidden', !(k.qualificados + k.humano));
+  const dp = $('#vDisp'); dp.innerHTML = ''; show(dp, p.disparos.length > 0);
+  for (const d of p.disparos) {
+    const r = mkEl('div', '', 'row'); r.append(mkEl('b', d.nome), mkEl('span', `${d.template} · ${d.estado} · enviados ${d.enviados} · restam ${d.restantes}${d.falhas ? ' · falhas ' + d.falhas : ''}${d.pausado ? ' · pausado: ' + d.pausado : ''}`, 'note'));
+    if (me?.role === 'admin' && ['pendente', 'aprovado', 'enviando'].includes(d.estado)) {
+      if (d.estado === 'pendente') { const a = mkEl('button', 'Aprovar disparo', 'big'); a.onclick = async () => { try { await api(`/api/vendas/disparos/${d.id}/aprovar`, { method: 'POST' }); loadVendas(); } catch (e) { toast(e.message, 'bad'); } }; r.append(a); }
+      const n = mkEl('button', 'Cancelar', 'no'); n.onclick = async () => { try { await api(`/api/vendas/disparos/${d.id}/cancelar`, { method: 'POST' }); loadVendas(); } catch (e) { toast(e.message, 'bad'); } }; r.append(n);
+    }
+    dp.append(r);
+  }
+  const fl = $('#vFiltros'); fl.innerHTML = '';
+  for (const [v, t] of [['', 'Todos'], ...Object.entries(V_ST)]) { const b = mkEl('button', t); if (v === V_FILTRO) b.classList.add('big'); b.onclick = () => { V_FILTRO = v; loadVendas().catch(() => {}); }; fl.append(b); }
+  const { leads } = await api('/api/vendas/leads?' + qc() + (V_FILTRO ? '&status=' + V_FILTRO : ''));
+  const tb = $('#vTab'); tb.innerHTML = '';
+  const h = mkEl('tr'); for (const t of ['Lead', 'Telefone', 'Origem', 'Status', 'Score', 'Última mensagem', '']) h.append(mkEl('th', t)); tb.append(h);
+  for (const l of leads) {
+    const r = mkEl('tr'); r.style.cursor = 'pointer';
+    r.append(mkEl('td', l.nome || '(sem nome)'), mkEl('td', l.telefone), mkEl('td', l.origem + (l.campanha ? ' · ' + l.campanha : '')), mkEl('td', V_ST[l.status] || l.status), mkEl('td', l.score ? String(l.score) : '–'), mkEl('td', l.ultima ? `${l.ultima.de}: ${l.ultima.texto}` : ''), mkEl('td', l.ultima ? quando(l.ultima.at) : ''));
+    r.onclick = () => abrirLead(l.id); tb.append(r);
+  }
+  $('#vVazio').textContent = leads.length ? '' : 'Nenhum lead ainda. Importe uma lista, conecte os Lead Ads ou envie leads pelo webhook.';
+}
+async function abrirLead(id) {
+  const { lead } = await api('/api/vendas/leads/' + id); V_LEAD = lead; const admin = me?.role === 'admin';
+  $('#vmNome').textContent = (lead.nome || lead.telefone) + ' · ' + (V_ST[lead.status] || lead.status);
+  $('#vmInfo').textContent = [lead.telefone, lead.email, lead.score ? 'score ' + lead.score : '', lead.resumo, lead.motivo_humano ? 'Motivo da transferência: ' + lead.motivo_humano : ''].filter(Boolean).join(' · ');
+  const ch = $('#vmChat'); ch.innerHTML = '';
+  for (const m of lead.mensagens) { const d = mkEl('div', m.texto, 'card'); d.style.maxWidth = '85%'; d.style.alignSelf = m.de === 'lead' ? 'flex-start' : 'flex-end'; d.title = m.de + ' · ' + quando(m.at); const w = mkEl('small', m.de + ' · ' + quando(m.at) + (m.simulado ? ' · simulado' : ''), 'note'); d.prepend(w); ch.append(d); }
+  ch.scrollTop = ch.scrollHeight;
+  $('#vmHum').textContent = lead.humano ? 'Devolver ao Felipe' : 'Assumir conversa';
+  for (const b of ['#vmSend', '#vmHum', '#vmCont', '#vmQual', '#vmOpt']) $(b).disabled = !admin;
+  $('#vmErr').textContent = admin ? '' : 'Só administradores respondem e alteram leads.';
+  show($('#vModal'), true);
+}
+const vAcao = async (rota, body) => { try { await api('/api/vendas/leads/' + V_LEAD.id + rota, { method: 'POST', body: JSON.stringify(body || {}) }); await abrirLead(V_LEAD.id); loadVendas().catch(() => {}); } catch (e) { $('#vmErr').textContent = e.message; } };
+$('#vmClose').onclick = () => show($('#vModal'), false);
+$('#vmSend').onclick = async () => { const t = $('#vmTxt').value.trim(); if (!t) return; await vAcao('/mensagem', { texto: t }); $('#vmTxt').value = ''; };
+$('#vmHum').onclick = () => vAcao('/humano', { humano: !V_LEAD.humano });
+$('#vmCont').onclick = () => vAcao('/contatar');
+$('#vmQual').onclick = () => vAcao('/status', { status: 'qualificado' });
+$('#vmOpt').onclick = () => vAcao('/status', { status: 'optout' });
+$('#vImportBtn').onclick = () => { $('#vImpMsg').textContent = ''; show($('#vImpModal'), true); };
+$('#vImpClose').onclick = () => show($('#vImpModal'), false);
+$('#vFile').onchange = async (e) => { const f = e.target.files[0]; if (f) $('#vImpForm').csv.value = await f.text(); };
+$('#vImpForm').onsubmit = async (e) => {
+  e.preventDefault(); const f = e.target;
+  try { const r = await api('/api/vendas/import', { method: 'POST', body: JSON.stringify({ cliente: CUR, csv: f.csv.value, consentimento: f.cons.checked }) }); $('#vImpMsg').textContent = `${r.novos} novo(s), ${r.duplicados} já existiam, ${r.invalidos} inválido(s).`; loadVendas().catch(() => {}); }
+  catch (err) { $('#vImpMsg').textContent = err.message; }
+};
+$('#vDispBtn').onclick = () => { $('#vDispMsg').textContent = ''; show($('#vDispModal'), true); };
+$('#vDispClose').onclick = () => show($('#vDispModal'), false);
+$('#vDispForm').onsubmit = async (e) => {
+  e.preventDefault(); const f = e.target;
+  try { const r = await api('/api/vendas/disparos', { method: 'POST', body: JSON.stringify({ cliente: CUR, nome: f.nome.value, template: f.template.value, filtro: f.origem.value ? { origem: f.origem.value } : {} }) }); $('#vDispMsg').textContent = `Proposto para ${r.disparo.ids.length} lead(s). Aguardando aprovação de um administrador.`; loadVendas().catch(() => {}); }
+  catch (err) { $('#vDispMsg').textContent = err.message; }
+};
+$('#vCfgBtn').onclick = () => {
+  const f = $('#vCfgForm'), c = V_CFG || {}; f.ativo.checked = !!c.ativo;
+  for (const k of ['empresa', 'oferta', 'apresentacao', 'criterios', 'proximo_passo', 'template', 'max_respostas_dia', 'horario_inicio', 'horario_fim']) f[k].value = c[k] ?? '';
+  f.perguntas.value = (c.perguntas || []).join('\n'); $('#vCfgMsg').textContent = ''; show($('#vCfgModal'), true);
+};
+$('#vCfgClose').onclick = () => show($('#vCfgModal'), false);
+$('#vCfgForm').onsubmit = async (e) => {
+  e.preventDefault(); const f = e.target; const b = { cliente: CUR, ativo: f.ativo.checked, perguntas: f.perguntas.value.split('\n') };
+  for (const k of ['empresa', 'oferta', 'apresentacao', 'criterios', 'proximo_passo', 'template', 'max_respostas_dia', 'horario_inicio', 'horario_fim']) b[k] = f[k].value;
+  try { await api('/api/vendas/config', { method: 'PUT', body: JSON.stringify(b) }); show($('#vCfgModal'), false); loadVendas().catch(() => {}); toast('Configuração salva', 'ok'); }
+  catch (err) { $('#vCfgMsg').textContent = err.message; }
+};
+
 /* ---------- abas ---------- */
-const TABS = ['chat', 'trafego', 'conteudo', 'time', 'marca'];
+const TABS = ['chat', 'trafego', 'conteudo', 'vendas', 'time', 'marca'];
 function openTab(t) {
   for (const x of TABS) show($('#v-' + x), x === t);
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === t);
   store_.set('tab', t, true);
   if (t === 'conteudo') loadItems().catch(() => {});
   if (t === 'trafego') loadTrafego().catch(() => {});
+  if (t === 'vendas') loadVendas().catch((e) => toast(e.message, 'bad'));
   if (t === 'time') loadAgents().catch(() => {});
   if (t === 'marca') loadBrand().catch(() => {});
 }

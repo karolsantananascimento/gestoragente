@@ -34,6 +34,8 @@ const normalize = (s) => {
   s.seeded ||= [];
   s.pedidos ||= [];
   s.integracoes ||= {};
+  s.vendas ||= { leads: [], config: {}, disparos: [] };
+  s.vendas.leads ||= []; s.vendas.config ||= {}; s.vendas.disparos ||= [];
   // Áreas de trabalho por cliente. O kit/pautas que existiam antes pertencem à Disco (cliente padrão).
   if (!Array.isArray(s.clientes) || !s.clientes.length) {
     s.clientes = SEED_CLIENTS.map(([id, nome, meta]) => ({
@@ -156,6 +158,8 @@ export const store = {
   },
   addCliente(c) { load().clientes.push(c); save(); return c; },
   saveClientes() { save(); },
+  vendas() { return load().vendas; },
+  saveVendas() { save(); },
   integ(k) { return load().integracoes[k] || null; },
   setInteg(k, v) { const i = load().integracoes; if (v) i[k] = v; else delete i[k]; save(); },
   // Kit de marca do cliente (sem argumento = cliente padrão).

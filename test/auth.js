@@ -95,7 +95,7 @@ try {
   r = await call('/api/brand', { method: 'PUT', token: admin, body: { nome: 'Minha Marca', cores: '#7C5CFF' } });
   ok(r.status === 200 && r.data.nome === 'Minha Marca', 'administradora salva o kit da marca');
   r = await call('/api/team', { token: member2 });
-  ok(r.status === 200 && r.data.map((a) => a.nome).join() === 'Camila,Hugo,Luiz,Mariana', 'painel lista o time');
+  ok(r.status === 200 && r.data.map((a) => a.nome).join() === 'Camila,Hugo,Luiz,Mariana,Felipe Macedo', 'painel lista o time');
   r = await call('/api/users/colega2%40x.com', { method: 'DELETE', token: admin });
 
   // consultas diretas do painel: só leitura

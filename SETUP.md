@@ -146,3 +146,21 @@ Atenção: o Reddit exige aprovação de acesso à API para apps novos e cada su
 
 ## Subir campanhas pelo painel (Meta)
 Na aba Tráfego, "Nova campanha" cria campanha, conjunto, criativo e anúncio, tudo pausado, com uma única aprovação. Requisitos: token do Meta com `ads_management`, a página do Facebook do cliente cadastrada na aba Marca (ou META_PAGE_ID para a Disco) e, para Leads/Vendas no site, o pixel (campo no formulário ou variável opcional `META_PIXEL_ID`). O destino WhatsApp exige um número do WhatsApp Business conectado à página.
+
+## Felipe Macedo (vendedor / SDR com IA no WhatsApp)
+
+Aba **💼 Vendas**. Felipe recebe leads (Lead Ads da Meta, formulários/CRM por webhook, lista importada em CSV), faz o primeiro contato por **template aprovado**, responde no WhatsApp, pré-qualifica (necessidade, prazo, decisor) e passa os qualificados para a equipe com resumo e score. Modelo: SDR conversacional BANT/SPIN (como 11x Alice, Artisan Ava, HubSpot Breeze). Sem crédito/chave da Anthropic ele usa um roteiro de perguntas configurável.
+
+**Variáveis no Render (você mesma define; nunca cole tokens no chat):**
+- `WHATSAPP_TOKEN` (token permanente do usuário do sistema), `WHATSAPP_PHONE_ID` (ID do número na WhatsApp Cloud API)
+- `WHATSAPP_VERIFY_TOKEN` (texto que você inventa; igual ao informado no webhook da Meta)
+- `WHATSAPP_APP_SECRET` (ou `META_APP_SECRET`): chave secreta do app, usada para validar a assinatura. Sem ela, os webhooks são recusados.
+- `WHATSAPP_TEMPLATE` (nome do template de abertura **aprovado pela Meta**, categoria Marketing/Utility, com 2 variáveis: {{1}} nome, {{2}} empresa) e, se preciso, `WHATSAPP_TEMPLATE_LANG` (padrão pt_BR)
+- `VENDAS_HOOK_KEY` (chave do webhook genérico), opcional `VENDAS_MAX_DISPAROS_DIA` (padrão 50) e `VENDAS_CLIENTE_PADRAO`
+
+**Webhooks (Meta for Developers → app → WhatsApp → Configuration):**
+- Mensagens: `https://SEU-APP/hooks/whatsapp` (campo `messages`)
+- Lead Ads: `https://SEU-APP/hooks/meta-leads` (assine `leadgen` na página; o token da página precisa de `leads_retrieval`)
+- Qualquer formulário/CRM: `POST https://SEU-APP/hooks/lead?key=VENDAS_HOOK_KEY` com `{nome, telefone, email, campanha, cliente}`
+
+**Regras embutidas:** só fala com quem tem consentimento (lead de formulário ou quem escreveu primeiro; listas do CRM exigem marcar a confirmação LGPD); "PARAR" encerra e bloqueia; avisa que é assistente virtual; não inventa preço; contato ativo só das 8h às 20h (Recife, sem domingo; configurável); fora das 24h do WhatsApp só template; no máximo 2 follow-ups; disparo em massa só depois de aprovação de um administrador e dentro do limite diário; quando um humano assume, Felipe só registra.

@@ -18,7 +18,7 @@ const MAX_TURNS = 10;       // iterações de ferramenta por mensagem
 const MAX_HISTORY = 40;     // mensagens mantidas por sessão
 
 let client;
-const anthropic = () => (client ??= new Anthropic({ apiKey: config.anthropicKey }));
+export const anthropic = () => (client ??= new Anthropic({ apiKey: config.anthropicKey }));
 
 const toolDefs = agentTools.map((t) => ({
   name: t.name,

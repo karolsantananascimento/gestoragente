@@ -4,6 +4,7 @@ import { gerarImagem } from './images.js';
 import { config } from './config.js';
 import { AGENTS, promptOf, teamInfo } from './team.js';
 import { revisar } from './revisao.js';
+import { listarLeads, getLead, viewLead } from './vendas.js';
 import { createItem, editItem, submitArt, scheduleItem, listItems, cronograma, planoSemanas, listRequests, closeRequest, kitCompleto, getCliente, STATUS } from './content.js';
 
 const view = (c) => ({
@@ -16,6 +17,18 @@ const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok
 
 // risk 'internal': age só dentro do sistema (nada é gasto nem publicado sem aprovação humana).
 export const teamTools = [
+  {
+    name: 'felipe_listar_leads', risk: 'read', agent: 'felipe',
+    description: 'Lista os leads do vendedor Felipe (WhatsApp/CRM) com status, score e resumo. Somente leitura.',
+    params: { cliente: { type: 'string', desc: 'Cliente (opcional)' }, status: { type: 'string', desc: 'novo, contatado, em_conversa, qualificado, desqualificado, humano, sem_resposta ou optout' } },
+    handler: async ({ cliente, status }) => ({ status: 'ok', leads: listarLeads({ cliente, status }).slice(0, 50).map(viewLead) }),
+  },
+  {
+    name: 'felipe_ver_conversa', risk: 'read', agent: 'felipe',
+    description: 'Mostra a conversa de WhatsApp de um lead do Felipe. Somente leitura.',
+    params: { id: { type: 'string', desc: 'Id do lead' } },
+    handler: async ({ id }) => { const l = getLead(id); return l ? { status: 'ok', lead: viewLead(l), mensagens: l.mensagens.slice(-40) } : { status: 'erro', erro: 'Lead não encontrado.' }; },
+  },
   {
     name: 'time_proximas_tarefas', risk: 'read', agent: 'todos',
     description: 'COMECE POR AQUI. O time trabalha como uma squad por cliente (Hugo, Luiz e Mariana atendem cada cliente com a identidade dele). Devolve, por cliente, o que fazer agora: pedidos da usuária, pautas que faltam para bater a meta semanal, artes pendentes e agendamentos a tentar. Execute as tarefas sem pedir permissão: tudo termina na aprovação humana. Antes de criar pauta ou arte de um cliente, chame marca_ver com o nome dele e siga a identidade, o tom e o estilo DAQUELE cliente (nunca misture com o de outro). Com "cliente" filtra um só.',

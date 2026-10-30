@@ -39,6 +39,20 @@ export const config = {
     linkedinAuthor: process.env.LINKEDIN_AUTHOR_URN || '', // urn:li:organization:123 ou urn:li:person:abc
     tiktokToken: process.env.TIKTOK_ACCESS_TOKEN || '',
   },
+  // WhatsApp Business Cloud API (oficial, Meta) e vendas (Felipe Macedo)
+  whatsapp: {
+    token: process.env.WHATSAPP_TOKEN || '',
+    phoneId: process.env.WHATSAPP_PHONE_ID || '',
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
+    appSecret: process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || '',
+    template: process.env.WHATSAPP_TEMPLATE || '',
+    templateLang: process.env.WHATSAPP_TEMPLATE_LANG || 'pt_BR',
+  },
+  vendas: {
+    hookKey: process.env.VENDAS_HOOK_KEY || '',
+    maxDisparosDia: Number(process.env.VENDAS_MAX_DISPAROS_DIA || 50),
+    clientePadrao: process.env.VENDAS_CLIENTE_PADRAO || '',
+  },
   reddit: { clientId: process.env.REDDIT_CLIENT_ID || '', clientSecret: process.env.REDDIT_CLIENT_SECRET || '', userAgent: process.env.REDDIT_USER_AGENT || 'web:gestoragente:1.0 (by /u/' + (process.env.REDDIT_USERNAME || 'gestoragente') + ')' },
   caps: {
     maxDailyBudgetBRL: num(process.env.MAX_DAILY_BUDGET_BRL, 300),
@@ -82,5 +96,6 @@ export function platformStatus() {
     google: !!(g.developerToken && g.clientId && g.clientSecret && g.refreshToken),
     meta: !!m.token,
     linkedin: !!(l.token && l.adAccountId),
+    whatsapp: !!(config.whatsapp.token && config.whatsapp.phoneId),
   };
 }
