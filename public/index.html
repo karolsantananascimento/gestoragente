@@ -143,6 +143,7 @@
   .item:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow); }
   .item h4 { margin:8px 0 4px; font-size:15px; line-height:1.3; }
   .chips { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  #chPick button { padding:4px 12px; border-radius:99px; } #chPick button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
   .chip { font-size:12px; padding:2px 9px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
   .chip.fmt { color:var(--text); } .chip.late { color:var(--bad); border-color:var(--bad); }
   .item .cap { font-size:13px; color:var(--muted); white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-top:4px; }
@@ -385,7 +386,8 @@
     <label>Título<input name="titulo" required></label>
     <label>Legenda do post<textarea name="legenda" rows="5" required></textarea></label>
     <label>Briefing da arte<textarea name="briefing_arte" rows="4" required></textarea></label>
-    <label>Canais (separados por vírgula: instagram, facebook, linkedin, tiktok)<input name="canais" value="instagram, facebook" required></label>
+    <div class="lbl2">Esta pauta é um post para:</div>
+    <div class="chips" id="chPick" style="margin-bottom:8px"></div>
     <label>Data e hora de publicação (horário de Recife)<input name="data_publicacao" type="datetime-local"></label>
     <label>Formato<select name="formato" id="fmtSel"><option value="feed">Feed (imagem única)</option><option value="carrossel">Carrossel (2 a 10 lâminas)</option><option value="story">Story</option><option value="reels">Reels</option></select></label>
     <div id="slidesBox" class="hidden">
@@ -479,11 +481,9 @@
     <div class="alert" id="apprRev"></div>
     <label>Publicar em:</label>
     <div id="apprCh"></div>
-    <label>Quando?</label>
-    <label style="display:block"><input type="radio" name="modo" value="agendar" checked> Agendar para <b id="apprWhen"></b></label>
-    <label style="display:block"><input type="radio" name="modo" value="agora"> Publicar agora (instantâneo)</label>
+    <div class="note">Agendar: <b id="apprWhen"></b></div>
     <div class="err" id="apprErr"></div>
-    <div class="row"><button class="big">Aprovar</button><button type="button" class="ghost" id="apprClose">Cancelar</button></div>
+    <div class="row"><button type="button" class="big" id="apprNow">🚀 Publicar agora</button><button type="button" class="big" id="apprSched">🗓 Agendar</button><button type="button" class="ghost" id="apprClose">Cancelar</button></div>
   </form>
 </div>
 
@@ -1423,7 +1423,11 @@ function itemCard(it, full, color) {
   if (!full) c.onclick = () => { renderView(it); show($('#viewModal'), true); };
   return c;
 }
-const CH_NAMES = { instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok', reddit: 'Reddit' };
+const CH_NAMES = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', reddit: 'Reddit', blog: 'Blog' };
+const CH_ICON = { linkedin: '💼', instagram: '📷', facebook: '👍', tiktok: '🎵', reddit: '👽', blog: '📝' };
+// Botões de canal (liga/desliga) da pauta.
+function renderChPick(sel) { const b = $('#chPick'); b.innerHTML = ''; for (const k of Object.keys(CH_NAMES)) { const x = document.createElement('button'); x.type = 'button'; x.dataset.canal = k; x.textContent = `${CH_ICON[k]} ${CH_NAMES[k]}`; x.className = 'ghost' + (sel.includes(k) ? ' on' : ''); x.setAttribute('aria-pressed', sel.includes(k)); x.onclick = () => { x.classList.toggle('on'); x.setAttribute('aria-pressed', x.classList.contains('on')); }; b.appendChild(x); } }
+const chSel = () => [...document.querySelectorAll('#chPick button.on')].map((x) => x.dataset.canal);
 let apprItem = null;
 async function openApproval(it) {
   apprItem = it; $('#apprErr').textContent = '';
@@ -1440,13 +1444,16 @@ async function openApproval(it) {
     const t = document.createElement('span'); t.className = 'tag'; t.textContent = redes[k] ? 'conectado' : 'não conectado (fica para publicar manualmente)'; l.appendChild(t);
     box.appendChild(l);
   }
+  $('#apprSched').disabled = !it.data_publicacao; $('#apprSched').title = it.data_publicacao ? '' : 'Defina a data na pauta para agendar';
   show($('#apprModal'), true);
 }
 $('#apprClose').onclick = () => show($('#apprModal'), false);
-$('#apprForm').onsubmit = async (e) => {
-  e.preventDefault(); $('#apprErr').textContent = '';
+$('#apprForm').onsubmit = (e) => e.preventDefault();
+$('#apprNow').onclick = () => aprovar('agora');
+$('#apprSched').onclick = () => aprovar('agendar');
+async function aprovar(modo) {
+  $('#apprErr').textContent = '';
   const canais = [...$('#apprCh').querySelectorAll('input:checked')].map((x) => x.value);
-  const modo = e.target.elements.modo.value;
   if (!canais.length) return ($('#apprErr').textContent = 'Escolha ao menos uma conta.');
   if (modo === 'agora' && !confirm('Publicar AGORA em: ' + canais.map((k) => CH_NAMES[k]).join(', ') + '?')) return;
   try {
@@ -1455,7 +1462,7 @@ $('#apprForm').onsubmit = async (e) => {
     if (Object.values(r.item.canais_status || {}).some((x) => x.status === 'sem_integracao')) toast('Aprovado. Alguns canais não têm integração conectada: publique esses manualmente.', 'ok');
     loadItems();
   } catch (err) { $('#apprErr').textContent = err.message; }
-};
+}
 function openItem(it) {
   editing = it || null;
   const f = $('#itemForm'); f.reset(); $('#itemErr').textContent = '';
@@ -1464,8 +1471,9 @@ function openItem(it) {
     for (const k of ['titulo', 'legenda', 'briefing_arte']) f.elements[k].value = it[k] || '';
     const fm = (it.formato || 'feed').toLowerCase(); if (![...f.elements.formato.options].some((o) => o.value === fm)) f.elements.formato.add(new Option(fm, fm));
     f.elements.formato.value = fm;
-    f.elements.canais.value = it.canais.join(', '); f.elements.data_publicacao.value = toLocalInput(it.data_publicacao);
+    renderChPick(it.canais); f.elements.data_publicacao.value = toLocalInput(it.data_publicacao);
   }
+  if (!it) renderChPick(['instagram', 'facebook']);
   renderSlides(it?.slides?.length ? it.slides : []);
   show($('#itemModal'), true);
 }
@@ -1498,8 +1506,9 @@ $('#itemClose').onclick = () => show($('#itemModal'), false);
 $('#reloadItems').onclick = () => loadItems().catch(() => {});
 $('#itemForm').onsubmit = async (e) => {
   e.preventDefault(); $('#itemErr').textContent = '';
+  if (!chSel().length) return ($('#itemErr').textContent = 'Escolha ao menos um canal (LinkedIn, Instagram, Facebook, TikTok, Reddit ou Blog).');
   const f = e.target.elements;
-  const body = { cliente: CUR, titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: f.canais.value, formato: f.formato.value, slides: f.formato.value === 'carrossel' ? coletarSlides() : [], data_publicacao: f.data_publicacao.value || '' };
+  const body = { cliente: CUR, titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: chSel(), formato: f.formato.value, slides: f.formato.value === 'carrossel' ? coletarSlides() : [], data_publicacao: f.data_publicacao.value || '' };
   try {
     if (editing) await api('/api/content/' + editing.id, { method: 'PATCH', body: JSON.stringify(body) });
     else await api('/api/content', { method: 'POST', body: JSON.stringify(body) });

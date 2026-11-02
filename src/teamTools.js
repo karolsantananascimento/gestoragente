@@ -104,7 +104,7 @@ export const teamTools = [
       titulo: { type: 'string', desc: 'Título interno da pauta', required: true },
       legenda: { type: 'string', desc: 'Legenda completa do post, com hashtags e chamada para ação', required: true },
       briefing_arte: { type: 'string', desc: 'Briefing para o designer: mensagem central, texto na arte, estilo, formato, referências', required: true },
-      canais: { type: 'string[]', desc: 'Canais: instagram, facebook, linkedin, tiktok', required: true },
+      canais: { type: 'string[]', desc: 'Canais: instagram, facebook, linkedin, tiktok, reddit, blog', required: true },
       data_publicacao: { type: 'string', desc: 'Quando publicar, AAAA-MM-DD ou AAAA-MM-DDTHH:MM (horário de Recife)', required: true },
       formato: { type: 'string', desc: 'feed, carrossel, story, reels (padrão feed; vira carrossel se houver 2+ slides)' },
       slides: { type: 'string[]', desc: 'CARROSSEL: roteiro lâmina por lâmina, na ordem (2 a 10). Cada item no formato "Título da lâmina | texto curto". 1ª = capa (gancho), última = CTA.' },

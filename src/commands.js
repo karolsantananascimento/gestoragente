@@ -42,6 +42,8 @@ const findChannels = (text) => {
   if (/facebook|\bface\b/.test(t)) out.push('facebook');
   if (/linkedin/.test(t)) out.push('linkedin');
   if (/tiktok|tik tok/.test(t)) out.push('tiktok');
+  if (/\bblog\b/.test(t)) out.push('blog');
+  if (/reddit/.test(t) && !out.includes('reddit')) out.push('reddit');
   return out;
 };
 

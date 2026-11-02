@@ -294,5 +294,10 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   console.log('ok msgIA');
 }
 
+
+  // Canal Blog: aceito na pauta; sem integração, fica para publicação manual com aviso claro
+  const bl = c.createItem({ cliente: 'Disco', titulo: 'Post de blog', legenda: 'Texto do blog', briefing_arte: 'Capa', canais: ['blog', 'linkedin'] }, 'u');
+  ok(bl.item?.canais.includes('blog') && !bl.error, 'pauta aceita o canal Blog');
+  ok(!!c.createItem({ cliente: 'Disco', titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'] }, 'u').error, 'canal inexistente continua recusado');
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);

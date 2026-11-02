@@ -44,7 +44,7 @@ export function redesDe(clienteId) {
     facebook: !!(c.fbPageId && (tok || (c.padrao && base.facebook))),
     instagram: !!(c.igUserId && tok),
     linkedin: !!(c.linkedinAuthor && linkedin.conectado()), tiktok: false,
-    reddit: !!(c.redditSub && reddit.conectado()),
+    reddit: !!(c.redditSub && reddit.conectado()), blog: false,
   };
 }
 
@@ -161,6 +161,11 @@ export const adapters = {
     // O LinkedIn não agenda pela API: o agendador do servidor publica na hora marcada.
     async agendar() { return { modo: 'fila' }; },
     async publicar(item) { return linkedin.publicar(item, contasDe(item.cliente_id).linkedinAuthor); },
+  },
+  blog: {
+    nome: 'Blog',
+    configured: () => false,
+    nota: 'Blog: o sistema deixa texto e arte aprovados; publique no seu site/CMS (ainda sem integração direta).',
   },
   tiktok: {
     nome: 'TikTok',

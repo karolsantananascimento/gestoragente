@@ -6,7 +6,7 @@ const SUPERLATIVOS = /\b(o melhor|a melhor|os melhores|as melhores|o único|a ú
 const PROMESSA = /\b(ganhe|fature|lucre|enriqueça|renda extra)\b[^.!?\n]{0,40}\b(r\$\s?\d|\d+\s?(?:mil|%|x))/gi;
 const PLACEHOLDER = /\[(?:LINK|PREENCHER|[A-ZÀ-Ú ]{3,20})\]/g;
 const EMOJI = /\p{Extended_Pictographic}/gu;
-const LIMITE = { instagram: 2200, facebook: 2000, linkedin: 3000, reddit: 38000, tiktok: 2200 };
+const LIMITE = { instagram: 2200, facebook: 2000, linkedin: 3000, reddit: 38000, tiktok: 2200, blog: 100000 };
 const lista = (t) => String(t || '').split(/[;,\n]+/).map((x) => x.trim().replace(/^[-•]\s*/, '')).filter((x) => x.length >= 4 && x.length <= 60);
 
 export function revisar(item) {
