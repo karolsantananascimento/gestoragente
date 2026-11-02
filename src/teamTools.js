@@ -10,7 +10,7 @@ import { createItem, editItem, submitArt, scheduleItem, listItems, cronograma, p
 const view = (c) => ({
   id: c.id, cliente: c.marca, cliente_id: c.cliente_id, titulo: c.titulo, status: c.status, status_texto: STATUS[c.status], canais: c.canais,
   data_publicacao: c.data_publicacao, formato: c.formato, objetivo: c.objetivo,
-  legenda: c.legenda, briefing_arte: c.briefing_arte, slides: c.slides?.length ? c.slides : undefined, lâminas_registradas: c.arte_urls?.length || undefined, arte_url: c.arte_url || null, arte_aviso: c.arte_aviso || undefined,
+  legenda: c.legenda, briefing_arte: c.briefing_arte, slides: c.slides?.length ? c.slides : undefined, lâminas_registradas: c.arte_urls?.length || undefined, arte_url: c.arte_url || null, canva_url: c.canva_url || undefined, arte_aviso: c.arte_aviso || undefined,
   rascunho_automatico: c.rascunho_auto || undefined, ajustes_pedidos: c.status === 'ajustes' ? c.feedback : undefined, canais_status: c.canais_status,
 });
 const wrap = (r) => (r.error ? { status: 'erro', erro: r.error } : { status: 'ok', conteudo: view(r.item) });
@@ -150,9 +150,10 @@ export const teamTools = [
       id: { type: 'string', desc: 'ID do conteúdo', required: true },
       arte_url: { type: 'string', desc: 'Link público https da arte exportada (JPG/PNG)', required: true },
       arte_urls: { type: 'string[]', desc: 'Carrossel: links https de todos os slides, na ordem (opcional; arte_url = o primeiro)' },
+      canva_url: { type: 'string', desc: 'Link do design no Canva (https://www.canva.com/design/...), para a usuária abrir e editar. SEMPRE informe quando a arte foi feita no Canva.' },
       observacoes: { type: 'string', desc: 'Observações sobre a arte (opcional)' },
     },
-    handler: async ({ id, arte_url, arte_urls, observacoes }) => wrap(await submitArt(id, { arte_url, arte_urls, observacoes }, 'luiz')),
+    handler: async ({ id, arte_url, arte_urls, observacoes, canva_url }) => wrap(await submitArt(id, { arte_url, arte_urls, observacoes, canva_url }, 'luiz')),
   },
   {
     name: 'luiz_gerar_imagem', risk: 'internal', agent: 'luiz',

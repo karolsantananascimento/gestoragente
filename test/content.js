@@ -299,5 +299,11 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   const bl = c.createItem({ cliente: 'Disco', titulo: 'Post de blog', legenda: 'Texto do blog', briefing_arte: 'Capa', canais: ['blog', 'linkedin'] }, 'u');
   ok(bl.item?.canais.includes('blog') && !bl.error, 'pauta aceita o canal Blog');
   ok(!!c.createItem({ cliente: 'Disco', titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'] }, 'u').error, 'canal inexistente continua recusado');
+
+  // Link do Canva na arte
+  const cv = c.createItem({ cliente: 'Disco', titulo: 'Canva link', legenda: 'l', briefing_arte: 'b', canais: ['instagram'] }, 'u').item;
+  const rc = await c.submitArt(cv.id, { arte_url: 'https://cdn.exemplo.com/a.png', canva_url: 'https://www.canva.com/design/DAFxyz/edit' }, 'luiz');
+  ok(rc.item?.canva_url === 'https://www.canva.com/design/DAFxyz/edit', 'arte registra o link do design no Canva');
+  ok(!!c.editItem(cv.id, { canva_url: 'https://evil.example.com/x' }, 'u').error && c.editItem(cv.id, { canva_url: 'https://canva.link/abc' }, 'u').item?.canva_url === 'https://canva.link/abc', 'só aceita links do Canva');
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);

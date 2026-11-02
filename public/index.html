@@ -1400,7 +1400,8 @@ function itemCard(it, full, color) {
       c.append(mk('div', 'Arte', 'lbl2'));
       const img = document.createElement('img'); img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.replaceWith(mk('div', 'Não foi possível exibir a prévia da arte (o link precisa ser público).', 'warn'));
       c.appendChild(img);
-      const a = mk('a', 'Abrir arte em nova aba'); a.href = it.arte_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.fontSize = '13px'; c.appendChild(a);
+      const a = mk('a', it.canva_url ? '🎨 Abrir arte no Canva' : 'Abrir arte em nova aba'); a.href = it.canva_url || it.arte_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.fontSize = '13px'; c.appendChild(a);
+      if (it.canva_url) { const b = mk('a', ' · ver imagem exportada'); b.href = it.arte_url; b.target = '_blank'; b.rel = 'noopener noreferrer'; b.style.fontSize = '13px'; c.appendChild(b); }
     }
     if (it.historico?.length) { c.append(mk('div', 'Histórico', 'lbl2')); c.appendChild(mk('div', it.historico.slice(-8).reverse().map((h) => `${fmt(h.at)} · ${h.by || ''} · ${h.text || ''}`).join('\n'), 'hist cap')); }
   }
@@ -1413,6 +1414,7 @@ function itemCard(it, full, color) {
   else if (it.status === 'aguardando_aprovacao' && full) row.appendChild(mk('small', 'Aguardando um administrador aprovar.', 'note'));
   if (full) {
     if (emArte) btn(/carrossel/i.test(it.formato || '') ? '📤 Enviar lâminas' : '📤 Enviar imagem', async () => { const files = await pickImages(/carrossel/i.test(it.formato || '')); if (!files.length) return; toast('Enviando…'); const r = await api(`/api/content/${it.id}/upload`, { method: 'POST', body: JSON.stringify({ files }) }); toast(`${files.length > 1 ? files.length + ' lâminas enviadas' : 'Imagem enviada'}: aguardando aprovação.`, 'ok'); }, 'big');
+    if (it.arte_url && !it.canva_url && ['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) btn('🔗 Link do Canva', async () => { const u = await ask('Link do Canva', 'Cole o link do design no Canva (https://www.canva.com/design/...). O botão Abrir arte passa a levar para ele.'); if (u) await api('/api/content/' + it.id, { method: 'PATCH', body: JSON.stringify({ canva_url: u }) }); }, 'ghost');
     if (emArte) btn('Registrar arte', async () => { const u = await ask('Registrar arte', 'Link público (https) da arte. Para carrossel, cole um link por linha (um por slide).'); if (u) { const l = u.split(/[\s,]+/).filter(Boolean); await post('art', { arte_url: l[0], arte_urls: l }); } }, 'no');
     if (emArte || it.status === 'aguardando_aprovacao') btn('Editar', async () => { $('#viewClose').click(); openItem(it); }, 'no');
     if (emArte || it.status === 'aguardando_aprovacao') btn('Pedir ajuste', async () => { const n = await ask('Pedir ajuste', 'O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');

@@ -143,13 +143,20 @@ export function editItem(id, patch, by) {
     if (u && !/^https:\/\//i.test(u)) return { error: 'O link da arte precisa começar com https:// (e ser público para as redes conseguirem baixar).' };
     it.arte_url = u;
   }
+  if (patch.canva_url !== undefined) { const c = cleanCanvaUrl(patch.canva_url); if (c.error) return c; it.canva_url = c.url; }
   hist(it, by, 'Conteúdo editado.');
   store.saveContent();
   return { item: it };
 }
 
 // Luiz entrega a arte → sobe para aprovação humana.
-export async function submitArt(id, { arte_url, arte_urls, observacoes }, by) {
+// Link do design editável no Canva (só canva.com / canva.link por https). Vazio apaga.
+export function cleanCanvaUrl(v) {
+  const u = String(v ?? '').trim(); if (!u) return { url: '' };
+  try { const x = new URL(u); if (x.protocol === 'https:' && /(^|\.)canva\.(com|link)$/i.test(x.hostname)) return { url: x.toString() }; } catch {}
+  return { error: 'O link do Canva precisa ser https://www.canva.com/... (ou canva.link).' };
+}
+export async function submitArt(id, { arte_url, arte_urls, observacoes, canva_url }, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe arte quando está em arte ou com ajustes.` };
@@ -157,6 +164,7 @@ export async function submitArt(id, { arte_url, arte_urls, observacoes }, by) {
   const u = String(arte_url || lista[0] || '').trim();
   if (!/^https:\/\//i.test(u)) return { error: 'Informe o link público (https://) da arte pronta.' };
   if (lista.length > 10 || lista.some((x) => !/^https:\/\//i.test(x))) return { error: 'Para carrossel, informe até 10 links https (um por slide).' };
+  if (canva_url !== undefined) { const c = cleanCanvaUrl(canva_url); if (c.error) return c; it.canva_url = c.url; }
   it.arte_origem = u;
   it.arte_url = u;
   it.arte_aviso = '';

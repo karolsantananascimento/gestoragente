@@ -58,3 +58,6 @@ Olhe a arte exportada como um diretor de arte e responda:
 - [ ] Mesma família visual das últimas peças aprovadas do cliente?
 - [ ] Texto da arte bate com a legenda e o CTA da pauta?
 Se algum item falhar, corrija (`edit-design`) e reexporte antes de `luiz_registrar_arte`. Ao registrar, escreva em `observacoes` uma linha com o conceito escolhido e o que foi ajustado na autocrítica.
+
+## Link do Canva
+Ao registrar a arte feita no Canva, passe sempre `canva_url` com o link do design (https://www.canva.com/design/...). No painel, "Abrir arte" leva a esse link para a usuária editar no Canva.
