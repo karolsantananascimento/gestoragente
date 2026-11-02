@@ -398,7 +398,7 @@ app.post('/api/team/run', requireUser, async (req, res) => {
 
 app.get('/api/plan', requireUser, (req, res) => res.json({ semanas: planoSemanas(Math.min(Number(req.query.n) || 3, 8), req.query.cliente) }));
 // --- Clientes (áreas de trabalho): kit de marca, meta semanal e contas próprias ---
-const BRAND_FIELDS = ['nome', 'identidade', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'estilo_comunicacao', 'estilo_visual', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links', 'modelo_lista_numerada', 'padrao_de_feed'];
+const BRAND_FIELDS = ['nome', 'identidade', 'posicionamento', 'objetivo_conteudo', 'frentes', 'tom_de_voz', 'estilo_comunicacao', 'estilo_visual', 'publico', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'links', 'modelo_lista_numerada', 'padrao_de_feed', 'direcao_visual_vigente'];
 const clientView = (c) => ({ id: c.id, nome: c.nome, meta_semanal: c.meta_semanal, padrao: !!c.padrao, kit_completo: kitCompleto(c.marca), contas: c.contas || {} });
 app.get('/api/clients', requireUser, (_req, res) => res.json({ clientes: store.clientes().map(clientView) }));
 app.get('/api/clients/:id', requireUser, (req, res) => {
