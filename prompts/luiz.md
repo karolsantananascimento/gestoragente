@@ -63,3 +63,12 @@ Se algum item falhar, corrija (`edit-design`) e reexporte antes de `luiz_registr
 
 ## Link do Canva
 Ao registrar a arte feita no Canva, passe sempre `canva_url` com o link do design (https://www.canva.com/design/...). No painel, "Abrir arte" leva a esse link para a usuária editar no Canva.
+
+
+## Formatos e medidas (obrigatório)
+Cada pauta traz `formato_midia` e `especificacao` (tamanhos em px, regras, zonas seguras e `canva_design_type`). Crie **exatamente nessas medidas** (use `formatos_ver` se precisar):
+- **Feed 1080x1350 · Carrossel 1080x1350 (uma imagem por lâmina) · Story 1080x1920** (deixe ~250 px livres no topo e na base).
+- **Reels, TikTok e Shorts (1080x1920):** entregue a **capa/miniatura** vertical e confira as zonas seguras do roteiro; o vídeo em si ainda não é produzido pelo sistema.
+- **YouTube widescreen:** miniatura **1280x720** (poucas palavras grandes, rosto/objeto em destaque, nada nos cantos).
+- **Google Display:** **uma arte por tamanho** escolhido (`tamanhos`), na mesma ordem; adapte o layout a cada proporção (banners baixos em linha, arranha-céus em coluna), logo sempre visível, CTA claro, até 150 KB cada. No Canva use `resize-design` a partir do design principal. Registre com `luiz_registrar_arte` passando `arte_urls` na ordem dos tamanhos (não é carrossel).
+Se o formato não for atendido pelo Canva diretamente, crie no tamanho personalizado e confira a dimensão na exportação.

@@ -1,4 +1,5 @@
 import { store } from './store.js';
+import { detectarFormato } from './formatos.js';
 import { getCliente, createRequest, requestChanges, listItems, listRequests, planoSemanas, STATUS, parseWhen } from './content.js';
 
 // Interpretador de comandos da caixa de diálogo (sem IA): entende pedidos comuns em português e age no sistema.
@@ -43,6 +44,8 @@ const findChannels = (text) => {
   if (/linkedin/.test(t)) out.push('linkedin');
   if (/tiktok|tik tok/.test(t)) out.push('tiktok');
   if (/\bblog\b/.test(t)) out.push('blog');
+  if (/youtube|shorts/.test(t)) out.push('youtube');
+  if (/display|banner|google ads/.test(t)) out.push('google_ads');
   if (/reddit/.test(t) && !out.includes('reddit')) out.push('reddit');
   return out;
 };
@@ -97,7 +100,7 @@ export function runCommand({ texto, cliente: clienteRef, by }) {
   // criar pauta
   if (/\b(pauta|post|posts|conteudo|carrossel|reels|story|stories|legenda|campanha de conteudo)\b/.test(t) && /\b(cri\w+|faz\w*|prepar\w+|mont\w+|ger\w+|escrev\w+|quero|preciso|necessito|bora|sugir\w+|planej\w+)\b/.test(t) || /^pauta\b/.test(t)) {
     const canais = findChannels(raw); const data = findDate(raw);
-    const r = createRequest({ cliente: cliente.id, texto: raw, canais, data_publicacao: data }, by);
+    const fmt = detectarFormato(raw); const r = createRequest({ cliente: cliente.id, texto: raw, canais, formato_midia: fmt || undefined, data_publicacao: data }, by);
     if (r.error) return { handled: true, reply: r.error };
     return { handled: true, pedido: r.pedido, cliente_id: cliente.id, reply: `Pedido registrado para ${cliente.nome}${data ? ` (data sugerida ${data.split('-').reverse().join('/')})` : ''}.` };
   }

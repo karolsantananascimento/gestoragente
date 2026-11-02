@@ -1,4 +1,5 @@
 import { store } from './store.js';
+import { formatoPorId, especificacao } from './formatos.js';
 import { getCliente, createItem, closeRequest, planoSemanas, listItems, kitCompleto } from './content.js';
 
 // "Hugo básico": cria na hora um RASCUNHO de pauta a partir do pedido + kit do cliente, sem precisar de IA.
@@ -26,7 +27,7 @@ const first = (s, n = 400) => trunc(String(s || '').replace(/\s+/g, ' ').trim(),
 export function montarRascunho(pedido, cliente, fontes = []) {
   const m = cliente.marca || {};
   const assunto = tema(pedido.texto);
-  const formato = formatoDe(pedido.texto);
+  const fm = formatoPorId(pedido.formato_midia); const formato = fm ? fm.legacy : formatoDe(pedido.texto); const esp = fm ? especificacao(fm.id, pedido.tamanhos) : null;
   const cta = quoted(m.estilo_comunicacao).find((c) => /criar|come|testar|falar|ver|conhe|agende|solicit/i.test(c)) || quoted(m.estilo_comunicacao)[0] || 'Fale com a gente';
   const tags = (String(m.estilo_comunicacao || '').match(/#\w+/g) || []).slice(0, 5).join(' ');
   const titulo = trunc(cap(assunto), 80);
@@ -39,7 +40,8 @@ export function montarRascunho(pedido, cliente, fontes = []) {
     tags,
   ].filter((x, i, a) => x !== '' || a[i - 1] !== '').join('\n').trim();
   const briefing = [
-    `Peça de ${formato} sobre: ${assunto}.`,
+    esp ? `Peça: ${esp.formato}. Medidas: ${esp.tamanhos.join('; ')}. Regras do formato: ${esp.regras}` : `Peça de ${formato} sobre: ${assunto}.`,
+    esp ? `Tema: ${assunto}.` : '',
     `Mensagem central: ${cap(assunto)}. Título curto e grande na arte (máx. 8 palavras), no padrão visual do cliente. CTA: ${cta}.`,
     m.estilo_visual ? `Estilo visual de ${cliente.nome}: ${first(m.estilo_visual)}` : '',
     m.cores ? `Cores: ${first(m.cores.replace(/\n/g, '; '), 300)}` : '',
@@ -58,7 +60,7 @@ export function criarRascunhoDoPedido(pedido, by = 'hugo-auto') {
   let data = pedido.data_publicacao;
   if (!data) data = planoSemanas(3, cl.id).flatMap((w) => w.datas_sugeridas)[0] || '';
   const d = montarRascunho(pedido, cl);
-  const r = createItem({ cliente: cl.id, titulo: d.titulo, legenda: d.legenda, briefing_arte: d.briefing_arte, canais: d.canais, formato: d.formato, data_publicacao: data }, by);
+  const r = createItem({ cliente: cl.id, titulo: d.titulo, legenda: d.legenda, briefing_arte: d.briefing_arte, canais: d.canais, formato: d.formato, formato_midia: pedido.formato_midia, tamanhos: pedido.tamanhos, data_publicacao: data }, by);
   if (r.error) return r;
   r.item.rascunho_auto = true;
   store.saveContent();

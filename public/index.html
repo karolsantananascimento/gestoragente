@@ -143,7 +143,7 @@
   .item:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:var(--shadow); }
   .item h4 { margin:8px 0 4px; font-size:15px; line-height:1.3; }
   .chips { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-  #chPick button { padding:4px 12px; border-radius:99px; } #chPick button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #chPick button, #dispSizes button { padding:4px 12px; border-radius:99px; } #chPick button.on, #dispSizes button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
   .chip { font-size:12px; padding:2px 9px; border-radius:99px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
   .chip.fmt { color:var(--text); } .chip.late { color:var(--bad); border-color:var(--bad); }
   .item .cap { font-size:13px; color:var(--muted); white-space:pre-wrap; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-top:4px; }
@@ -313,7 +313,7 @@
   <div class="tools">
     <details class="panel"><summary>💬 Pedir ao time <span class="note">descreva o post que você quer</span></summary><div class="in">
       <textarea id="reqText" rows="3" style="width:100%" placeholder="Ex.: Crie um post de carrossel sobre 3 erros comuns de atendimento, para quinta às 11h."></textarea>
-      <div class="row"><input id="reqCanais" value="instagram" style="max-width:200px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
+      <div class="row"><select id="reqFormato" title="Formato da peça (obrigatório)"></select><input id="reqCanais" value="instagram" style="max-width:200px" title="Canais separados por vírgula"><input id="reqData" type="date" title="Data sugerida (opcional)"><button id="reqSend">Enviar pedido</button><span class="note" id="reqNote"></span></div>
       <div id="reqList" class="meta" style="margin-top:8px"></div></div></details>
     <details class="panel"><summary>🔗 Fontes de pauta <span class="note">Google Docs ou Sheets</span></summary><div class="in">
       <div class="note">Cole o link de um documento ou planilha com recomendações. O arquivo precisa estar compartilhado como "Qualquer pessoa com o link" (leitor).</div>
@@ -392,7 +392,9 @@
     <div class="lbl2">Esta pauta é um post para:</div>
     <div class="chips" id="chPick" style="margin-bottom:8px"></div>
     <label>Data e hora de publicação (horário de Recife)<input name="data_publicacao" type="datetime-local"></label>
-    <label>Formato<select name="formato" id="fmtSel"><option value="feed">Feed (imagem única)</option><option value="carrossel">Carrossel (2 a 10 lâminas)</option><option value="story">Story</option><option value="reels">Reels</option></select></label>
+    <label>Formato da peça<select name="formato_midia" id="fmtSel" required></select></label>
+    <div class="note" id="fmtInfo"></div>
+    <div id="dispBox" class="hidden"><div class="lbl2">Tamanhos do Google Display</div><div class="chips" id="dispSizes" style="margin-bottom:6px"></div><div class="row"><button type="button" class="ghost" id="dispAll">Todos</button><button type="button" class="ghost" id="dispMain">Só os principais</button></div></div>
     <div id="slidesBox" class="hidden">
       <div class="lbl2">Roteiro do carrossel · uma lâmina por linha (capa → conteúdo → CTA)</div>
       <div id="slidesList"></div>
@@ -492,7 +494,7 @@
 
 <div class="overlay dim hidden" id="agModal"><div class="box wide modal" style="max-width:640px">
   <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 id="agNome" style="margin:0"></h2><div class="note" id="agCargo"></div></div><button id="agClose">Fechar</button></div>
-  <div class="lbl2">Funções</div><div id="agFuncao" class="cap"></div><div id="agMeta" class="note" style="margin-top:6px"></div>
+  <div class="lbl2">Funções</div><div id="agFuncao" class="cap"></div><div class="lbl2" style="margin-top:8px">Expertise em formatos</div><div id="agExp" class="cap"></div><div id="agMeta" class="note" style="margin-top:6px"></div>
   <div class="lbl2" style="margin-top:12px">O que está fazendo agora <span class="chip" id="agEstado"></span></div><div id="agAgora"></div>
   <div class="lbl2" style="margin-top:12px">Últimas atividades</div><div id="agRec" class="hist cap" style="white-space:pre-line"></div>
   <div class="row" style="margin-top:10px"><button class="ghost" id="agReload">↻ Atualizar</button></div></div></div>
@@ -678,7 +680,7 @@ async function boot() {
   $('#whoBtn').textContent = (me.nome || me.email || '?').trim().charAt(0).toUpperCase();
   show($('#teamBtn'), me.role === 'admin');
   history.replaceState(null, '', location.pathname);
-  await loadClients(); await loadStatus(); await loadPending();
+  await loadCatalogo(); await loadClients(); await loadStatus(); await loadPending();
   if (liMsg) { openTab('marca'); toast(liMsg === 'ok' ? 'LinkedIn conectado! Clique em Verificar LinkedIn.' : 'LinkedIn: ' + liMsg, liMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#liCheck')?.click(), 800); } else
   openTab(redditMsg ? 'marca' : (store_.get('tab') || 'conteudo'));
   if (redditMsg) { toast(redditMsg === 'ok' ? 'Reddit conectado! Clique em Verificar Reddit.' : 'Reddit: ' + redditMsg, redditMsg === 'ok' ? 'ok' : 'bad'); setTimeout(() => $('#redditCheck')?.click(), 800); }
@@ -1136,7 +1138,7 @@ for (const b of document.querySelectorAll('#tabs button')) b.onclick = () => ope
 let AG_ATUAL = null;
 async function abrirAgente(a) {
   AG_ATUAL = a;
-  $('#agNome').textContent = a.emoji + ' ' + a.nome; $('#agCargo').textContent = a.cargo; $('#agFuncao').textContent = a.funcao;
+  $('#agNome').textContent = a.emoji + ' ' + a.nome; $('#agCargo').textContent = a.cargo; $('#agFuncao').textContent = a.funcao; $('#agExp').textContent = a.expertise || '—'; show($('#agExp').previousElementSibling, !!a.expertise); show($('#agExp'), !!a.expertise);
   $('#agMeta').textContent = 'Entrega: ' + a.entrega + ' · Ferramentas: ' + a.ferramentas + ' · ' + (a.integracoes || []).map((i) => (i.ok === true ? '● ' : i.ok === false ? '○ ' : '◌ ') + i.nome).join(', ');
   show($('#agModal'), true); await atualizarAgente();
 }
@@ -1264,7 +1266,14 @@ const COLS = [
   ['📅 Aprovado / agendado', ['aprovado', 'agendado'], '#4f8cff', 'Os posts aprovados ficam aqui até a hora de publicar.'],
   ['✅ Publicado / outros', ['publicado', 'erro', 'cancelado'], '#2fbf71', 'Publicados, com erro ou cancelados.'],
 ];
-const FMT = { reels: '🎬 Reels', carrossel: '🖼 Carrossel', feed: '📷 Feed', story: '⭕ Story' };
+const FMT = { reels: '🎬 Reels', carrossel: '🖼 Carrossel', feed: '📷 Feed', story: '⭕ Story', tiktok: '🎵 TikTok', youtube: '▶️ YouTube 16:9', shorts: '📱 Shorts', display: '🖥 Google Display' };
+let CAT = { grupos: [], formatos: [] }; const catF = (id) => CAT.formatos.find((f) => f.id === id);
+const LEG2ID = { feed: 'ig_feed', carrossel: 'ig_carrossel', story: 'ig_story', reels: 'reels', tiktok: 'tiktok', youtube: 'yt_widescreen', shorts: 'yt_shorts', display: 'google_display' };
+function fillFormatSelect(sel, placeholder) {
+  sel.innerHTML = ''; if (placeholder) { const o = new Option(placeholder, ''); o.disabled = true; o.selected = true; sel.add(o); }
+  for (const g of CAT.grupos) { const og = document.createElement('optgroup'); og.label = g; for (const f of CAT.formatos.filter((x) => x.grupo === g)) og.appendChild(new Option(f.nome, f.id)); sel.appendChild(og); }
+}
+async function loadCatalogo() { try { CAT = await api('/api/formatos'); fillFormatSelect($('#fmtSel')); fillFormatSelect($('#reqFormato'), 'Formato da peça…'); } catch {} }
 const dia = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Recife' }).replace('.', '') : 'sem data';
 const CH_TAG = { agendado: 'ok', publicado: 'ok', na_fila: 'ok', simulado: 'warn', sem_integracao: 'warn', erro: 'bad' };
 let STATUS_TXT = {};
@@ -1332,15 +1341,17 @@ async function loadRequests() {
   const t = document.createElement('div'); t.textContent = `Pedidos abertos (${r.pedidos.length}) — aguardando o time rodar:`; box.appendChild(t);
   for (const p of r.pedidos) {
     const d = document.createElement('div'); d.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:4px';
-    const x = document.createElement('span'); x.textContent = `• ${p.texto} (${p.canais.join(', ')}${p.data_publicacao ? ' · ' + p.data_publicacao : ''})`; x.style.flex = '1';
+    const x = document.createElement('span'); x.textContent = `• ${p.texto} (${catF(p.formato_midia)?.nome ? catF(p.formato_midia).nome + ' · ' : ''}${p.canais.join(', ')}${p.data_publicacao ? ' · ' + p.data_publicacao : ''})`; x.style.flex = '1';
     const b = document.createElement('button'); b.className = 'no'; b.textContent = 'Cancelar'; b.onclick = async () => { await api(`/api/requests/${p.id}/cancel`, { method: 'POST' }); loadRequests(); };
     d.append(x, b); box.appendChild(d);
   }
 }
+$('#reqFormato').onchange = () => { const f = catF($('#reqFormato').value); if (f) $('#reqCanais').value = f.canais.join(', '); };
 $('#reqSend').onclick = async () => {
   $('#reqNote').textContent = '';
+  if (!$('#reqFormato').value) return ($('#reqNote').textContent = 'Marque o formato da peça (Feed, Reels, TikTok, YouTube, Google Display…).');
   try {
-    const r = await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, data_publicacao: $('#reqData').value }) });
+    const r = await api('/api/requests', { method: 'POST', body: JSON.stringify({ texto: $('#reqText').value, cliente: CUR, canais: $('#reqCanais').value, formato_midia: $('#reqFormato').value, data_publicacao: $('#reqData').value }) });
     $('#reqText').value = ''; $('#reqNote').textContent = r.mensagem || 'Pedido enviado.'; loadRequests(); loadItems();
   } catch (e) { $('#reqNote').textContent = e.message; }
 };
@@ -1392,7 +1403,7 @@ function itemCard(it, full, color) {
   const mk = (tag, txt, cls) => { const x = document.createElement(tag); x.textContent = txt; if (cls) x.className = cls; return x; };
   const chips = document.createElement('div'); chips.className = 'chips';
   const late = it.data_publicacao && Date.parse(it.data_publicacao) < Date.now() && !['publicado', 'cancelado'].includes(it.status);
-  chips.append(mk('span', (FMT[it.formato] || it.formato || 'Feed') + (it.arte_urls?.length > 1 ? ' · ' + it.arte_urls.length : it.slides?.length > 1 ? ' · ' + it.slides.length : ''), 'chip fmt'), mk('span', '📅 ' + dia(it.data_publicacao), 'chip' + (late ? ' late' : '')));
+  chips.append(mk('span', (catF(it.formato_midia)?.nome || FMT[it.formato] || it.formato || 'Feed') + (it.arte_urls?.length > 1 ? ' · ' + it.arte_urls.length : it.slides?.length > 1 ? ' · ' + it.slides.length : ''), 'chip fmt'), mk('span', '📅 ' + dia(it.data_publicacao), 'chip' + (late ? ' late' : '')));
   if (it.status === 'ajustes') chips.append(mk('span', '↩ Ajustes', 'chip late'));
   const rv = it.revisao; const nAl = rv ? rv.altas + rv.medias : 0;
   if (nAl && !['publicado', 'cancelado'].includes(it.status)) chips.append(mk('span', `⚠ ${nAl} alerta${nAl > 1 ? 's' : ''}`, 'chip' + (rv.altas ? ' late' : '')));
@@ -1455,8 +1466,8 @@ function itemCard(it, full, color) {
   if (!full) c.onclick = () => { renderView(it); show($('#viewModal'), true); };
   return c;
 }
-const CH_NAMES = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', reddit: 'Reddit', blog: 'Blog' };
-const CH_ICON = { linkedin: '💼', instagram: '📷', facebook: '👍', tiktok: '🎵', reddit: '👽', blog: '📝' };
+const CH_NAMES = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', reddit: 'Reddit', blog: 'Blog', youtube: 'YouTube', google_ads: 'Google Ads' };
+const CH_ICON = { linkedin: '💼', instagram: '📷', facebook: '👍', tiktok: '🎵', reddit: '👽', blog: '📝', youtube: '▶️', google_ads: '🖥' };
 // Botões de canal (liga/desliga) da pauta.
 function renderChPick(sel) { const b = $('#chPick'); b.innerHTML = ''; for (const k of Object.keys(CH_NAMES)) { const x = document.createElement('button'); x.type = 'button'; x.dataset.canal = k; x.textContent = `${CH_ICON[k]} ${CH_NAMES[k]}`; x.className = 'ghost' + (sel.includes(k) ? ' on' : ''); x.setAttribute('aria-pressed', sel.includes(k)); x.onclick = () => { x.classList.toggle('on'); x.setAttribute('aria-pressed', x.classList.contains('on')); }; b.appendChild(x); } }
 const chSel = () => [...document.querySelectorAll('#chPick button.on')].map((x) => x.dataset.canal);
@@ -1501,18 +1512,17 @@ function openItem(it) {
   $('#itemTitle').textContent = it ? 'Editar pauta' : 'Nova pauta · ' + (CLIENTS.find((c) => c.id === CUR)?.nome || '');
   if (it) {
     for (const k of ['titulo', 'legenda', 'briefing_arte']) f.elements[k].value = it[k] || '';
-    const fm = (it.formato || 'feed').toLowerCase(); if (![...f.elements.formato.options].some((o) => o.value === fm)) f.elements.formato.add(new Option(fm, fm));
-    f.elements.formato.value = fm;
+    const fid = it.formato_midia || LEG2ID[(it.formato || 'feed').toLowerCase()] || 'ig_feed'; f.elements.formato_midia.value = fid; renderDisp(fid, it.tamanhos);
     renderChPick(it.canais); f.elements.data_publicacao.value = toLocalInput(it.data_publicacao);
   }
-  if (!it) renderChPick(['instagram', 'facebook']);
+  if (!it) { f.elements.formato_midia.value = 'ig_feed'; renderDisp('ig_feed'); renderChPick(['instagram', 'facebook']); }
   renderSlides(it?.slides?.length ? it.slides : []);
   show($('#itemModal'), true);
 }
 /* ---------- roteiro do carrossel ---------- */
 function renderSlides(list) {
   const box = $('#slidesList'); box.textContent = '';
-  const isCar = $('#fmtSel').value === 'carrossel';
+  const isCar = $('#fmtSel').value === 'ig_carrossel';
   $('#slidesBox').classList.toggle('hidden', !isCar);
   if (isCar && !list.length) list = [{ titulo: '', texto: '' }, { titulo: '', texto: '' }];
   list.forEach((s, i) => {
@@ -1531,7 +1541,16 @@ function renderSlides(list) {
 function coletarSlides(keepEmpty) {
   return [...document.querySelectorAll('#slidesList .slideRow')].map((d) => ({ titulo: d.querySelector('.sl-t').value.trim(), texto: d.querySelector('.sl-x').value.trim() })).filter((s) => keepEmpty || s.titulo || s.texto);
 }
-$('#fmtSel').onchange = () => renderSlides(coletarSlides(true));
+function renderDisp(fid, sel) {
+  const f = catF(fid); const disp = fid === 'google_display';
+  $('#fmtInfo').textContent = f ? `${f.midia === 'video' ? '🎬 vídeo' : f.midia === 'imagem+video' ? '🖼/🎬 imagem ou vídeo' : '🖼 imagem'} · ${disp ? 'uma arte por tamanho' : f.tamanhos.map((t) => `${t.w}×${t.h}`).join(' · ')} · ${f.resumo}` : '';
+  show($('#dispBox'), disp); const box = $('#dispSizes'); box.innerHTML = '';
+  if (disp) for (const t of f.tamanhos) { const b = document.createElement('button'); b.type = 'button'; b.dataset.id = t.id; b.textContent = `${t.w}×${t.h}${t.logo ? ' (logo)' : ''}`; b.title = t.nome; b.className = 'ghost' + ((sel && sel.length ? sel.includes(t.id) : !t.logo) ? ' on' : ''); b.onclick = () => b.classList.toggle('on'); box.appendChild(b); }
+}
+const dispSel = () => [...document.querySelectorAll('#dispSizes button.on')].map((x) => x.dataset.id);
+$('#dispAll').onclick = () => document.querySelectorAll('#dispSizes button').forEach((b) => b.classList.toggle('on', !/logo/.test(b.textContent)));
+$('#dispMain').onclick = () => { const f = catF('google_display'); document.querySelectorAll('#dispSizes button').forEach((b) => b.classList.toggle('on', !!f.tamanhos.find((t) => t.id === b.dataset.id)?.principal)); };
+$('#fmtSel').onchange = () => { const fid = $('#fmtSel').value; renderDisp(fid); if (!editing) renderChPick((catF(fid)?.canais) || ['instagram']); renderSlides(coletarSlides(true)); };
 $('#addSlide').onclick = () => { const c = coletarSlides(true); if (c.length < 10) c.push({ titulo: '', texto: '' }); renderSlides(c); };
 $('#newItem').onclick = () => openItem(null);
 $('#itemClose').onclick = () => show($('#itemModal'), false);
@@ -1540,7 +1559,7 @@ $('#itemForm').onsubmit = async (e) => {
   e.preventDefault(); $('#itemErr').textContent = '';
   if (!chSel().length) return ($('#itemErr').textContent = 'Escolha ao menos um canal (LinkedIn, Instagram, Facebook, TikTok, Reddit ou Blog).');
   const f = e.target.elements;
-  const body = { cliente: CUR, titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: chSel(), formato: f.formato.value, slides: f.formato.value === 'carrossel' ? coletarSlides() : [], data_publicacao: f.data_publicacao.value || '' };
+  const body = { cliente: CUR, titulo: f.titulo.value, legenda: f.legenda.value, briefing_arte: f.briefing_arte.value, canais: chSel(), formato_midia: f.formato_midia.value, tamanhos: dispSel(), slides: f.formato_midia.value === 'ig_carrossel' ? coletarSlides() : [], data_publicacao: f.data_publicacao.value || '' };
   try {
     if (editing) await api('/api/content/' + editing.id, { method: 'PATCH', body: JSON.stringify(body) });
     else await api('/api/content', { method: 'POST', body: JSON.stringify(body) });

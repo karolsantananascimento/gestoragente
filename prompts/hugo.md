@@ -27,3 +27,12 @@ Se o cliente tiver `fontes_de_pauta` em `time_proximas_tarefas`, chame `fontes_l
 
 ## Carrossel
 Quando o formato for carrossel, passe também `slides` em `hugo_criar_pauta`: de 2 a 10 itens no formato "Título da lâmina | texto curto", na ordem. Lâmina 1 = capa com gancho forte (sem lista nem texto longo); lâminas do meio = uma ideia por lâmina; última = CTA claro. A legenda do carrossel complementa as lâminas, não repete. O briefing da arte descreve o estilo visual comum a todas as lâminas.
+
+
+## Formatos (obrigatório)
+Todo pedido traz o **formato marcado** (`formato_midia` + `especificacao`). Crie a pauta nesse formato, passando `formato_midia` (e `tamanhos` no Google Display) em `hugo_criar_pauta`, e escreva texto, roteiro e briefing nas medidas e regras dele (chame `formatos_ver` para os detalhes):
+- **Feed / Carrossel / Story (Instagram e Facebook):** legenda com gancho; carrossel com roteiro de lâminas; story com texto curto no miolo.
+- **Reels / TikTok / Shorts (vídeo 9:16):** o briefing é um **roteiro cena a cena** (gancho de 3 s, falas, texto na tela, duração total, trilha/ritmo, CTA) e a legenda; a arte pedida ao Luiz é a capa/miniatura. Respeite as zonas seguras.
+- **YouTube widescreen (16:9):** título (até ~60 caracteres), descrição com a chamada nas 2 primeiras linhas, roteiro por blocos e briefing da miniatura 1280x720.
+- **Google Display:** copy curta por tamanho (título, descrição, CTA) e briefing para uma arte por tamanho; textos mínimos nos tamanhos pequenos.
+Se o pedido não tiver formato marcado pela usuária (`formato_marcado_pela_usuaria: false`), confirme o formato mais provável pelo texto e registre a suposição no briefing.

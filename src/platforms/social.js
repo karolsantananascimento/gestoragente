@@ -44,7 +44,7 @@ export function redesDe(clienteId) {
     facebook: !!(c.fbPageId && (tok || (c.padrao && base.facebook))),
     instagram: !!(c.igUserId && tok),
     linkedin: !!(c.linkedinAuthor && linkedin.conectado()), tiktok: false,
-    reddit: !!(c.redditSub && reddit.conectado()), blog: false,
+    reddit: !!(c.redditSub && reddit.conectado()), blog: false, youtube: false, google_ads: false,
   };
 }
 
@@ -161,6 +161,16 @@ export const adapters = {
     // O LinkedIn não agenda pela API: o agendador do servidor publica na hora marcada.
     async agendar() { return { modo: 'fila' }; },
     async publicar(item) { return linkedin.publicar(item, contasDe(item.cliente_id).linkedinAuthor); },
+  },
+  youtube: {
+    nome: 'YouTube',
+    configured: () => false,
+    nota: 'YouTube: o sistema entrega a miniatura/arte e o roteiro aprovados; envie o vídeo pelo YouTube Studio (ainda sem integração direta).',
+  },
+  google_ads: {
+    nome: 'Google Ads (Display)',
+    configured: () => false,
+    nota: 'Google Display: as artes por tamanho ficam prontas e aprovadas; suba em Google Ads ou peça à Camila para propor o anúncio.',
   },
   blog: {
     nome: 'Blog',

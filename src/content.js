@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { FORMATOS, formatoPorId, idDeLegado, tamanhosDe, especificacao, detectarFormato } from './formatos.js';
 import { config } from './config.js';
 import { store } from './store.js';
 import fs from 'node:fs';
@@ -23,7 +24,7 @@ async function cacheArt(url, origin) {
   return { url: `${origin}/media/${id}` };
 }
 
-export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok', 'reddit', 'blog'];
+export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok', 'reddit', 'blog', 'youtube', 'google_ads'];
 export const STATUS = {
   em_arte: 'Em arte (Luiz)',
   aguardando_aprovacao: 'Aguardando aprovação',
@@ -98,7 +99,10 @@ export function createItem(p, by) {
   const sl = cleanSlides(p.slides);
   if (sl.error) return sl;
   let formato = String(p.formato || '').trim().toLowerCase();
-  if (!formato) formato = sl.list.length > 1 ? 'carrossel' : 'feed';
+  let fid = p.formato_midia ? String(p.formato_midia).trim() : '';
+  if (fid && !formatoPorId(fid)) return { error: `Formato inválido: "${fid}". Use: ${Object.keys(FORMATOS).join(', ')}.` };
+  if (fid) formato = FORMATOS[fid].legacy;
+  else { if (!formato) formato = sl.list.length > 1 ? 'carrossel' : 'feed'; fid = idDeLegado(formato) || ''; }
   const item = {
     id: crypto.randomUUID().slice(0, 8),
     titulo, legenda, briefing_arte: briefing,
@@ -106,6 +110,7 @@ export function createItem(p, by) {
     cliente_id: cliente.id,
     marca: cliente.nome,
     formato: formato.slice(0, 40),
+    formato_midia: fid, tamanhos: fid ? tamanhosDe(fid, p.tamanhos).map((t) => t.id) : [],
     objetivo: String(p.objetivo || '').slice(0, 300),
     canais: ch.list,
     data_publicacao: when ? when.toISOString() : null,
@@ -131,6 +136,10 @@ export function editItem(id, patch, by) {
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!EDITABLE.includes(it.status)) return { error: `Não dá para editar um conteúdo "${STATUS[it.status]}".` };
   for (const k of ['titulo', 'legenda', 'briefing_arte', 'formato', 'objetivo']) if (patch[k] !== undefined) it[k] = String(patch[k]).trim();
+  if (patch.formato_midia !== undefined) {
+    const f = formatoPorId(patch.formato_midia); if (patch.formato_midia && !f) return { error: `Formato inválido: "${patch.formato_midia}".` };
+    it.formato_midia = f ? f.id : ''; if (f) it.formato = f.legacy; it.tamanhos = f ? tamanhosDe(f, patch.tamanhos).map((t) => t.id) : [];
+  } else if (patch.tamanhos !== undefined && it.formato_midia) it.tamanhos = tamanhosDe(it.formato_midia, patch.tamanhos).map((t) => t.id);
   if (patch.slides !== undefined) { const sl = cleanSlides(patch.slides); if (sl.error) return sl; it.slides = sl.list; if (sl.list.length > 1 && !patch.formato) it.formato = 'carrossel'; }
   if (it.rascunho_auto && (patch.legenda !== undefined || patch.briefing_arte !== undefined)) it.rascunho_auto = false; // alguém revisou o texto
   if (patch.canais !== undefined) { const ch = cleanChannels(patch.canais); if (ch.error) return ch; it.canais = ch.list; }
@@ -179,9 +188,11 @@ export async function submitArt(id, { arte_url, arte_urls, observacoes, canva_ur
     it.arte_url = it.arte_urls[0];
   }
   const nImg = it.arte_urls.length || 1;
-  if (/carrossel/i.test(it.formato || '') && nImg < 2) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + 'Este conteúdo é um carrossel, mas só uma imagem foi registrada: será publicado como post de feed. Envie todas as lâminas para publicar o carrossel.').trim();
+  const variantes = !!FORMATOS[it.formato_midia]?.variantes;
+  if (variantes) { const esp = tamanhosDe(it.formato_midia, it.tamanhos); if (nImg !== esp.length) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + `O formato pede uma arte por tamanho (${esp.length}: ${esp.map((t) => t.id).join(', ')}) e foram registradas ${nImg}.`).trim(); }
+  else if (/carrossel/i.test(it.formato || '') && nImg < 2) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + 'Este conteúdo é um carrossel, mas só uma imagem foi registrada: será publicado como post de feed. Envie todas as lâminas para publicar o carrossel.').trim();
   else if (nImg > 1 && it.slides?.length && it.slides.length !== nImg) it.arte_aviso = ((it.arte_aviso ? it.arte_aviso + ' ' : '') + `O roteiro tem ${it.slides.length} lâminas e foram registradas ${nImg} imagens. Confira a ordem e a quantidade.`).trim();
-  if (nImg > 1 && it.formato !== 'carrossel') it.formato = 'carrossel';
+  if (nImg > 1 && it.formato !== 'carrossel' && !variantes && !['reels', 'tiktok', 'shorts', 'youtube'].includes(it.formato)) it.formato = 'carrossel';
   it.arte_nota = String(observacoes || '').slice(0, 500);
   it.status = 'aguardando_aprovacao';
   hist(it, by, 'Arte entregue. Aguardando aprovação humana.');
@@ -399,7 +410,10 @@ export function createRequest(p, by) {
   if (ch.error) return ch;
   let data = '';
   if (p.data_publicacao) { if (!parseWhen(p.data_publicacao)) return { error: 'Data inválida. Use AAAA-MM-DD ou AAAA-MM-DDTHH:MM.' }; data = p.data_publicacao; }
-  const r = { id: crypto.randomBytes(6).toString('hex'), tipo: 'pauta', cliente_id: cliente.id, texto: texto.slice(0, 1500), canais: ch.list, data_publicacao: data, status: 'aberto', por: by, em: now() };
+  let fm = p.formato_midia ? String(p.formato_midia).trim() : ''; let inferido = false;
+  if (fm && !formatoPorId(fm)) return { error: `Formato inválido: "${fm}". Use: ${Object.keys(FORMATOS).join(', ')}.` };
+  if (!fm) { fm = detectarFormato(texto) || 'ig_feed'; inferido = true; }
+  const r = { id: crypto.randomBytes(6).toString('hex'), tipo: 'pauta', formato_midia: fm, formato_inferido: inferido || undefined, tamanhos: tamanhosDe(fm, p.tamanhos).map((t) => t.id), cliente_id: cliente.id, texto: texto.slice(0, 1500), canais: ch.list, data_publicacao: data, status: 'aberto', por: by, em: now() };
   store.addPedido(r);
   store.log({ type: 'pedido_criado', id: r.id, by });
   return { pedido: r };

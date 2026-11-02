@@ -12,6 +12,7 @@ export const promptOf = (id) => {
 export const AGENTS = [
   {
     id: 'camila', nome: 'Camila', cargo: 'Gestora de tráfego', emoji: '📈',
+    expertise: 'Domina os formatos de anúncio: Instagram/Facebook, Reels, TikTok, YouTube (widescreen e Shorts) e Google Display (todos os tamanhos). Escolhe o formato certo para o objetivo da campanha.',
     funcao: 'Cria, analisa e otimiza campanhas de Google Ads e Meta Ads. Toda mudança passa por aprovação humana.',
     entrega: 'Propostas de campanhas e otimizações na fila de aprovações',
     ferramentas: 'google_*, meta_* (e linkedin_* em beta)',
@@ -19,6 +20,7 @@ export const AGENTS = [
   },
   {
     id: 'hugo', nome: 'Hugo', cargo: 'Planejamento de conteúdo (IA)', emoji: '🗓️',
+    expertise: 'Domina os formatos: Instagram/Facebook (feed 4:5, carrossel, story), Reels, TikTok, YouTube (widescreen 16:9 e Shorts) e Google Display (todos os tamanhos IAB e responsivos). Escreve o texto, o roteiro e o briefing já nas medidas e regras do formato marcado no pedido.',
     funcao: 'Monta a pauta de conteúdos: para cada post, escreve a legenda e o briefing da arte, define canais e data.',
     entrega: 'Pautas na etapa "Em arte" (legenda + briefing)',
     ferramentas: 'hugo_criar_pauta, conteudo_revisar, marca_ver, conteudo_listar',
@@ -26,6 +28,7 @@ export const AGENTS = [
   },
   {
     id: 'luiz', nome: 'Luiz', cargo: 'Designer (IA)', emoji: '🎨',
+    expertise: 'Domina os formatos: Instagram/Facebook (feed 4:5, carrossel, story), Reels, TikTok, YouTube (widescreen 16:9 e Shorts) e Google Display (todos os tamanhos IAB e responsivos). Cria a arte exatamente nas medidas pedidas, respeitando zonas seguras (story, Reels, TikTok, Shorts) e uma arte por tamanho no Display.',
     funcao: 'Recebe o briefing do criativo e cria a arte dentro dos padrões da marca. Registra o link da arte pronta.',
     entrega: 'Arte pronta, que sobe para aprovação humana',
     ferramentas: 'luiz_registrar_arte, marca_ver, conteudo_listar',
@@ -33,6 +36,7 @@ export const AGENTS = [
   },
   {
     id: 'mariana', nome: 'Mariana', cargo: 'Agendamento (IA)', emoji: '📣',
+    expertise: 'Conhece os canais e formatos: agenda feed, carrossel, story e Reels; entrega as peças de TikTok, YouTube e Google Display prontas para publicar onde ainda não há integração direta.',
     funcao: 'Depois da aprovação humana, agenda cada post no canal certo, na data do cronograma.',
     entrega: 'Posts agendados/publicados em Instagram, Facebook, LinkedIn e TikTok',
     ferramentas: 'mariana_agendar, mariana_cronograma',

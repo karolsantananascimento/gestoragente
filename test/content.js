@@ -311,5 +311,23 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   const al = atividadeDe('luiz'); const ah = atividadeDe('hugo'); const am = atividadeDe('mariana');
   ok(Array.isArray(al.agora) && ['livre', 'aguardando', 'trabalhando'].includes(al.estado) && Array.isArray(ah.recentes) && Array.isArray(am.agora), 'atividade do time devolve estado, tarefas atuais e histórico');
   ok(atividadeDe('desconhecido').agora.length === 0, 'agente desconhecido não quebra');
+
+  // Formatos: catálogo, pedido com formato marcado, Display com uma arte por tamanho
+  const fm = await import('../src/formatos.js');
+  ok(Object.keys(fm.FORMATOS).join() === 'ig_feed,ig_carrossel,ig_story,reels,tiktok,yt_widescreen,yt_shorts,google_display', 'catálogo tem Instagram/Facebook, Reels, TikTok, YouTube e Google Display');
+  ok(fm.FORMATOS.google_display.tamanhos.length >= 20 && fm.FORMATOS.google_display.tamanhos.some((t) => t.id === '300x250') && fm.FORMATOS.google_display.tamanhos.some((t) => t.id === '970x250'), 'Google Display cobre os tamanhos IAB e responsivos');
+  ok(fm.detectarFormato('crie um reels sobre X') === 'reels' && fm.detectarFormato('thumbnail para o youtube') === 'yt_widescreen' && fm.detectarFormato('banners para google display') === 'google_display' && fm.detectarFormato('vídeo tik tok') === 'tiktok' && fm.detectarFormato('youtube shorts') === 'yt_shorts', 'formato é reconhecido no texto do pedido');
+  const pf = c.createRequest({ cliente: 'Disco', texto: 'Vídeo curto sobre mídia paga para o TikTok', formato_midia: 'tiktok', canais: ['tiktok'] }, 'u');
+  ok(pf.pedido?.formato_midia === 'tiktok' && !pf.pedido.formato_inferido, 'pedido guarda o formato marcado');
+  ok(c.createRequest({ cliente: 'Disco', texto: 'Quero um post sobre café', canais: ['instagram'] }, 'u').pedido?.formato_inferido === true, 'sem formato, o pedido é marcado como inferido');
+  ok(!!c.createRequest({ cliente: 'Disco', texto: 'Post sobre algo', formato_midia: 'orkut' }, 'u').error, 'formato inválido é recusado');
+  const dg = c.createItem({ cliente: 'Disco', titulo: 'Display', legenda: 'l', briefing_arte: 'b', canais: ['google_ads'], formato_midia: 'google_display', tamanhos: ['300x250', '728x90'] }, 'u').item;
+  ok(dg.formato === 'display' && dg.tamanhos.join() === '300x250,728x90', 'pauta de Display guarda os tamanhos escolhidos');
+  const rd = await c.submitArt(dg.id, { arte_url: 'https://cdn.exemplo.com/a.png', arte_urls: ['https://cdn.exemplo.com/a.png', 'https://cdn.exemplo.com/b.png'] }, 'luiz');
+  ok(rd.item?.formato === 'display' && rd.item.arte_urls.length === 2 && !rd.item.arte_aviso, 'Display com uma arte por tamanho não vira carrossel');
+  const esp = (await callTool('formatos_ver', { formato: 'reels' }, 'mcp'));
+  ok(esp.status === 'ok' && esp.tamanhos.some((t) => t.includes('1080x1920')) && /gancho/i.test(esp.regras), 'ferramenta formatos_ver devolve medidas e regras do Reels');
+  const pl = await callTool('pedidos_listar', { cliente: 'Disco' }, 'mcp');
+  ok(pl.status === 'ok' && pl.pedidos.some((x) => x.formato_midia === 'tiktok' && x.especificacao?.tamanhos?.length), 'pedidos_listar traz o formato e a especificação');
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);
