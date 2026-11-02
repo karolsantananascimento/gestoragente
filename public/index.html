@@ -369,7 +369,7 @@
       <div class="row" style="margin:0"><button type="button" class="ghost" id="redditConnect">Conectar Reddit</button><button type="button" class="ghost" id="redditCheck">Verificar Reddit</button><button type="button" class="danger hidden" id="redditOff">Desconectar</button></div>
       <div id="redditOut" class="meta" style="margin-top:6px"></div>
       <label>LinkedIn: autor deste cliente (urn:li:person:… ou urn:li:organization:…). Vazio = não publica.<input name="linkedin_author" placeholder="urn:li:person:abc123"></label>
-      <div class="row" style="margin:0"><button type="button" class="ghost" id="liConnect">Conectar LinkedIn</button><button type="button" class="ghost" id="liCheck">Verificar LinkedIn</button><button type="button" class="ghost hidden" id="liUse">Usar meu perfil</button><button type="button" class="danger hidden" id="liOff">Desconectar</button></div>
+      <div class="row" style="margin:0"><button type="button" class="ghost" id="liConnect">Conectar LinkedIn</button><button type="button" class="ghost" id="liConnectPg">Conectar para página</button><button type="button" class="ghost" id="liCheck">Verificar LinkedIn</button><button type="button" class="ghost hidden" id="liUse">Usar meu perfil</button><button type="button" class="danger hidden" id="liOff">Desconectar</button></div>
       <div id="liOut" class="meta" style="margin-top:6px"></div>
       <div class="row" style="margin:0"><button type="button" class="ghost" id="socialCheck">🔎 Verificar conexão e buscar contas</button><span class="note">Mostra as páginas e Instagrams que o token do Meta enxerga e preenche os IDs para você.</span></div>
       <div id="socialOut" class="meta" style="margin-top:6px"></div>
@@ -1197,11 +1197,14 @@ async function liCheck() {
     mk(r.conectado ? `✓ LinkedIn conectado como ${r.usuario}${r.dias != null ? ` (token vale mais ${r.dias} dias)` : ''}` : '○ LinkedIn não conectado', r.conectado ? 'ok' : 'warn');
     if (r.autor) mk('✓ Autor deste cliente: ' + r.autor, 'ok');
     for (const d of r.dicas) mk('→ ' + d, 'warn');
+    for (const pg of r.paginas || []) { const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = 'Publicar como página: ' + pg.nome; b.onclick = () => { $('#brandForm').elements.linkedin_author.value = pg.urn; toast('Página selecionada. Clique em "Salvar marca".', 'ok'); }; out.appendChild(b); }
+    if (r.paginas_erro) mk('→ ' + r.paginas_erro, 'warn');
     show($('#liOff'), r.conectado); show($('#liUse'), !!r.urn); $('#liConnect').textContent = r.conectado ? 'Reconectar LinkedIn' : 'Conectar LinkedIn';
   } catch (e) { out.textContent = e.message; }
 }
 $('#liCheck').onclick = liCheck;
 $('#liConnect').onclick = async () => { try { const r = await api('/api/linkedin/auth-url', { method: 'POST', body: '{}' }); location.href = r.url; } catch (e) { $('#liOut').textContent = e.message; } };
+$('#liConnectPg').onclick = async () => { try { const r = await api('/api/linkedin/auth-url', { method: 'POST', body: JSON.stringify({ paginas: true }) }); location.href = r.url; } catch (e) { $('#liOut').textContent = e.message; } };
 $('#liUse').onclick = () => { $('#brandForm').elements.linkedin_author.value = liUrn; toast('Autor preenchido. Clique em "Salvar marca".', 'ok'); };
 $('#liOff').onclick = async () => { if (!confirm('Desconectar o LinkedIn?')) return; await api('/api/linkedin/disconnect', { method: 'POST', body: '{}' }); liCheck(); };
 $('#redditCheck').onclick = redditCheck;

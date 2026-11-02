@@ -172,3 +172,6 @@ Aba **💼 Vendas**. Felipe recebe leads (Lead Ads da Meta, formulários/CRM por
 - **LinkedIn:** a LinkedIn não oferece API aberta de mensagens (só para parceiros aprovados), e automatizar DM por fora viola os termos e leva a banimento. Leads de formulário do LinkedIn entram por `POST /hooks/lead` (via Zapier/CRM, `origem: "linkedin"`) e são abordados por WhatsApp.
 
 Botão **🔗 Vincular Instagram/Facebook** (aba Vendas): assina a Página do `META_PAGE_ACCESS_TOKEN` para entregar as DMs ao app e mostra a Página e o @ do Instagram encontrados. Se `META_APP_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` e `PUBLIC_URL` (https) estiverem no Render, ele também cadastra o webhook `/hooks/meta-dm` no app (objetos page e instagram).
+
+### LinkedIn: publicar na página da empresa (ex.: Disco)
+No app do LinkedIn Developers, peça os produtos **Compartilhar no LinkedIn** e **Community Management API** (libera `w_organization_social` e `rw_organization_admin`; o LinkedIn analisa). Quem conecta precisa ser **administrador da página**. No painel: Marca → Publicação → **Conectar para página**, autorize, clique em **Verificar LinkedIn**, escolha **Publicar como página: Disco** e **Salvar marca** no cliente Disco. Se o LinkedIn ainda não aprovou os produtos, a lista de páginas vem vazia e dá para usar o perfil pessoal.

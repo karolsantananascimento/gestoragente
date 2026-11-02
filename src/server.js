@@ -281,7 +281,7 @@ const liRedirect = (req) => `${config.publicUrl || `${req.protocol}://${req.get(
 app.get('/api/linkedin/status', requireUser, requireAdmin, async (req, res) => { try { res.json(await linkedin.status(store.cliente(req.query.cliente)?.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/linkedin/auth-url', requireUser, requireAdmin, (req, res) => {
   if (!linkedin.appConfigured()) return res.status(400).json({ error: 'Faltam LINKEDIN_CLIENT_ID e LINKEDIN_CLIENT_SECRET no Render (crie o app em linkedin.com/developers).' });
-  res.json({ url: linkedin.authUrl(req.user.email, liRedirect(req)), redirect_uri: liRedirect(req) });
+  res.json({ url: linkedin.authUrl(req.user.email, liRedirect(req), req.body?.paginas === true), redirect_uri: liRedirect(req) });
 });
 app.post('/api/linkedin/disconnect', requireUser, requireAdmin, (req, res) => { linkedin.limpar(); store.log({ type: 'linkedin_desconectado', by: req.user.email }); res.json({ ok: true }); });
 app.get('/api/linkedin/callback', async (req, res) => {

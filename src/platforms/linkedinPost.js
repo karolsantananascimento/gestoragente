@@ -13,10 +13,10 @@ const token = () => saved()?.access_token || config.social.linkedinToken || '';
 export const conectado = () => !!token();
 
 const nonces = new Map();
-export function authUrl(email, redirect) {
+export function authUrl(email, redirect, paginas = false) {
   const state = crypto.randomBytes(18).toString('hex');
   nonces.set(state, { email, exp: Date.now() + 10 * 60e3 });
-  const q = new URLSearchParams({ response_type: 'code', client_id: process.env.LINKEDIN_CLIENT_ID, redirect_uri: redirect, state, scope: process.env.LINKEDIN_SCOPES || 'openid profile w_member_social' });
+  const q = new URLSearchParams({ response_type: 'code', client_id: process.env.LINKEDIN_CLIENT_ID, redirect_uri: redirect, state, scope: process.env.LINKEDIN_SCOPES || (paginas ? 'openid profile w_member_social rw_organization_admin w_organization_social' : 'openid profile w_member_social') });
   return `https://www.linkedin.com/oauth/v2/authorization?${q}`;
 }
 const call = async (path, { method = 'GET', body, headers = {}, raw, tk } = {}) => {
@@ -87,7 +87,21 @@ export async function status(clienteId) {
   if (!token()) { out.dicas.push('LinkedIn ainda não conectado: clique em "Conectar LinkedIn".'); return out; }
   out.conectado = true; out.usuario = t?.usuario || '(token por variável de ambiente)'; out.urn = t?.urn || '';
   if (t?.expira) { out.dias = Math.max(0, Math.round((Date.parse(t.expira) - Date.now()) / 86400e3)); if (out.dias <= 7) out.dicas.push(`O token vence em ${out.dias} dia(s): reconecte em breve.`); }
+  try { const pg = await paginas(); out.paginas = pg.lista; if (pg.erro) out.paginas_erro = pg.erro; } catch (e) { out.paginas_erro = String(e.message).slice(0, 160); }
   if (!out.autor) out.dicas.push(out.urn ? 'Este cliente ainda não publica no LinkedIn. Para usar o seu perfil, clique em "Usar meu perfil" (ou informe o URN de uma página que você administra).' : 'Informe o autor (URN) deste cliente.');
   return out;
+}
+// Páginas (organizações) que o usuário conectado administra. Precisa do escopo de páginas; sem ele devolve vazio.
+export async function paginas() {
+  const r = await call('/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=50');
+  if (r.status >= 300) return { lista: [], erro: r.status === 403 || r.status === 401 ? 'Sem permissão de páginas: conecte com "Conectar para página" (o app precisa do produto de páginas aprovado pelo LinkedIn).' : `LinkedIn HTTP ${r.status}` };
+  const lista = [];
+  for (const e of r.j.elements || []) {
+    const urn = e.organization || ''; const id = urn.split(':').pop();
+    let nome = '';
+    try { const o = await call(`/rest/organizations/${id}`); nome = o.j?.localizedName || ''; } catch {}
+    lista.push({ urn, nome: nome || urn });
+  }
+  return { lista };
 }
 export const limpar = () => store.setInteg('linkedin', null);
