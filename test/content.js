@@ -305,5 +305,11 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   const rc = await c.submitArt(cv.id, { arte_url: 'https://cdn.exemplo.com/a.png', canva_url: 'https://www.canva.com/design/DAFxyz/edit' }, 'luiz');
   ok(rc.item?.canva_url === 'https://www.canva.com/design/DAFxyz/edit', 'arte registra o link do design no Canva');
   ok(!!c.editItem(cv.id, { canva_url: 'https://evil.example.com/x' }, 'u').error && c.editItem(cv.id, { canva_url: 'https://canva.link/abc' }, 'u').item?.canva_url === 'https://canva.link/abc', 'só aceita links do Canva');
+
+  // Atividade do time (aba Time)
+  const { atividadeDe } = await import('../src/atividade.js');
+  const al = atividadeDe('luiz'); const ah = atividadeDe('hugo'); const am = atividadeDe('mariana');
+  ok(Array.isArray(al.agora) && ['livre', 'aguardando', 'trabalhando'].includes(al.estado) && Array.isArray(ah.recentes) && Array.isArray(am.agora), 'atividade do time devolve estado, tarefas atuais e histórico');
+  ok(atividadeDe('desconhecido').agora.length === 0, 'agente desconhecido não quebra');
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);

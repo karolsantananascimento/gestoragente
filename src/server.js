@@ -1,5 +1,6 @@
 import path from 'node:path';
 import * as vendas from './vendas.js';
+import { atividadeDe } from './atividade.js';
 import { receberMensagem, receberLeadsMeta, receberLeadGenerico } from './vendas.js';
 import * as wa from './platforms/whatsapp.js';
 import * as metaDm from './platforms/metaDm.js';
@@ -342,6 +343,7 @@ app.post('/api/reject/:id', requireUser, requireAdmin, (req, res) => res.json(re
 
 // --- Time, conteúdo e marca ---
 app.get('/api/team', requireUser, (_req, res) => res.json(teamInfo()));
+app.get('/api/team/:id/atividade', requireUser, (req, res) => { if (!/^[a-z]+$/.test(req.params.id)) return res.status(404).end(); res.json(atividadeDe(req.params.id)); });
 
 app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, items: listItems(req.query.status, req.query.cliente).map((i) => ({ ...i, revisao: revisar(i) })) }));
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));

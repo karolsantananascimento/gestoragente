@@ -490,6 +490,13 @@
   </form>
 </div>
 
+<div class="overlay dim hidden" id="agModal"><div class="box wide modal" style="max-width:640px">
+  <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 id="agNome" style="margin:0"></h2><div class="note" id="agCargo"></div></div><button id="agClose">Fechar</button></div>
+  <div class="lbl2">Funções</div><div id="agFuncao" class="cap"></div><div id="agMeta" class="note" style="margin-top:6px"></div>
+  <div class="lbl2" style="margin-top:12px">O que está fazendo agora <span class="chip" id="agEstado"></span></div><div id="agAgora"></div>
+  <div class="lbl2" style="margin-top:12px">Últimas atividades</div><div id="agRec" class="hist cap" style="white-space:pre-line"></div>
+  <div class="row" style="margin-top:10px"><button class="ghost" id="agReload">↻ Atualizar</button></div></div></div>
+
 <!-- Equipe (admin) -->
 <div class="overlay dim hidden" id="teamModal">
   <div class="box wide modal">
@@ -1126,6 +1133,25 @@ function openTab(t) {
 for (const b of document.querySelectorAll('#tabs button')) b.onclick = () => openTab(b.dataset.tab);
 
 /* ---------- time ---------- */
+let AG_ATUAL = null;
+async function abrirAgente(a) {
+  AG_ATUAL = a;
+  $('#agNome').textContent = a.emoji + ' ' + a.nome; $('#agCargo').textContent = a.cargo; $('#agFuncao').textContent = a.funcao;
+  $('#agMeta').textContent = 'Entrega: ' + a.entrega + ' · Ferramentas: ' + a.ferramentas + ' · ' + (a.integracoes || []).map((i) => (i.ok === true ? '● ' : i.ok === false ? '○ ' : '◌ ') + i.nome).join(', ');
+  show($('#agModal'), true); await atualizarAgente();
+}
+async function atualizarAgente() {
+  if (!AG_ATUAL) return;
+  try {
+    const r = await api('/api/team/' + AG_ATUAL.id + '/atividade');
+    const est = { trabalhando: '🟢 Trabalhando agora', aguardando: '🟡 Com tarefas na fila', livre: '⚪ Livre' }[r.estado] || r.estado; $('#agEstado').textContent = est;
+    const ag = $('#agAgora'); ag.innerHTML = ''; for (const t of r.agora) { const d = mkEl('div', '• ' + t, 'cap'); d.style.marginBottom = '4px'; ag.appendChild(d); }
+    $('#agRec').textContent = r.recentes.length ? r.recentes.map((x) => `${x.quando} · ${x.texto}`).join('\n') : 'Nenhuma atividade registrada ainda.';
+  } catch (e) { $('#agAgora').textContent = e.message; }
+}
+$('#agClose').onclick = () => show($('#agModal'), false);
+$('#agReload').onclick = atualizarAgente;
+setInterval(() => { if (!$('#agModal').classList.contains('hidden')) atualizarAgente(); }, 15000);
 async function loadAgents() {
   const list = await api('/api/team');
   const el = $('#agents'); el.innerHTML = '';
@@ -1133,6 +1159,7 @@ async function loadAgents() {
     const d = document.createElement('div'); d.className = 'agent';
     const mk = (tag, txt, cls) => { const x = document.createElement(tag); x.textContent = txt; if (cls) x.className = cls; return x; };
     d.append(mk('div', a.emoji, 'em'), mk('h3', a.nome), mk('div', a.cargo, 'cargo'), mk('div', a.funcao));
+    d.style.cursor = 'pointer'; d.tabIndex = 0; d.setAttribute('role', 'button'); d.title = 'Ver funções e o que está fazendo agora'; d.querySelector('h3').style.textDecoration = 'underline dotted'; d.onclick = () => abrirAgente(a); d.onkeydown = (e) => { if (e.key === 'Enter') abrirAgente(a); };
     d.append(mk('small', 'Entrega: ' + a.entrega, 'note'));
     const tg = document.createElement('div'); tg.style.marginTop = '8px';
     for (const i of a.integracoes) tg.append(mk('span', (i.ok === true ? '● ' : i.ok === false ? '○ ' : '◌ ') + i.nome + (i.nota ? ` (${i.nota})` : ''), 'tag ' + (i.ok === true ? 'ok' : i.ok === false ? 'warn' : '')));
