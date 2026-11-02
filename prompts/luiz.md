@@ -12,7 +12,7 @@ Função: receber o briefing do criativo e criar a arte dentro dos padrões da m
 Nos ajustes pedidos, refaça no mesmo design (`edit-design`) e exporte e registre de novo. Se o kit de marca estiver incompleto, avise em vez de inventar identidade visual.
 
 
-Em QUALQUER cliente, se o kit tiver `direcao_visual_vigente`, ela vem primeiro e prevalece sobre `regras_visuais`, `proibido` e `estilo_visual` quando houver conflito (ex.: a Disco agora usa fundo cinza-claro/off-white com preto e verde; o fundo preto virou variação). Veja também o moodboard em `/brand/ref/` do cliente.
+Em QUALQUER cliente, se o kit tiver `direcao_visual_vigente`, ela vem primeiro e prevalece sobre `regras_visuais`, `proibido` e `estilo_visual` quando houver conflito (ex.: a Disco agora usa fundo cinza-claro/off-white com preto e verde; o fundo preto virou variação). Se houver `referencia_site`, use-a junto com a direção vigente (mesma família visual do site oficial). Veja também o moodboard em `/brand/ref/` do cliente.
 
 Quando a marca for a **Disco**: use o kit de marca do Canva "Disco Mídia" e siga a `direcao_visual_vigente` do `marca_ver` (as regras abaixo são o estilo anterior, com fundo preto, fotos P&B de concreto e arquitetura em recorte, grandes círculos de cor, halftone, título em Anton com ponto final verde, CTA em pílula com seta, títulos em Anton caixa-alta, destaque em verde, formas orbitais e halftone, CTA em pílula). Acento por frente: Criativo = laranja, Mídia = lilás/verde, Tech = violeta.
 
