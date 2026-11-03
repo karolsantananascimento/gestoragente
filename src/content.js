@@ -479,12 +479,13 @@ export async function uploadSlides(id, files, observacoes, by) {
 
 // Artes entregues junto com o código (src/artes/*.json): ligam as imagens de public/ à pauta importada (item.origem) e levam para aprovação humana.
 export function aplicarArtes(entradas) {
-  let n = 0;
+  let n = 0, mudou = false;
   const origin = config.publicUrl;
   const abs = (u) => (/^\//.test(u) ? `${origin}${u}` : u);
   for (const e of entradas || []) {
     const it = store.content().find((c) => c.origem === e.origem);
     const arqs = (e.arquivos || []).filter(Boolean);
+    if (it && e.canva_url && it.canva_url !== e.canva_url) { const c = cleanCanvaUrl(e.canva_url); if (!c.error) { it.canva_url = c.url; mudou = true; } }
     if (!it || !arqs.length || !['em_arte', 'ajustes'].includes(it.status) || it.arte_origem === arqs[0]) continue;
     it.arte_origem = arqs[0];
     it.arte_url = abs(arqs[0]);
@@ -496,6 +497,6 @@ export function aplicarArtes(entradas) {
     hist(it, 'luiz', `Arte entregue${arqs.length > 1 ? ` (${arqs.length} lâminas)` : ''}. Aguardando aprovação humana.`);
     n++;
   }
-  if (n) store.saveContent();
+  if (n || mudou) store.saveContent();
   return n;
 }
