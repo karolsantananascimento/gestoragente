@@ -32,12 +32,12 @@ export function lerPlanilhaPauta(csv) {
   if (h < 0) return null;
   const head = rows[h].map(norm);
   const col = (re) => head.findIndex((x) => re.test(x));
-  const ix = { id: col(/^id$/), data: col(/^data$/), formato: col(/^formato$/), arte: col(/^arte/), legenda: col(/^legenda/), prompt: col(/prompt|criativo/) };
+  const ix = { id: col(/^id$/), data: col(/^data$/), formato: col(/^formato$/), arte: col(/^arte/), legenda: col(/^legenda/), prompt: col(/prompt|criativo/), canais: col(/^canais?$/) };
   const out = [];
   for (const r of rows.slice(h + 1)) {
     const data = isoDe(r[ix.data]); const legenda = (r[ix.legenda] || '').trim();
     if (!data || !legenda) continue;
-    out.push({ id: (r[ix.id] || '').trim(), data, formato: (r[ix.formato] || '').trim(), arte: (r[ix.arte] || '').trim(), legenda, prompt: (r[ix.prompt] || '').trim() });
+    out.push({ id: (r[ix.id] || '').trim(), data, formato: (r[ix.formato] || '').trim(), arte: (r[ix.arte] || '').trim(), legenda, prompt: (r[ix.prompt] || '').trim(), canais: ix.canais >= 0 ? String(r[ix.canais] || '').split(/[,;]+/).map((x) => norm(x)).filter((x) => ['instagram', 'facebook', 'linkedin', 'tiktok', 'reddit', 'blog', 'youtube'].includes(x)) : [] });
   }
   return out.length ? out : null;
 }
@@ -82,7 +82,7 @@ export function importarLinhas(clienteRef, linhas, { de, ate, fonte = 'planilha'
     const legenda = legendaDe(l.legenda);
     const primeira = l.arte.split('\n')[0].replace(/^Capa:\s*/i, '').trim();
     const briefing = briefingDe(l);
-    const r = createItem({ cliente: cl.id, titulo: trunc(`${l.id ? l.id + ' · ' : ''}${primeira}`, 80), legenda, briefing_arte: briefing, canais: ['instagram'], formato: fmt, slides: fmt === 'carrossel' ? slidesDe(l.arte) : undefined, data_publicacao: l.data, objetivo: 'Pauta da agência (planilha)' }, by);
+    const r = createItem({ cliente: cl.id, titulo: trunc(`${l.id ? l.id + ' · ' : ''}${primeira}`, 80), legenda, briefing_arte: briefing, canais: l.canais?.length ? l.canais : ['instagram'], formato: fmt, slides: fmt === 'carrossel' ? slidesDe(l.arte) : undefined, data_publicacao: l.data, objetivo: 'Pauta da agência (planilha)' }, by);
     if (r.error) { pulados.push(`${l.id}: ${r.error}`); continue; }
     r.item.origem = origem;
     criados.push(r.item.id);
