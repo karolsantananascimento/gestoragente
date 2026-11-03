@@ -1268,7 +1268,8 @@ const COLS = [
   ['🚀 Prontas para publicar', [], '#e0457b', 'Quando texto e arte estiverem prontos, a pauta aparece aqui para você aprovar e agendar.'],
 ];
 // Pronta para publicar = texto e arte prontos (aguardando aprovação, aprovados, agendados ou já publicados). Fica na última coluna.
-const isPronta = (i) => ['aguardando_aprovacao', 'aprovado', 'agendado', 'publicado'].includes(i.status) && !!String(i.legenda || '').trim() && !!(i.arte_url || i.arte_urls?.length);
+// Pautas importadas de planilha (origem) seguem o fluxo normal: Em arte → Aguardando aprovação → ...; só as que já nasceram prontas vão para a última coluna.
+const isPronta = (i) => !i.origem && ['aguardando_aprovacao', 'aprovado', 'agendado', 'publicado'].includes(i.status) && !!String(i.legenda || '').trim() && !!(i.arte_url || i.arte_urls?.length);
 const colIdx = (i) => (isPronta(i) ? COLS.length - 1 : COLS.findIndex(([, sts], k) => k < COLS.length - 1 && sts.includes(i.status)));
 const FMT = { reels: '🎬 Reels', carrossel: '🖼 Carrossel', feed: '📷 Feed', story: '⭕ Story', tiktok: '🎵 TikTok', youtube: '▶️ YouTube 16:9', shorts: '📱 Shorts', display: '🖥 Google Display' };
 let CAT = { grupos: [], formatos: [] }; const catF = (id) => CAT.formatos.find((f) => f.id === id);
