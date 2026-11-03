@@ -132,6 +132,18 @@
   details.panel summary::-webkit-details-marker { display:none; } details.panel summary::after { content:'▾'; margin-left:auto; color:var(--muted); transition:transform .15s; }
   details.panel[open] summary::after { transform:rotate(180deg); }
   details.panel .in { padding:0 16px 14px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; margin:2px 0 12px; } .seg button { border:0; background:transparent; padding:7px 16px; cursor:pointer; font:inherit; color:var(--text); } .seg button.on { background:#111; color:#fff; }
+  .phone { max-width:430px; margin:0 auto; border:1px solid var(--line); border-radius:28px; background:#000; color:#fff; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.18); }
+  .phone .perfil { display:flex; gap:14px; align-items:center; padding:16px 16px 12px; } .phone .av { width:64px; height:64px; border-radius:50%; background:#78D600; color:#111; display:grid; place-items:center; font:800 30px Inter,sans-serif; flex:none; }
+  .phone .perfil b { font-size:15px; display:block; } .phone .perfil small { color:#a8a8a8; }
+  .phone .abas { display:flex; justify-content:space-around; border-top:1px solid #262626; padding:8px 0; color:#a8a8a8; font-size:20px; } .phone .abas span.on { color:#fff; }
+  .grade { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; }
+  .grade .t { position:relative; aspect-ratio:3/4; background:#1a1a1a; overflow:hidden; } .grade .t img { width:100%; height:100%; object-fit:cover; display:block; }
+  .grade .t.novo { outline:3px solid #78D600; outline-offset:-3px; }
+  .grade .t .dt { position:absolute; left:6px; bottom:6px; background:rgba(0,0,0,.72); color:#fff; font-size:11px; padding:2px 7px; border-radius:99px; } .grade .t .ic { position:absolute; right:6px; top:6px; font-size:16px; text-shadow:0 1px 3px #000; }
+  .grade .t .vid { position:absolute; inset:0; display:grid; place-items:center; text-align:center; font-size:12px; color:#d0d0d0; padding:8px; background:repeating-linear-gradient(45deg,#1d1d1d,#1d1d1d 8px,#242424 8px,#242424 16px); }
+  .phone .sep { padding:8px 12px; font-size:12px; color:#a8a8a8; text-align:center; background:#111; } .phone img.real { width:100%; display:block; }
+  #feedPanel .legenda { text-align:center; margin:10px 0 0; }
   .meta { color:var(--muted); font-size:12px; }
   /* quadro */
   .board { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(290px,1fr); gap:14px; align-items:start; overflow-x:auto; padding-bottom:10px; scroll-snap-type:x proximity; }
@@ -321,6 +333,9 @@
       <div class="err" id="srcErr"></div>
       <div id="srcList" class="meta"></div></div></details>
   </div>
+  <details class="panel" id="feedPanel" style="display:none;margin:0 0 14px"><summary>📱 Feed visual <span class="note">como o Instagram está hoje e como ficará com as pautas</span></summary><div class="in">
+    <div class="seg" id="feedSeg"><button data-m="hoje">Como está hoje</button><button data-m="ficara" class="on">Como ficará</button></div>
+    <div id="feedBody"></div></div></details>
   <div class="board" id="board"></div>
 </div>
 
@@ -1360,10 +1375,39 @@ $('#reqSend').onclick = async () => {
     $('#reqText').value = ''; $('#reqNote').textContent = r.mensagem || 'Pedido enviado.'; loadRequests(); loadItems();
   } catch (e) { $('#reqNote').textContent = e.message; }
 };
+// Feed visual (só Disco): a grade do Instagram hoje e como fica com as pautas que ainda não foram publicadas.
+let feedModo = 'ficara';
+function renderFeedVisual(items) {
+  const painel = $('#feedPanel'); const ativo = CUR === 'disco'; painel.style.display = ativo ? '' : 'none'; if (!ativo) return;
+  [...document.querySelectorAll('#feedSeg button')].forEach((b) => { b.classList.toggle('on', b.dataset.m === feedModo); b.onclick = () => { feedModo = b.dataset.m; renderFeedVisual(items); }; });
+  const mk = (tag, cls, txt) => { const x = document.createElement(tag); if (cls) x.className = cls; if (txt !== undefined) x.textContent = txt; return x; };
+  const phone = mk('div', 'phone');
+  const perfil = mk('div', 'perfil'); perfil.append(mk('div', 'av', 'd.')); const info = mk('div'); info.append(mk('b', '', 'bydiscomidia'), mk('small', '', 'Disco · estratégia, criatividade, mídia e tecnologia')); perfil.append(info);
+  phone.append(perfil, (() => { const a = mk('div', 'abas'); a.append(mk('span', 'on', '▦'), mk('span', '', '▶'), mk('span', '', '☺')); return a; })());
+  const real = () => { const im = mk('img', 'real'); im.src = '/brand/ref/feed-atual.jpg'; im.alt = 'Feed atual do Instagram da Disco'; return im; };
+  if (feedModo === 'hoje') phone.append(real());
+  else {
+    const novos = items.filter((i) => !['publicado', 'cancelado', 'erro'].includes(i.status) && (i.arte_url || i.arte_urls?.length || /reels|tiktok|shorts|youtube/.test(i.formato || '')))
+      .sort((a, b) => String(b.data_publicacao || '').localeCompare(String(a.data_publicacao || '')));
+    const g = mk('div', 'grade');
+    for (const it of novos) {
+      const t = mk('div', 'novo t'); t.title = it.titulo;
+      const src = it.arte_urls?.[0] || it.arte_url;
+      if (src) { const im = mk('img'); im.src = src; im.loading = 'lazy'; im.alt = ''; im.referrerPolicy = 'no-referrer'; im.onerror = () => { im.remove(); t.append(mk('div', 'vid', (it.titulo || '').replace(/^NOV-\\d+ · /, '').slice(0, 60))); }; t.append(im); } else t.append(mk('div', 'vid', '🎬 vídeo a anexar\n' + (it.titulo || '').replace(/^NOV-\d+ · /, '').slice(0, 40)));
+      const car = it.arte_urls?.length > 1 || /carrossel/i.test(it.formato || ''); const reel = /reels|tiktok|shorts|youtube/.test(it.formato || '');
+      if (car || reel) t.append(mk('span', 'ic', car ? '❏' : '▶'));
+      if (it.data_publicacao) t.append(mk('span', 'dt', new Date(it.data_publicacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Recife' })));
+      g.append(t);
+    }
+    phone.append(g, mk('div', 'sep', `↑ ${novos.length} publicações planejadas (contorno verde) · ↓ o feed de hoje`), real());
+  }
+  const corpo = $('#feedBody'); corpo.innerHTML = ''; corpo.append(phone, mk('p', 'note legenda', feedModo === 'hoje' ? 'Captura do Instagram da Disco (referência da marca).' : 'Simulação: as publicações mais novas ficam no topo, na ordem das datas. Os vídeos ainda sem arte aparecem como espaço reservado.'));
+}
 async function loadItems() {
   $('#curName').textContent = CLIENTS.find((c) => c.id === CUR)?.nome || '';
   loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {}); loadAuto().catch(() => {});
   const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
+  renderFeedVisual(r.items);
   const board = $('#board'); board.innerHTML = '';
   for (const [k, [title, , color, vazio]] of COLS.entries()) {
     const col = document.createElement('div'); col.className = 'col'; col.style.setProperty('--c', color);
