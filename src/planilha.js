@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { store } from './store.js';
-import { getCliente, createItem, editItem, listItems, kitCompleto } from './content.js';
+import { getCliente, createItem, editItem, listItems, kitCompleto, aplicarArtes } from './content.js';
 
 // Importa pautas já prontas de uma planilha da agência (CSV com colunas ID, Data, Formato, Arte, Legenda, Prompt).
 // Cada linha vira um item "Em arte" (Hugo → Luiz → aprovação humana → Mariana). Idempotente: o ID da planilha fica em item.origem.
@@ -111,4 +111,15 @@ export function importarPautasDeArquivo() {
     res.push({ arquivo: f, cliente: cl.nome, ...importarCsv(cl.id, fs.readFileSync(path.join(dir, f), 'utf8'), { ...janela, fonte: f.replace(/\.csv$/, '') }) });
   }
   return res;
+}
+
+// src/artes/*.json: artes prontas (imagens em public/) para as pautas importadas. Idempotente.
+export function aplicarArtesDeArquivo() {
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'artes');
+  if (!fs.existsSync(dir)) return 0;
+  let n = 0;
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json'))) {
+    try { n += aplicarArtes(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))); } catch (e) { console.error('[artes]', f, e.message); }
+  }
+  return n;
 }

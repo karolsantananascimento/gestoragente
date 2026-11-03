@@ -476,3 +476,26 @@ export async function uploadSlides(id, files, observacoes, by) {
   }
   return submitArt(id, { arte_url: urls[0], arte_urls: urls, observacoes }, by);
 }
+
+// Artes entregues junto com o código (src/artes/*.json): ligam as imagens de public/ à pauta importada (item.origem) e levam para aprovação humana.
+export function aplicarArtes(entradas) {
+  let n = 0;
+  const origin = config.publicUrl;
+  const abs = (u) => (/^\//.test(u) ? `${origin}${u}` : u);
+  for (const e of entradas || []) {
+    const it = store.content().find((c) => c.origem === e.origem);
+    const arqs = (e.arquivos || []).filter(Boolean);
+    if (!it || !arqs.length || !['em_arte', 'ajustes'].includes(it.status) || it.arte_origem === arqs[0]) continue;
+    it.arte_origem = arqs[0];
+    it.arte_url = abs(arqs[0]);
+    it.arte_urls = arqs.length > 1 ? arqs.map(abs) : [];
+    it.arte_aviso = '';
+    it.arte_nota = e.nota || 'Arte entregue pelo Luiz no padrão do kit.';
+    if (arqs.length > 1 && !/carrossel/i.test(it.formato || '')) it.formato = 'carrossel';
+    it.status = 'aguardando_aprovacao';
+    hist(it, 'luiz', `Arte entregue${arqs.length > 1 ? ` (${arqs.length} lâminas)` : ''}. Aguardando aprovação humana.`);
+    n++;
+  }
+  if (n) store.saveContent();
+  return n;
+}

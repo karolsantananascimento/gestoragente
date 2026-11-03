@@ -17,7 +17,7 @@ import * as reddit from './platforms/reddit.js';
 import { revisar } from './revisao.js';
 import { runTrafego } from './trafegoCmd.js';
 import * as linkedin from './platforms/linkedinPost.js';
-import { importarPautasDeArquivo } from './planilha.js';
+import { importarPautasDeArquivo, aplicarArtesDeArquivo } from './planilha.js';
 import { chat, resetSession, atenderPedidos, autoDisponivel, autoRodando, rodarTodos, iaStatus, iaComProblema, msgIA, marcarIA } from './agent.js';
 import { runCommand } from './commands.js';
 import { criarRascunhoDoPedido } from './rascunho.js';
@@ -471,7 +471,7 @@ app.use(express.static(path.join(here, '..', 'public'), { setHeaders: (res, f) =
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
 { // pautas prontas da agência (src/pautas/*.csv): entram os próximos 7 dias, na partida e todo dia
-  const rodar = () => { try { for (const r of importarPautasDeArquivo()) if (r.criados) console.log(`[pauta] ${r.cliente}: ${r.criados} pauta(s) importada(s) de ${r.arquivo}`); } catch (e) { console.error('[pauta]', e.message); } };
+  const rodar = () => { try { for (const r of importarPautasDeArquivo()) if (r.criados) console.log(`[pauta] ${r.cliente}: ${r.criados} pauta(s) importada(s) de ${r.arquivo}`); const a = aplicarArtesDeArquivo(); if (a) console.log(`[artes] ${a} arte(s) entregue(s) para aprovação`); } catch (e) { console.error('[pauta]', e.message); } };
   rodar(); setInterval(rodar, 6 * 3600e3).unref();
 }
 if (autoDisponivel()) {
