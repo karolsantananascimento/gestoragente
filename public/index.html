@@ -1459,6 +1459,7 @@ function itemCard(it, full, color) {
   if (it.rascunho_auto) chips.append(mk('span', 'Rascunho', 'chip'));
   c.append(chips, mk('h4', it.titulo));
   if (!full && it.arte_url) { const img = document.createElement('img'); img.className = 'thumb'; img.loading = 'lazy'; img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); c.appendChild(img); }
+  if (it.video_url || it.video_arquivo) { const v = it.video_url ? mk('a', '🎬 Ver vídeo') : mk('div', '🎬 ' + it.video_arquivo); if (it.video_url) { v.href = it.video_url; v.target = '_blank'; v.rel = 'noopener noreferrer'; v.onclick = (ev) => ev.stopPropagation(); } v.style.cssText = 'display:block;font-size:13px;margin:6px 0'; c.appendChild(v); }
   if (it.canva_url) { const a = mk('a', '🎨 Abrir arte no Canva'); a.href = it.canva_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.cssText = 'display:inline-block;font-size:13px;margin:6px 0'; a.onclick = (ev) => ev.stopPropagation(); c.appendChild(a); }
   c.appendChild(mk('div', it.legenda, 'cap'));
   const cs = Object.entries(it.canais_status || {});

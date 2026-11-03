@@ -201,6 +201,23 @@ export async function submitArt(id, { arte_url, arte_urls, observacoes, canva_ur
   return { item: it };
 }
 
+// Vídeo editado no OpenScreen (ou em qualquer editor): registra o arquivo/link e leva o card para aprovação humana.
+export function submitVideo(id, { video_url, video_arquivo, observacoes } = {}, by) {
+  const it = store.getContent(id);
+  if (!it) return { error: 'Conteúdo não encontrado.' };
+  if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe vídeo quando está em arte ou com ajustes.` };
+  const url = String(video_url || '').trim();
+  const arquivo = String(video_arquivo || '').trim().slice(0, 200);
+  if (!url && !arquivo) return { error: 'Informe o link (https://) do vídeo ou o nome do arquivo exportado.' };
+  if (url && !/^https:\/\/\S+$/i.test(url)) return { error: 'O link do vídeo precisa começar com https://.' };
+  it.video_url = url; it.video_arquivo = arquivo;
+  it.arte_nota = String(observacoes || '').slice(0, 500) || it.arte_nota || '';
+  it.status = 'aguardando_aprovacao';
+  hist(it, by, `Vídeo entregue${arquivo ? ` (${arquivo})` : ''}${url ? ' com link' : ''}. Aguardando aprovação humana.`);
+  store.saveContent();
+  store.log({ type: 'content_video', id, by });
+  return { item: it };
+}
 export function requestChanges(id, nota, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };

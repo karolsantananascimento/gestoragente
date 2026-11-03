@@ -26,7 +26,7 @@ import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
-import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, submitVideo, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions, proposeAction } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -354,6 +354,7 @@ app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.p
 app.post('/api/media/upload', requireUser, async (req, res) => out(res, await guardarImagem(req.body?.file)));
 app.post('/api/content/:id/upload', requireUser, async (req, res) => out(res, await uploadSlides(req.params.id, req.body?.files, req.body?.observacoes, req.user.email)));
 app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
+app.post('/api/content/:id/video', requireUser, (req, res) => out(res, submitVideo(req.params.id, req.body || {}, req.user.email)));
 // Botão de aprovação humana: só administradores. Aprovar dispara o agendamento da Mariana.
 app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res) => out(res, await approveItem(req.params.id, req.user.email, { canais: req.body?.canais, modo: req.body?.modo })));
 app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
