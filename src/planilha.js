@@ -106,7 +106,9 @@ export function importarPautasDeArquivo() {
   for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.csv'))) {
     const cl = getCliente(f.split('-')[0]);
     if (!cl || cl.id !== f.split('-')[0]) continue;
-    res.push({ arquivo: f, cliente: cl.nome, ...importarCsv(cl.id, fs.readFileSync(path.join(dir, f), 'utf8'), { de, ate, fonte: f.replace(/\.csv$/, '') }) });
+    // Arquivos "<cliente>-...-completo.csv" entram inteiros (de hoje em diante), sem a janela de 7 dias.
+    const janela = /-completo\.csv$/.test(f) ? { de: hojeRecife() } : { de, ate };
+    res.push({ arquivo: f, cliente: cl.nome, ...importarCsv(cl.id, fs.readFileSync(path.join(dir, f), 'utf8'), { ...janela, fonte: f.replace(/\.csv$/, '') }) });
   }
   return res;
 }
