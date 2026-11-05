@@ -58,14 +58,28 @@ function load() {
   return (state = normalize(state));
 }
 
+// Gravação no Postgres: no máximo UMA em andamento. Se houver novas mudanças enquanto grava, regrava uma vez ao final
+// com o estado mais recente. (Antes cada gravação ficava na fila com uma cópia de ~11 MB do estado: com o banco lento
+// as cópias se acumulavam e o servidor estourava a memória.)
+let inflight = false;
+let dirty = false;
 async function saveNow() {
   if (pool) {
-    const json = JSON.stringify(state);
-    writing = writing.then(() =>
-      pool.query(
-        `insert into app_state (key, value, updated_at) values ('state', $1::jsonb, now())
-         on conflict (key) do update set value = excluded.value, updated_at = now()`, [json])
-        .catch((e) => console.error('[store] falha ao salvar no Postgres:', e.message)));
+    dirty = true;
+    if (inflight) return writing;
+    inflight = true;
+    writing = (async () => {
+      try {
+        while (dirty) {
+          dirty = false;
+          try {
+            await pool.query(
+              `insert into app_state (key, value, updated_at) values ('state', $1::jsonb, now())
+               on conflict (key) do update set value = excluded.value, updated_at = now()`, [JSON.stringify(state)]);
+          } catch (e) { console.error('[store] falha ao salvar no Postgres:', e.message); }
+        }
+      } finally { inflight = false; }
+    })();
     return writing;
   }
   try {
@@ -79,7 +93,7 @@ async function saveNow() {
 function save() {
   if (!pool) return saveNow();
   clearTimeout(timer);
-  timer = setTimeout(saveNow, 300); // agrupa gravações seguidas
+  timer = setTimeout(saveNow, 1500); // agrupa gravações seguidas
 }
 
 export const store = {
