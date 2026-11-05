@@ -267,6 +267,33 @@ export function cancelItem(id, by) {
   return { item: it };
 }
 
+// Exclusão definitiva (só administradoras, pela tela). Nunca apaga o que já foi aprovado, agendado ou publicado:
+// isso pode estar nas redes e precisa ser tratado lá. Para esses, use "Cancelar".
+const NAO_EXCLUI = ['aprovado', 'agendado', 'publicado'];
+
+export function deleteItem(id, by) {
+  const it = store.getContent(id);
+  if (!it) return { error: 'Conteúdo não encontrado.' };
+  if (NAO_EXCLUI.includes(it.status)) return { error: `Não dá para excluir um conteúdo "${STATUS[it.status]}". Cancele-o primeiro e remova o post na rede, se já estiver agendado.` };
+  store.removeContent([id]);
+  store.log({ type: 'content_deleted', id, titulo: it.titulo, by });
+  return { ok: true, removidos: 1 };
+}
+
+// Limpeza em lote: exclui as pautas de UM cliente criadas antes de `antes` (ISO), exceto as aprovadas/agendadas/publicadas.
+export function deleteItemsAntes({ cliente, antes }, by) {
+  const cl = getCliente(cliente);
+  if (!cl) return { error: 'Cliente não encontrado.' };
+  const limite = Date.parse(antes);
+  if (!Number.isFinite(limite)) return { error: 'Data de corte inválida.' };
+  if (limite > Date.now() + 36e5) return { error: 'A data de corte não pode estar no futuro.' };
+  const ids = store.content().filter((c) => c.cliente_id === cl.id && !NAO_EXCLUI.includes(c.status) && Date.parse(c.createdAt) < limite).map((c) => c.id);
+  if (!ids.length) return { ok: true, removidos: 0 };
+  store.removeContent(ids);
+  store.log({ type: 'content_deleted_lote', cliente: cl.id, antes, total: ids.length, by });
+  return { ok: true, removidos: ids.length };
+}
+
 // Mariana: só agenda o que foi aprovado por humano.
 export async function scheduleItem(id, by = 'mariana', opts = {}) {
   const it = store.getContent(id);

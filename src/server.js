@@ -26,7 +26,7 @@ import { allTools, callTool } from './tools.js';
 import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
-import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, submitVideo, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, submitVideo, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, deleteItem, deleteItemsAntes, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions, proposeAction } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -360,6 +360,8 @@ app.post('/api/content/:id/approve', requireUser, requireAdmin, async (req, res)
 app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, requestChanges(req.params.id, req.body?.nota, req.user.email)));
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
+app.delete('/api/content/:id', requireUser, requireAdmin, (req, res) => out(res, deleteItem(req.params.id, req.user.email)));
+app.post('/api/content/limpar', requireUser, requireAdmin, (req, res) => out(res, deleteItemsAntes({ cliente: req.body?.cliente, antes: req.body?.antes }, req.user.email)));
 
 // Cada pedido é atendido na hora: com IA (chave da Anthropic) o Hugo escreve; sem IA o sistema cria um rascunho marcado, que o Hugo com IA refina depois.
 function dispararPedido(pedido) {

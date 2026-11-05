@@ -318,7 +318,7 @@
       <h2 class="ptitle">Conteúdo · <span id="curName"></span></h2>
       <div class="flow"><span class="st">✍ Hugo escreve a pauta</span>→<span class="st">🎨 Luiz faz a arte</span>→<span class="st hu">✅ Você aprova</span>→<span class="st">📅 Mariana agenda</span></div>
     </div>
-    <div class="actions"><span class="note" id="contentNote"></span><button class="ghost" id="reloadItems" title="Atualizar">↻</button><button class="ghost" id="newItem">+ Nova pauta</button><button id="runTeam">▶ Rodar</button></div>
+    <div class="actions"><span class="note" id="contentNote"></span><button class="ghost" id="reloadItems" title="Atualizar">↻</button><button class="ghost" id="cleanItems" title="Exclui as pautas deste cliente criadas antes de hoje (menos as aprovadas, agendadas e publicadas)">🗑 Limpar anteriores</button><button class="ghost" id="newItem">+ Nova pauta</button><button id="runTeam">▶ Rodar</button></div>
   </div>
   <div class="alert" id="autoNote"></div>
   <div class="weeks" id="weeks"></div>
@@ -1403,10 +1403,11 @@ function renderFeedVisual(items) {
   }
   const corpo = $('#feedBody'); corpo.innerHTML = ''; corpo.append(phone, mk('p', 'note legenda', feedModo === 'hoje' ? 'Captura do Instagram da Disco (referência da marca).' : 'Simulação: as publicações mais novas ficam no topo, na ordem das datas. Os vídeos ainda sem arte aparecem como espaço reservado.'));
 }
+let ITEMS_ATUAIS = [];
 async function loadItems() {
   $('#curName').textContent = CLIENTS.find((c) => c.id === CUR)?.nome || '';
   loadPlan().catch(() => {}); loadRequests().catch(() => {}); loadSources().catch(() => {}); loadAuto().catch(() => {});
-  const r = await api('/api/content?' + qc()); STATUS_TXT = r.status;
+  const r = await api('/api/content?' + qc()); STATUS_TXT = r.status; ITEMS_ATUAIS = r.items;
   renderFeedVisual(r.items);
   const board = $('#board'); board.innerHTML = '';
   for (const [k, [title, , color, vazio]] of COLS.entries()) {
@@ -1511,6 +1512,7 @@ function itemCard(it, full, color) {
     if (emArte || it.status === 'aguardando_aprovacao') btn('Editar', async () => { $('#viewClose').click(); openItem(it); }, 'no');
     if (emArte || it.status === 'aguardando_aprovacao') btn('Pedir ajuste', async () => { const n = await ask('Pedir ajuste', 'O que o time deve ajustar neste criativo? (ex.: trocar a foto, título menor, cor do destaque)'); if (n) await post('changes', { nota: n }); }, 'no');
     if (admin && ['aprovado', 'erro'].includes(it.status)) btn('Tentar agendar de novo', () => post('schedule'), 'no');
+    if (admin && !['aprovado', 'agendado', 'publicado'].includes(it.status)) btn('Excluir', async () => { if (confirm('Excluir esta pauta definitivamente? Não dá para desfazer.')) { await api('/api/content/' + it.id, { method: 'DELETE' }); $('#viewClose').click(); toast('Pauta excluída.', 'ok'); } }, 'no');
     if (admin && !['publicado', 'cancelado'].includes(it.status)) btn('Cancelar', async () => { if (confirm('Cancelar este conteúdo?')) { await post('cancel'); $('#viewClose').click(); } }, 'no');
   } else if (emArte && !it.arte_url) { const m = mk('span', 'Aguardando a arte do Luiz', 'meta'); row.appendChild(m); }
   if (row.children.length) c.appendChild(row);
@@ -1606,6 +1608,14 @@ $('#addSlide').onclick = () => { const c = coletarSlides(true); if (c.length < 1
 $('#newItem').onclick = () => openItem(null);
 $('#itemClose').onclick = () => show($('#itemModal'), false);
 $('#reloadItems').onclick = () => loadItems().catch(() => {});
+$('#cleanItems').onclick = async () => {
+  if (me.role !== 'admin') return toast('Somente administradores podem excluir pautas.', 'bad');
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const n = ITEMS_ATUAIS.filter((i) => !['aprovado', 'agendado', 'publicado'].includes(i.status) && Date.parse(i.createdAt) < hoje.getTime()).length;
+  if (!n) return toast('Não há pautas anteriores a hoje para excluir.', 'ok');
+  if (!confirm(`Excluir DEFINITIVAMENTE ${n} pauta(s) de ${CLIENTS.find((c) => c.id === CUR)?.nome || 'este cliente'} criadas antes de hoje?\nAs aprovadas, agendadas e publicadas não são tocadas. Não dá para desfazer.`)) return;
+  try { const r = await api('/api/content/limpar', { method: 'POST', body: JSON.stringify({ cliente: CUR, antes: hoje.toISOString() }) }); toast(`${r.removidos} pauta(s) excluída(s).`, 'ok'); await loadItems(); } catch (e) { toast(e.message, 'bad'); }
+};
 $('#itemForm').onsubmit = async (e) => {
   e.preventDefault(); $('#itemErr').textContent = '';
   if (!chSel().length) return ($('#itemErr').textContent = 'Escolha ao menos um canal (LinkedIn, Instagram, Facebook, TikTok, Reddit ou Blog).');

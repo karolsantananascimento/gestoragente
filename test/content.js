@@ -335,5 +335,16 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   const vr = c.submitVideo(vd.id, { video_arquivo: 'reel.mp4', video_url: 'https://cdn.exemplo.com/reel.mp4' }, 'luiz');
   ok(vr.item?.status === 'aguardando_aprovacao' && vr.item.video_arquivo === 'reel.mp4' && vr.item.video_url.startsWith('https://'), 'vídeo entregue leva o card para aprovação humana');
   ok(c.submitVideo(vd.id, { video_arquivo: 'outro.mp4' }, 'luiz').error, 'vídeo não entra depois que o card saiu de "em arte"');
+  // Exclusão definitiva e limpeza em lote
+  const ex1 = c.createItem({ cliente: 'Operizy', titulo: 'Velha', legenda: 'l', briefing_arte: 'b', canais: 'instagram' }, 'hugo').item;
+  ex1.createdAt = '2020-01-01T00:00:00.000Z';
+  const ex2 = c.createItem({ cliente: 'Operizy', titulo: 'Nova', legenda: 'l', briefing_arte: 'b', canais: 'instagram' }, 'hugo').item;
+  const ex3 = c.createItem({ cliente: 'Operizy', titulo: 'Aprovada velha', legenda: 'l', briefing_arte: 'b', canais: 'instagram' }, 'hugo').item;
+  ex3.createdAt = '2020-01-01T00:00:00.000Z'; ex3.status = 'agendado';
+  ok(c.deleteItem(ex3.id, 'adm').error, 'não exclui conteúdo agendado');
+  ok(c.deleteItemsAntes({ cliente: 'Operizy', antes: 'lixo' }, 'adm').error, 'data de corte inválida é recusada');
+  const lote = c.deleteItemsAntes({ cliente: 'Operizy', antes: '2021-01-01T00:00:00.000Z' }, 'adm');
+  ok(lote.removidos === 1 && !store.getContent(ex1.id) && store.getContent(ex2.id) && store.getContent(ex3.id), 'limpeza em lote apaga só as antigas e preserva novas e agendadas');
+  ok(c.deleteItem(ex2.id, 'adm').ok && !store.getContent(ex2.id), 'exclui uma pauta pelo id');
 console.log(fails ? `\n${fails} falha(s)` : '\nTodos os testes passaram');
 process.exit(fails ? 1 : 0);

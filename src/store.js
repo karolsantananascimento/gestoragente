@@ -138,6 +138,7 @@ export const store = {
     if (c) { Object.assign(c, patch); save(); }
     return c;
   },
+  removeContent(ids) { const s = load(); const set = new Set(ids); s.content = s.content.filter((c) => !set.has(c.id)); save(); return set.size; },
   saveContent() { save(); },
   settings: () => ({ meta_semanal: 3, ...load().settings }),
   setSettings(p) { Object.assign(load().settings, p); save(); return this.settings(); },
