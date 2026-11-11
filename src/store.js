@@ -102,6 +102,8 @@ export const store = {
     if (!config.databaseUrl) { load(); return 'arquivo'; }
     const local = /localhost|127\.0\.0\.1/.test(config.databaseUrl);
     pool = new pg.Pool({ connectionString: config.databaseUrl, max: 3, ssl: local ? false : { rejectUnauthorized: false } });
+    // Conexão ociosa derrubada pelo banco (reinício, pausa, manutenção) emite 'error' no pool; sem este handler o Node encerra o processo.
+    pool.on('error', (e) => console.error('[store] conexão ociosa com o Postgres encerrada:', e.message));
     // Banco pausado/reiniciando (ex.: Supabase gratuito pausa por inatividade): tenta de novo por ~3 min antes de desistir.
     // Não cai para arquivo local de propósito: o painel apareceria vazio e as gravações seguintes não iriam para o banco.
     let r;
