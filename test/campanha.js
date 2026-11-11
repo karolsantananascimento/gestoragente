@@ -4,10 +4,13 @@ process.env.DATA_DIR = './data/campanha-test'; process.env.DRY_RUN = 'false';
 process.env.META_ACCESS_TOKEN = 'tk'; process.env.META_AD_ACCOUNT_ID = 'act_1'; process.env.MAX_DAILY_BUDGET_BRL = '100';
 process.env.PUBLIC_URL = 'https://app.exemplo.com'; process.env.META_PAGE_ID = 'pg1'; process.env.INSTAGRAM_USER_ID = 'ig1';
 fs.rmSync('./data/campanha-test', { recursive: true, force: true });
-const calls = []; let falhaCriativo = false, falhaIG = false;
+const calls = []; let falhaCriativo = false, falhaIG = false, nHash = 0;
 const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url); calls.push({ u, m: opts.method || 'GET', body: opts.body });
+  if (/\/search\?.*type=adinterest/.test(u)) return j({ data: [{ id: '6003', name: 'Estética', audience_size_lower_bound: 1000000, audience_size_upper_bound: 2000000, topic: 'Beleza' }, { id: '6004', name: 'Skin care' }] });
+  if (/act_1\/customaudiences/.test(u)) return j({ data: [{ id: '900', name: 'Clientes Disco', subtype: 'CUSTOM', approximate_count_lower_bound: 1000, approximate_count_upper_bound: 1500 }, { id: '901', name: 'Visitantes do site', subtype: 'WEBSITE' }] });
+  if (/\/v1\?fields=status/.test(u)) return j({ status: { video_status: 'ready' } });
   if (/\/search\?/.test(u)) return j({ data: [{ key: '111', name: 'Recife', type: 'city', region: 'Pernambuco', country_code: 'BR' }, { key: '1', name: 'Pernambuco', type: 'region', country_code: 'BR' }] });
   if (/\/pg1\?fields=name/.test(u)) return j({ name: 'Disco Mídia' });
   if (/\/777\?fields=name,status/.test(u)) return j({ name: 'Disco | Leads', status: 'PAUSED', daily_budget: '4000' });
@@ -17,7 +20,8 @@ globalThis.fetch = async (url, opts = {}) => {
   if (/\/777\/adsets/.test(u)) return j({ data: [{ id: 's1', status: 'PAUSED' }] });
   if (/\/777\/ads/.test(u)) return j({ data: [{ id: 'a1', status: 'PAUSED' }, { id: 'a2', status: 'ACTIVE' }] });
   if (opts.method === 'POST') {
-    if (/act_1\/adimages/.test(u)) return j({ images: { bytes: { hash: 'hash123' } } });
+    if (/act_1\/adimages/.test(u)) return j({ images: { bytes: { hash: 'hash' + (++nHash) } } });
+    if (/act_1\/advideos/.test(u)) { const ph = opts.body instanceof FormData ? opts.body.get('upload_phase') : new URLSearchParams(opts.body).get('upload_phase'); if (ph === 'start') return j({ upload_session_id: 'u1', video_id: 'v1', start_offset: '0', end_offset: '5' }); if (ph === 'transfer') return j({ start_offset: '5', end_offset: '5' }); return j({ success: true }); }
     if (/act_1\/campaigns/.test(u)) return j({ id: '777' });
     if (/act_1\/adsets/.test(u)) return j({ id: 's1' });
     if (/act_1\/adcreatives/.test(u) && falhaIG && /instagram_user_id/.test(decodeURIComponent(String(opts.body)))) return j({ error: { message: 'Invalid parameter', error_user_msg: 'Conta do Instagram sem acesso', error_subcode: 2446 } }, 400);
@@ -30,6 +34,8 @@ globalThis.fetch = async (url, opts = {}) => {
 const { store } = await import('../src/store.js'); await store.init();
 const { proposeAction, approveAction } = await import('../src/guardrails.js');
 const { getPlatformTool } = await import('../src/registry.js');
+const { videoCaminho, videoExiste } = await import('../src/videos.js');
+const { sugerirPublico } = await import('../src/segmentacao.js');
 let fails = 0; const ok = (c, m) => { console.log(`${c ? 'OK  ' : 'FALHA'} ${m}`); if (!c) fails++; };
 const T = getPlatformTool('meta_subir_campanha_completa');
 const base = { nome: 'Disco | Leads', objetivo: 'OUTCOME_TRAFFIC', orcamento_diario_brl: 40, texto_principal: 'Texto do anúncio', imagem_url: 'https://app.exemplo.com/media/abc', url_destino: 'https://disco.com', cliente: 'Disco' };
@@ -122,7 +128,7 @@ const ap2 = await approveAction(r.id, 'admin');
 ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
 ok(/adimages$/.test(ps2[0].u) && g(0).get('bytes') === 'QUJD' && /adcreatives$/.test(ps2[1].u) && /campaigns$/.test(ps2[2].u), 'a imagem sobe ao Meta (bytes) antes de tudo');
 const ld = JSON.parse(g(1).get('object_story_spec')).link_data;
-ok(ld.image_hash === 'hash123' && !ld.picture, 'o criativo usa o hash devolvido pelo Meta, não o link');
+ok(/^hash\d+$/.test(ld.image_hash) && !ld.picture, 'o criativo usa o hash devolvido pelo Meta, não o link');
 ok(ap2.resultado.imagem_apagada_do_servidor === true && !store.media(mid), 'depois de criar tudo a imagem é apagada do servidor');
 // Arte do Conteúdo (não temporária) nunca é apagada
 const fix = 'b'.repeat(32); store.setMedia(fix, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString() });
@@ -143,6 +149,58 @@ ok(igr.status === 'executado' && crs.length === 2 && /instagram_user_id/.test(de
 // Mensagens no Instagram exigem a conta vinculada: sem fallback
 falhaIG = true; r = await proposeAction(T, { ...eng, destino: 'instagram_direct' }, 't'); const igm = await approveAction(r.id, 'admin'); falhaIG = false;
 ok(igm.status === 'falhou' && /Conta do Instagram sem acesso/.test(igm.erro) && /2446/.test(igm.erro), 'Instagram Direct não usa fallback e mostra o motivo detalhado do Meta');
+
+// ---- Segmentação por perfil: interesses e públicos personalizados ----
+const BI = getPlatformTool('meta_buscar_interesses'); const bi = await BI.handler({ busca: 'estética' });
+ok(bi[0].id === '6003' && bi[0].tamanho_max === 2000000, 'busca de interesses devolve id, nome e tamanho');
+const LP = getPlatformTool('meta_listar_publicos'); const lp2 = await LP.handler({});
+ok(lp2.length === 2 && lp2[0].id === '900' && lp2[0].nome === 'Clientes Disco', 'lista os públicos personalizados da conta');
+m0 = calls.length; r = await proposeAction(T, { ...base, interesses: ['estética', '555|Harmonização'], publicos_personalizados: ['clientes disco'], publicos_excluidos: ['900|Cliente antigo'.replace('900', '901')] }, 't');
+ok(r.status === 'pendente_aprovacao' && /Interesses: Estética, Harmonização/.test(r.avisos.join(' ')) && /Públicos personalizados: Clientes Disco/.test(r.avisos.join(' ')) && /Exclui: Cliente antigo/.test(r.avisos.join(' ')), 'a aprovação mostra interesses e públicos');
+await approveAction(r.id, 'admin');
+const tgt = JSON.parse(new URLSearchParams(calls.slice(m0).filter((c) => c.m === 'POST' && /adsets$/.test(c.u))[0].body).get('targeting'));
+ok(tgt.flexible_spec[0].interests.length === 2 && tgt.flexible_spec[0].interests[0].id === '6003' && tgt.flexible_spec[0].interests[1].id === '555' && tgt.custom_audiences[0].id === '900' && tgt.excluded_custom_audiences[0].id === '901', 'o conjunto leva interesses, público incluído e público excluído');
+r = await proposeAction(T, { ...base, publicos_personalizados: ['900|A'], publicos_excluidos: ['900|A'] }, 't');
+ok(r.status === 'bloqueado' && /incluído e excluído/.test(r.motivos.join(' ')), 'o mesmo público não pode ser incluído e excluído');
+r = await proposeAction(T, { ...base, publicos_personalizados: ['inexistente xyz'] }, 't');
+ok(r.status === 'bloqueado' && /Não achei o público/.test(r.motivos.join(' ')), 'público que não existe na conta é recusado com explicação');
+const sg = await sugerirPublico('mulheres de 30 a 45 anos, estética facial, skin care');
+ok(sg.genero === 'feminino' && sg.idade_min === 30 && sg.idade_max === 45 && sg.interesses.some((x) => x.id === '6003'), 'perfil em texto vira gênero, idade e interesses reais (sem IA)');
+ok((await sugerirPublico('oi')).error, 'descrição curta demais é recusada');
+
+// ---- Carrossel ----
+r = await proposeAction(T, { ...base, imagens_urls: ['https://x.com/1.jpg'] }, 't');
+ok(r.status === 'bloqueado' && /2 a 10/.test(r.motivos.join(' ')), 'carrossel com 1 imagem é bloqueado');
+m0 = calls.length; r = await proposeAction(T, { ...base, titulo: 'Título', imagens_urls: ['https://x.com/1.jpg', 'https://x.com/2.jpg', 'https://x.com/3.jpg'] }, 't');
+ok(r.status === 'pendente_aprovacao' && /carrossel de 3 imagens/.test(r.resumo), 'resumo identifica o carrossel');
+await approveAction(r.id, 'admin');
+let cs = JSON.parse(new URLSearchParams(calls.slice(m0).filter((c) => c.m === 'POST' && /adcreatives$/.test(c.u))[0].body).get('object_story_spec')).link_data;
+ok(cs.child_attachments.length === 3 && cs.child_attachments[2].picture === 'https://x.com/3.jpg' && cs.child_attachments[0].name === 'Título' && cs.multi_share_optimized === true && cs.link === base.url_destino, 'criativo de carrossel com um cartão por imagem');
+const c1 = 'f'.repeat(32), c2 = '1'.repeat(32);
+for (const id of [c1, c2]) store.setMedia(id, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });
+m0 = calls.length; r = await proposeAction(T, { ...base, imagens_urls: [`https://app.exemplo.com/media/${c1}`, `https://app.exemplo.com/media/${c2}`] }, 't'); const apc = await approveAction(r.id, 'admin');
+cs = JSON.parse(new URLSearchParams(calls.slice(m0).filter((c) => c.m === 'POST' && /adcreatives$/.test(c.u))[0].body).get('object_story_spec')).link_data;
+ok(calls.slice(m0).filter((c) => /adimages$/.test(c.u)).length === 2 && cs.child_attachments.every((x) => /^hash\d+$/.test(x.image_hash) && !x.picture) && !store.media(c1) && !store.media(c2), 'carrossel enviado pelo painel: sobe cada imagem ao Meta e apaga todas do servidor');
+
+// ---- Vídeo ----
+r = await proposeAction(T, { ...base, video_ref: 'a1'.repeat(16), video_miniatura_url: 'https://x.com/capa.jpg' }, 't');
+ok(r.status === 'bloqueado' && /não está mais no servidor/.test(r.motivos.join(' ')), 'vídeo que sumiu do servidor é recusado');
+const vid = '2'.repeat(32); fs.writeFileSync(videoCaminho(vid), Buffer.from('12345'));
+r = await proposeAction(T, { ...base, video_ref: vid }, 't');
+ok(r.status === 'bloqueado' && /capa/.test(r.motivos.join(' ')), 'vídeo sem capa é bloqueado');
+const capa = '3'.repeat(32); store.setMedia(capa, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });
+m0 = calls.length; r = await proposeAction(T, { ...base, titulo: 'Reels', video_ref: vid, video_miniatura_url: `https://app.exemplo.com/media/${capa}` }, 't');
+ok(r.status === 'pendente_aprovacao' && /criativo video/.test(r.resumo) && videoExiste(vid), 'proposta de vídeo mantém o arquivo até a aprovação');
+const apv = await approveAction(r.id, 'admin'); const pv = calls.slice(m0).filter((c) => c.m === 'POST');
+const ordem = pv.map((c) => c.u.split('/').pop().split('?')[0]).join(',');
+ok(apv.status === 'executado' && /^adimages,advideos,advideos,advideos,adcreatives,campaigns,adsets,ads$/.test(ordem), 'ordem: capa → vídeo (início, bloco, fim) → criativo → campanha → conjunto → anúncio');
+const vd = JSON.parse(new URLSearchParams(pv.find((c) => /adcreatives$/.test(c.u)).body).get('object_story_spec')).video_data;
+ok(vd.video_id === 'v1' && /^hash\d+$/.test(vd.image_hash) && vd.title === 'Reels' && vd.call_to_action.type === 'LEARN_MORE', 'criativo de vídeo usa o video_id e a capa enviada ao Meta');
+ok(apv.resultado.video_apagado_do_servidor === true && !videoExiste(vid) && !store.media(capa), 'vídeo e capa são apagados do servidor depois');
+const vid2 = '4'.repeat(32); fs.writeFileSync(videoCaminho(vid2), Buffer.from('12345'));
+falhaCriativo = true; r = await proposeAction(T, { ...base, video_ref: vid2, video_miniatura_url: 'https://x.com/capa.jpg' }, 't'); const badv = await approveAction(r.id, 'admin'); falhaCriativo = false;
+ok(badv.status === 'falhou' && videoExiste(vid2), 'se o Meta recusar o criativo, o vídeo fica guardado para tentar de novo');
+fs.unlinkSync(videoCaminho(vid2));
 
 // ativação
 const A = getPlatformTool('meta_ativar_estrutura');

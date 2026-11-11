@@ -1,7 +1,9 @@
 // Helper de HTTP com erro legível. Falha explícita quando a plataforma não está configurada.
-export async function httpJson(url, { method = 'GET', headers = {}, body, form } = {}) {
+export async function httpJson(url, { method = 'GET', headers = {}, body, form, formData } = {}) {
   const opts = { method, headers: { ...headers } };
-  if (form) {
+  if (formData) {
+    opts.body = formData; // multipart: o fetch define o content-type com o boundary
+  } else if (form) {
     opts.headers['content-type'] = 'application/x-www-form-urlencoded';
     opts.body = new URLSearchParams(form).toString();
   } else if (body !== undefined) {

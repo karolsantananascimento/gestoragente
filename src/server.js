@@ -23,6 +23,8 @@ import { runCommand } from './commands.js';
 import { criarRascunhoDoPedido } from './rascunho.js';
 import { verifyGoogleIdToken } from './googleAuth.js';
 import { allTools, callTool } from './tools.js';
+import { salvarVideo, limparVideos, MAX_VIDEO, TIPOS_VIDEO } from './videos.js';
+import { sugerirPublico } from './segmentacao.js';
 import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
@@ -474,11 +476,26 @@ app.get('/media/:id', (req, res) => {
   res.set('content-type', m.type).set('cache-control', 'public, max-age=86400').send(Buffer.from(m.data, 'base64'));
 });
 
+// Caixa "perfil do público": a IA traduz a descrição em idade, gênero e interesses reais do Meta.
+app.post('/api/segmentacao/sugerir', requireUser, async (req, res) => {
+  try { const r = await sugerirPublico(req.body?.descricao); res.status(r.error ? 400 : 200).json(r); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Vídeo de criativo: o corpo é o próprio arquivo (MP4/MOV), gravado em disco em stream. Sobe ao Meta na aprovação e é apagado em seguida.
+app.post('/api/media/video', requireUser, async (req, res) => {
+  const tipo = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (!TIPOS_VIDEO.includes(tipo)) return res.status(400).json({ error: 'Envie um vídeo MP4 ou MOV.' });
+  if (Number(req.headers['content-length'] || 0) > MAX_VIDEO) return res.status(413).json({ error: 'O vídeo passa de 100 MB. Comprima ou corte antes de enviar.' });
+  try { const v = await salvarVideo(req); res.json({ id: v.id, mb: Math.round(v.bytes / 1048576 * 10) / 10 }); }
+  catch (e) { if (!res.headersSent) res.status(400).json({ error: e.message }); }
+});
+
 app.use(express.static(path.join(here, '..', 'public'), { setHeaders: (res, f) => { if (/\.html$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } })); // o painel sempre carrega a versão mais nova
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { // criativos de campanha enviados e nunca usados somem em 48 h
-  const limpar = () => { try { const n = store.limparMediaTemp(48 * 3600e3); if (n) console.log(`[media] ${n} criativo(s) temporário(s) apagado(s)`); } catch (e) { console.error('[media]', e.message); } };
+  const limpar = () => { try { const v = limparVideos(48 * 3600e3); if (v) console.log(`[media] ${v} vídeo(s) temporário(s) apagado(s)`); const n = store.limparMediaTemp(48 * 3600e3); if (n) console.log(`[media] ${n} criativo(s) temporário(s) apagado(s)`); } catch (e) { console.error('[media]', e.message); } };
   limpar(); setInterval(limpar, 3600e3).unref();
 }
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }

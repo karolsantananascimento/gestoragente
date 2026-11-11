@@ -457,7 +457,7 @@
       <h3>1. Campanha</h3>
       <label>Nome<input name="nome" required placeholder="Ex.: Disco | Leads | Nov"></label>
       <div class="grid2">
-        <label>Objetivo<select name="objetivo"><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Leads (contatos)</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option><option value="OUTCOME_ENGAGEMENT">Engajamento e mensagens (Instagram / Facebook)</option></select></label>
+        <label>Objetivo<select name="objetivo"><option value="OUTCOME_ENGAGEMENT">Engajamento e mensagens (Instagram / Facebook)</option><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Conversão · Leads (contatos)</option><option value="OUTCOME_SALES">Conversão · Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option></select></label>
         <label>Orçamento por dia (R$)<input name="orc" type="number" min="1" step="1" required placeholder="40"></label>
         <label id="lbDestino">Destino<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option><option value="post">Engajamento no anúncio (curtidas e comentários)</option><option value="instagram_facebook">Envio de mensagens no Instagram e no Facebook</option><option value="messenger">Envio de mensagens só no Facebook (Messenger)</option><option value="instagram_direct">Envio de mensagens só no Instagram (Direct)</option></select></label>
         <label id="lbUrl">Link de destino<input name="url" type="url" placeholder="https://..."></label>
@@ -480,6 +480,19 @@
         <label>Idade máxima<input name="imax" type="number" min="13" max="65" value="65"></label>
         <label>Início (opcional)<input name="inicio" type="datetime-local"></label>
         <label>Término (opcional)<input name="fim" type="datetime-local"></label>
+        <div style="grid-column:1/-1">
+          <div class="lbl2" style="margin-top:6px">Perfil do público</div>
+          <textarea id="perfilTxt" rows="3" placeholder="Descreva quem você quer alcançar. Ex.: mulheres de 30 a 45 anos que cuidam da pele e já fizeram procedimentos estéticos"></textarea>
+          <div class="row" style="margin-top:6px"><button type="button" class="ghost" id="perfilBtn">✨ Sugerir segmentação</button><input id="intQ" placeholder="ou busque um interesse" style="flex:1"><button type="button" class="ghost" id="intBuscar">🔎</button></div>
+          <div id="intRes" class="chips" style="margin-top:6px"></div>
+          <div id="intChips" class="chips" style="margin-top:8px"></div>
+          <div class="note" id="perfilNota">A IA liga o perfil aos interesses reais do Meta e ajusta idade e gênero. Você pode tirar qualquer interesse com o ✕.</div>
+        </div>
+        <div style="grid-column:1/-1">
+          <div class="lbl2" style="margin-top:6px">Públicos personalizados</div>
+          <div class="row"><button type="button" class="ghost" id="pubCarregar">📂 Carregar públicos da conta</button></div>
+          <div id="pubLista" style="margin-top:6px"></div>
+        </div>
       </div>
     </div>
     <div class="sec">
@@ -490,10 +503,23 @@
         <label>Botão<select name="cta"><option value="LEARN_MORE">Saiba mais</option><option value="SIGN_UP">Cadastre-se</option><option value="SHOP_NOW">Comprar</option><option value="CONTACT_US">Fale conosco</option><option value="GET_QUOTE">Solicitar orçamento</option><option value="SUBSCRIBE">Assinar</option><option value="DOWNLOAD">Baixar</option><option value="APPLY_NOW">Inscreva-se</option></select></label>
       </div>
       <label>Descrição curta (opcional)<input name="descricao" maxlength="120"></label>
-      <div class="lbl2">Imagem do anúncio</div>
-      <div class="note">A imagem enviada daqui sobe direto ao Meta e é apagada do nosso servidor assim que a campanha é criada.</div>
-      <div class="row"><button type="button" class="ghost" id="campImg">📤 Enviar imagem</button><select id="campArte" title="Usar a arte de um conteúdo"><option value="">…ou usar uma arte do Conteúdo</option></select></div>
-      <img id="campPrev" class="hidden" alt="Prévia" style="max-height:160px;border-radius:10px;border:1px solid var(--line);margin-top:8px">
+      <div class="lbl2">Criativo do anúncio</div>
+      <label>Formato<select name="tipo_criativo"><option value="imagem">Imagem</option><option value="carrossel">Carrossel (2 a 10 imagens)</option><option value="video">Vídeo</option></select></label>
+      <div class="note">O que você envia daqui sobe direto ao Meta e é apagado do nosso servidor assim que a campanha é criada.</div>
+      <div id="cbImagem">
+        <div class="row"><button type="button" class="ghost" id="campImg">📤 Enviar imagem</button><select id="campArte" title="Usar a arte de um conteúdo"><option value="">…ou usar uma arte do Conteúdo</option></select></div>
+        <img id="campPrev" class="hidden" alt="Prévia" style="max-height:160px;border-radius:10px;border:1px solid var(--line);margin-top:8px">
+      </div>
+      <div id="cbCarrossel" class="hidden">
+        <div class="row"><button type="button" class="ghost" id="campCar">📤 Enviar imagens do carrossel</button></div>
+        <div class="note">Escolha de 2 a 10 imagens de uma vez; a ordem é a do nome do arquivo.</div>
+        <div id="campCarPrev" class="chips" style="margin-top:8px"></div>
+      </div>
+      <div id="cbVideo" class="hidden">
+        <div class="row"><button type="button" class="ghost" id="campVid">🎬 Enviar vídeo (MP4 ou MOV, até 100 MB)</button></div>
+        <video id="campVidPrev" class="hidden" controls muted playsinline style="max-height:220px;border-radius:10px;margin-top:8px"></video>
+        <div class="note" id="campVidInfo"></div>
+      </div>
       <input type="hidden" name="imagem">
     </div>
     <div class="err" id="campErr"></div>
@@ -976,8 +1002,101 @@ async function locBuscar() {
 }
 $('#locBuscar').onclick = locBuscar;
 $('#locQ').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); locBuscar(); } };
+/* segmentação por perfil: interesses do Meta + públicos personalizados */
+let campInts = [];
+const fmtTam = (l) => { const n = l.tamanho_max || l.tamanho_min; return n ? ' · ~' + (n >= 1e6 ? (n / 1e6).toFixed(1).replace('.', ',') + ' mi' : Math.round(n / 1e3) + ' mil') : ''; };
+function intDesenhar() {
+  const box = $('#intChips'); box.textContent = '';
+  for (const i of campInts) {
+    const c = mkEl('span', i.nome + ' ', 'chip fmt'); const x = mkEl('button', '✕', 'ghost'); x.type = 'button'; x.style.cssText = 'padding:0 6px;min-height:20px;margin-left:4px';
+    x.onclick = () => { campInts = campInts.filter((y) => y.id !== i.id); intDesenhar(); }; c.appendChild(x); box.appendChild(c);
+  }
+}
+const intAdd = (l) => { if (!campInts.some((y) => y.id === l.id) && campInts.length < 25) campInts.push({ id: l.id, nome: l.nome }); intDesenhar(); };
+function intOpcoes(lista) {
+  const res = $('#intRes'); res.textContent = '';
+  for (const l of lista) { const b = mkEl('button', l.nome + fmtTam(l), 'ghost'); b.type = 'button'; b.onclick = () => intAdd(l); res.appendChild(b); }
+}
+$('#perfilBtn').onclick = async () => {
+  const d = $('#perfilTxt').value.trim(); if (d.length < 5) return toast('Descreva o perfil do público.', 'bad');
+  const b = $('#perfilBtn'); b.disabled = true; $('#perfilNota').textContent = 'Analisando o perfil e consultando o Meta…';
+  try {
+    const r = await api('/api/segmentacao/sugerir', { method: 'POST', body: JSON.stringify({ descricao: d }) }); const f = campForm();
+    if (r.idade_min) f.imin.value = r.idade_min; if (r.idade_max) f.imax.value = r.idade_max; if (r.genero) f.genero.value = r.genero;
+    campInts = []; for (const l of r.interesses.slice(0, 15)) intAdd(l); intOpcoes(r.interesses.slice(15));
+    $('#perfilNota').textContent = `${r.interesses.length ? r.interesses.length + ' interesses encontrados no Meta' : 'Nenhum interesse encontrado: tente descrever de outro jeito ou busque abaixo'}${r.idade_min || r.genero ? '; idade e gênero ajustados' : ''}. ${r.aviso || ''}`.trim();
+  } catch (e) { $('#perfilNota').textContent = e.message; }
+  b.disabled = false;
+};
+async function intBuscar() {
+  const q = $('#intQ').value.trim(); if (q.length < 2) return;
+  try { const r = await api('/api/tool', { method: 'POST', body: JSON.stringify({ name: 'meta_buscar_interesses', args: { busca: q } }) }); if (!Array.isArray(r)) return toast(r?.erro || 'Não consegui buscar agora.', 'bad'); intOpcoes(r); if (!r.length) toast('Nada encontrado.'); } catch (e) { toast(e.message, 'bad'); }
+}
+$('#intBuscar').onclick = intBuscar; $('#intQ').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); intBuscar(); } };
+let campPubs = {};
+async function pubCarregar() {
+  const box = $('#pubLista'); box.textContent = 'Carregando…';
+  try {
+    const r = await api('/api/tool', { method: 'POST', body: JSON.stringify({ name: 'meta_listar_publicos', args: { ad_account_id: $('#tAcc').value || undefined } }) });
+    box.textContent = ''; if (!Array.isArray(r)) { box.textContent = r?.erro || 'Não consegui carregar os públicos agora.'; return; }
+    if (!r.length) { box.textContent = 'Esta conta não tem públicos personalizados.'; return; }
+    for (const p of r) {
+      const row = mkEl('div', null, 'row'); const nome = mkEl('span', p.nome + fmtTam(p)); nome.style.flex = '1';
+      const sel = document.createElement('select'); sel.style.maxWidth = '150px';
+      for (const [v, t] of [['', 'Não usar'], ['inc', 'Incluir'], ['exc', 'Excluir']]) { const o = mkEl('option', t); o.value = v; sel.appendChild(o); }
+      sel.value = campPubs[p.id]?.modo || '';
+      sel.onchange = () => { if (sel.value) campPubs[p.id] = { nome: p.nome, modo: sel.value }; else delete campPubs[p.id]; };
+      row.append(nome, sel); box.appendChild(row);
+    }
+  } catch (e) { box.textContent = e.message; }
+}
+$('#pubCarregar').onclick = pubCarregar;
+/* criativo: imagem, carrossel ou vídeo */
+let campCar = [], campVid = null;
+function campTipo() { const t = campForm().tipo_criativo.value; show($('#cbImagem'), t === 'imagem'); show($('#cbCarrossel'), t === 'carrossel'); show($('#cbVideo'), t === 'video'); }
+$('#campForm').elements.tipo_criativo.onchange = campTipo;
+function carDesenhar() {
+  const box = $('#campCarPrev'); box.textContent = '';
+  campCar.forEach((c, i) => {
+    const w = mkEl('span', null, 'chip'); w.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px';
+    const im = document.createElement('img'); im.src = c.url; im.referrerPolicy = 'no-referrer'; im.style.cssText = 'height:64px;border-radius:6px'; const x = mkEl('button', '✕', 'ghost'); x.type = 'button'; x.style.cssText = 'padding:0 6px;min-height:20px';
+    x.onclick = () => { campCar.splice(i, 1); carDesenhar(); }; w.append(mkEl('span', String(i + 1)), im, x); box.appendChild(w);
+  });
+}
+$('#campCar').onclick = async () => {
+  const files = await pickImages(true); if (!files.length) return;
+  if (campCar.length + files.length > 10) { $('#campErr').textContent = 'O carrossel aceita no máximo 10 imagens.'; return; }
+  try { for (const [i, file] of files.entries()) { toast(`Enviando imagem ${i + 1} de ${files.length}…`); const r = await api('/api/media/upload', { method: 'POST', body: JSON.stringify({ file, efemera: true }) }); campCar.push({ url: r.url }); carDesenhar(); } }
+  catch (e) { $('#campErr').textContent = e.message; }
+};
+function capaDoVideo(file) {
+  return new Promise((ok, no) => {
+    const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.playsInline = true; const u = URL.createObjectURL(file); v.src = u;
+    v.onerror = () => { URL.revokeObjectURL(u); no(new Error('Não consegui ler este vídeo. Use MP4 (H.264) ou MOV.')); };
+    v.onloadedmetadata = () => { v.currentTime = Math.min(1, (v.duration || 2) / 2); };
+    v.onseeked = () => { const sc = Math.min(1, 1080 / Math.max(v.videoWidth, 1)); const cv = document.createElement('canvas'); cv.width = Math.round(v.videoWidth * sc); cv.height = Math.round(v.videoHeight * sc); cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height); URL.revokeObjectURL(u); ok(cv.toDataURL('image/jpeg', 0.9)); };
+  });
+}
+$('#campVid').onclick = () => {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'video/mp4,video/quicktime,.mp4,.mov';
+  inp.onchange = async () => {
+    const file = inp.files[0]; if (!file) return; const info = $('#campVidInfo'); $('#campErr').textContent = '';
+    if (file.size > 100 * 1048576) { $('#campErr').textContent = 'O vídeo passa de 100 MB. Comprima ou corte antes de enviar.'; return; }
+    try {
+      info.textContent = 'Gerando a capa…'; const capa = await capaDoVideo(file);
+      const t = await api('/api/media/upload', { method: 'POST', body: JSON.stringify({ file: capa, efemera: true }) });
+      info.textContent = `Enviando o vídeo (${(file.size / 1048576).toFixed(1)} MB), pode levar alguns minutos. Não feche esta janela…`;
+      const r = await fetch('/api/media/video', { method: 'POST', headers: { 'content-type': file.type || 'video/mp4', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: file });
+      const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Erro ' + r.status);
+      campVid = { id: d.id, thumb: t.url }; const pv = $('#campVidPrev'); pv.src = URL.createObjectURL(file); show(pv, true);
+      info.textContent = `${file.name} enviado (${d.mb} MB). A capa foi tirada do próprio vídeo.`;
+    } catch (e) { info.textContent = ''; $('#campErr').textContent = e.message; }
+  };
+  inp.click();
+};
 $('#campNew').onclick = async () => {
   $('#campForm').reset(); $('#campErr').textContent = ''; campImagem(''); campRefresh(); campLocs = []; locDesenhar(); $('#locRes').textContent = '';
+  campInts = []; intDesenhar(); $('#intRes').textContent = ''; campPubs = {}; $('#pubLista').textContent = ''; campCar = []; carDesenhar(); campVid = null; show($('#campVidPrev'), false); $('#campVidInfo').textContent = ''; campTipo();
   show($('#campModal'), true);
   const sel = $('#campArte'); sel.length = 1;
   try { const r = await api('/api/content?' + qc()); for (const it of r.items.filter((x) => x.arte_url && !['cancelado'].includes(x.status))) { const o = mkEl('option', it.titulo.slice(0, 60)); o.value = (it.arte_urls?.length ? it.arte_urls[0] : it.arte_url); sel.appendChild(o); } } catch {}
@@ -991,9 +1110,16 @@ $('#campImg').onclick = async () => {
 };
 $('#campForm').onsubmit = async (e) => {
   e.preventDefault(); $('#campErr').textContent = ''; const f = campForm();
-  if (!f.imagem.value) { $('#campErr').textContent = 'Envie ou escolha a imagem do anúncio.'; return; }
+  const tipoC = f.tipo_criativo.value;
+  if (tipoC === 'imagem' && !f.imagem.value) { $('#campErr').textContent = 'Envie ou escolha a imagem do anúncio.'; return; }
+  if (tipoC === 'carrossel' && (campCar.length < 2 || campCar.length > 10)) { $('#campErr').textContent = 'O carrossel precisa de 2 a 10 imagens.'; return; }
+  if (tipoC === 'video' && !campVid) { $('#campErr').textContent = 'Envie o vídeo do anúncio.'; return; }
   if (!campLocs.length && !confirm('Nenhuma cidade ou estado foi escolhido: a campanha vai para o país inteiro (' + (f.paises.value || 'BR') + '). Continuar assim?')) return;
-  const args = { nome: f.nome.value.trim(), objetivo: f.objetivo.value, orcamento_diario_brl: Number(f.orc.value), destino: f.destino.value, texto_principal: f.texto.value.trim(), imagem_url: f.imagem.value, cta: f.cta.value, paises: f.paises.value.split(/[\s,;]+/).filter(Boolean), localizacoes: campLocs.map((l) => `${l.tipo}|${l.chave}|${l.tipo === 'city' ? l.raio : ''}|${l.nome}${l.regiao ? ', ' + l.regiao : ''}`), idade_min: Number(f.imin.value) || 18, idade_max: Number(f.imax.value) || 65, genero: f.genero.value, cliente: CUR, ad_account_id: $('#tAcc').value || undefined };
+  const args = { nome: f.nome.value.trim(), objetivo: f.objetivo.value, orcamento_diario_brl: Number(f.orc.value), destino: f.destino.value, texto_principal: f.texto.value.trim(), cta: f.cta.value, paises: f.paises.value.split(/[\s,;]+/).filter(Boolean), localizacoes: campLocs.map((l) => `${l.tipo}|${l.chave}|${l.tipo === 'city' ? l.raio : ''}|${l.nome}${l.regiao ? ', ' + l.regiao : ''}`), idade_min: Number(f.imin.value) || 18, idade_max: Number(f.imax.value) || 65, genero: f.genero.value, cliente: CUR, ad_account_id: $('#tAcc').value || undefined };
+  if (tipoC === 'imagem') args.imagem_url = f.imagem.value; else if (tipoC === 'carrossel') args.imagens_urls = campCar.map((c) => c.url); else { args.video_ref = campVid.id; args.video_miniatura_url = campVid.thumb; }
+  if (campInts.length) args.interesses = campInts.map((i) => `${i.id}|${i.nome}`);
+  const pubsDe = (m) => Object.entries(campPubs).filter(([, v]) => v.modo === m).map(([id, v]) => `${id}|${v.nome}`);
+  if (pubsDe('inc').length) args.publicos_personalizados = pubsDe('inc'); if (pubsDe('exc').length) args.publicos_excluidos = pubsDe('exc');
   if (f.destino.value === 'site') args.url_destino = f.url.value.trim();
   if (f.pixel.value.trim()) args.pixel_id = f.pixel.value.trim();
   if (f.titulo.value.trim()) args.titulo = f.titulo.value.trim(); if (f.descricao.value.trim()) args.descricao = f.descricao.value.trim();

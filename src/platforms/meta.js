@@ -1,7 +1,9 @@
 import { config } from '../config.js';
 import { httpJson, NotConfigured } from '../http.js';
 import { contasDe } from './social.js';
+import fs from 'node:fs';
 import { store } from '../store.js';
+import { videoExiste, videoCaminho, videoTamanho, apagarVideo } from '../videos.js';
 
 // Só o token é obrigatório. A conta de anúncio pode vir de META_AD_ACCOUNT_ID ou ser informada em cada chamada.
 function requireMeta() {
@@ -64,6 +66,22 @@ export const metaTools = [
         gasto_vitalicio: fromMinor(a.amount_spent, a.currency), // total desde a criação da conta, NÃO é o gasto do período
       }));
     },
+  },
+  {
+    name: 'meta_buscar_interesses',
+    platform: 'meta',
+    risk: 'read',
+    description: 'Busca interesses de segmentação no Meta a partir de um termo (ex.: "estética facial", "harmonização"). Devolve id, nome e tamanho estimado. Use para ligar o perfil do público que o usuário descreveu aos interesses reais do Meta.',
+    params: { busca: { type: 'string', desc: 'Termo do interesse', required: true } },
+    handler: async ({ busca }) => buscarInteresses(busca),
+  },
+  {
+    name: 'meta_listar_publicos',
+    platform: 'meta',
+    risk: 'read',
+    description: 'Lista os públicos personalizados da conta de anúncio do Meta (id, nome, tipo e tamanho estimado) para incluir ou excluir na segmentação.',
+    params: { ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' } },
+    handler: async ({ ad_account_id }) => listarPublicos(ad_account_id),
   },
   {
     name: 'meta_buscar_localizacoes',
@@ -257,6 +275,75 @@ async function resolverGeo(a) {
   return { geo: { ...(cities.length ? { cities } : {}), ...(regions.length ? { regions } : {}) }, resumo: locs.map(rotuloLoc) };
 }
 
+// ---------- Segmentação por interesses e públicos personalizados ----------
+export async function buscarInteresses(q) {
+  const r = await get('search', { type: 'adinterest', q: String(q), limit: '6', locale: 'pt_BR' });
+  return (r.data || []).map((x) => ({ id: String(x.id), nome: x.name, tamanho_min: x.audience_size_lower_bound ?? null, tamanho_max: x.audience_size_upper_bound ?? null, topico: x.topic || null }));
+}
+export async function listarPublicos(adAccountId) {
+  const rows = await getAll(`${acct(adAccountId)}/customaudiences`, { fields: 'id,name,subtype,approximate_count_lower_bound,approximate_count_upper_bound', limit: '100' });
+  return rows.map((x) => ({ id: String(x.id), nome: x.name, tipo: x.subtype || null, tamanho_min: x.approximate_count_lower_bound ?? null, tamanho_max: x.approximate_count_upper_bound ?? null }));
+}
+// Cada item é um nome ("estética facial") que o servidor resolve no Meta, ou "<id>|<nome>" já escolhido no painel.
+const tokId = (t) => { const m = /^(\d+)(?:\|(.*))?$/.exec(String(t).trim()); return m ? { id: m[1], nome: m[2] || '' } : null; };
+async function resolverPublico(a) {
+  const interests = []; const vistos = new Set();
+  for (const t of a.interesses || []) {
+    const k = tokId(t); let it;
+    if (k) it = { id: k.id, name: k.nome || k.id };
+    else { const r = await buscarInteresses(t); if (!r[0]) throw new Error(`Não encontrei o interesse "${t}" no Meta. Use meta_buscar_interesses para ver as opções.`); it = { id: r[0].id, name: r[0].nome }; }
+    if (!vistos.has(it.id)) { vistos.add(it.id); interests.push(it); }
+  }
+  let todos;
+  const pubs = async (lista) => {
+    const out = [];
+    for (const t of lista || []) {
+      const k = tokId(t); if (k) { out.push({ id: k.id, name: k.nome || k.id }); continue; }
+      todos ||= await listarPublicos(a.ad_account_id);
+      const x = todos.find((p) => semAcento(p.nome) === semAcento(t)) || todos.find((p) => semAcento(p.nome).includes(semAcento(t)));
+      if (!x) throw new Error(`Não achei o público personalizado "${t}" nesta conta. Use meta_listar_publicos para ver os nomes.`);
+      out.push({ id: x.id, name: x.nome });
+    }
+    return out;
+  };
+  const inc = await pubs(a.publicos_personalizados); const exc = await pubs(a.publicos_excluidos);
+  if (inc.some((x) => exc.some((y) => y.id === x.id))) throw new Error('Um mesmo público não pode estar incluído e excluído ao mesmo tempo.');
+  const resumo = [];
+  if (interests.length) resumo.push(`Interesses: ${interests.map((i) => i.name).join(', ')}`);
+  if (inc.length) resumo.push(`Públicos personalizados: ${inc.map((i) => i.name).join(', ')}`);
+  if (exc.length) resumo.push(`Exclui: ${exc.map((i) => i.name).join(', ')}`);
+  return { interests, inc, exc, resumo };
+}
+
+// Envio resumível de vídeo ao Meta (início → blocos → fim), lendo o arquivo temporário em pedaços.
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+async function subirVideo(conta, ref, titulo) {
+  const m = requireMeta(); const url = `${base()}/${conta}/advideos`;
+  const ini = await httpJson(url, { method: 'POST', form: { upload_phase: 'start', file_size: String(videoTamanho(ref)), access_token: m.token } });
+  const sessao = ini.upload_session_id, videoId = ini.video_id;
+  if (!sessao || !videoId) throw new Error('O Meta não abriu a sessão de envio do vídeo');
+  let ini_ = Number(ini.start_offset), fim = Number(ini.end_offset);
+  const fd = await fs.promises.open(videoCaminho(ref), 'r');
+  try {
+    for (let i = 0; ini_ < fim && i < 5000; i++) {
+      const buf = Buffer.alloc(fim - ini_); await fd.read(buf, 0, buf.length, ini_);
+      const f = new FormData();
+      f.append('upload_phase', 'transfer'); f.append('upload_session_id', String(sessao)); f.append('start_offset', String(ini_)); f.append('access_token', m.token);
+      f.append('video_file_chunk', new Blob([buf]), 'bloco.mp4');
+      const r = await httpJson(url, { method: 'POST', formData: f });
+      const prox = Number(r.start_offset); if (!(prox > ini_) && prox !== Number(r.end_offset)) throw new Error('O Meta não avançou no recebimento do vídeo');
+      ini_ = prox; fim = Number(r.end_offset);
+    }
+  } finally { await fd.close(); }
+  await httpJson(url, { method: 'POST', form: { upload_phase: 'finish', upload_session_id: String(sessao), title: String(titulo || 'Vídeo'), access_token: m.token } });
+  for (let i = 0; i < 20; i++) { // espera o processamento (até ~1 min); se demorar, segue: o anúncio só entra no ar depois
+    const st = await get(videoId, { fields: 'status' }); const v = st.status?.video_status;
+    if (v === 'ready') break; if (v === 'error') throw new Error('O Meta não conseguiu processar o vídeo (formato ou codec não aceito)');
+    await dormir(3000);
+  }
+  return videoId;
+}
+
 // ---------- Fluxo completo: campanha → conjunto → criativo → anúncio (tudo PAUSADO, uma única aprovação) ----------
 const OBJ_FLUXO = {
   OUTCOME_TRAFFIC: { goal: 'LINK_CLICKS', rotulo: 'Tráfego' },
@@ -284,6 +371,7 @@ const midiaLocal = (url) => {
 const CTAS = ['LEARN_MORE', 'SIGN_UP', 'SHOP_NOW', 'CONTACT_US', 'GET_QUOTE', 'SUBSCRIBE', 'DOWNLOAD', 'APPLY_NOW', 'BOOK_TRAVEL'];
 const httpsUrl = (u) => /^https:\/\/[^\s]+$/i.test(String(u || ''));
 const pixelDe = (a) => a.pixel_id || config.meta.pixelId || '';
+const criativoDe = (a) => (a.video_ref ? 'video' : (a.imagens_urls || []).length ? 'carrossel' : 'imagem');
 const paginaDe = (a) => { const c = contasDe(a.cliente); return { page: a.page_id || c.fbPageId || '', ig: c.igUserId || '' }; };
 
 function validarFluxo(a) {
@@ -292,7 +380,17 @@ function validarFluxo(a) {
   if (!o) return `Objetivo "${a.objetivo}" não é suportado no fluxo completo. Use: ${Object.keys(OBJ_FLUXO).join(', ')}.`;
   if (!(Number(a.orcamento_diario_brl) > 0)) return 'Informe o orçamento diário em reais.';
   if (!String(a.texto_principal || '').trim()) return 'Informe o texto principal do anúncio.';
-  if (!httpsUrl(a.imagem_url)) return 'A imagem do anúncio precisa ser um link https público (JPG/PNG).';
+  const tipo = criativoDe(a);
+  if (tipo === 'video') {
+    if (!videoExiste(a.video_ref)) return 'O vídeo enviado não está mais no servidor (expira em 48 h ou foi usado). Envie o vídeo de novo.';
+    if (!httpsUrl(a.video_miniatura_url)) return 'Falta a capa (miniatura) do vídeo, em link https.';
+  } else if (tipo === 'carrossel') {
+    const n = a.imagens_urls.length;
+    if (n < 2 || n > 10) return 'O carrossel precisa de 2 a 10 imagens.';
+    if (!a.imagens_urls.every(httpsUrl)) return 'Todas as imagens do carrossel precisam ser links https públicos (JPG/PNG).';
+  } else if (!httpsUrl(a.imagem_url)) return 'A imagem do anúncio precisa ser um link https público (JPG/PNG).';
+  if ((a.interesses || []).length > 25) return 'No máximo 25 interesses por campanha.';
+  if ((a.publicos_personalizados || []).length > 20 || (a.publicos_excluidos || []).length > 20) return 'No máximo 20 públicos personalizados por lista.';
   const dest = destinoDe(a);
   if (!DESTINOS.includes(dest)) return `Destino "${dest}" inválido. Use: ${DESTINOS.join(', ')}.`;
   const whats = dest === 'whatsapp', msg = !!MSG[dest], site = dest === 'site';
@@ -326,7 +424,13 @@ metaTools.push(
       objetivo: { type: 'string', enum: Object.keys(OBJ_FLUXO), desc: 'Objetivo', required: true },
       orcamento_diario_brl: { type: 'number', desc: 'Orçamento diário em reais', required: true },
       texto_principal: { type: 'string', desc: 'Texto principal do anúncio (legenda)', required: true },
-      imagem_url: { type: 'string', desc: 'Link https público da imagem (JPG/PNG) ou o link devolvido pelo envio do painel; de preferência 1080x1350 ou 1080x1080', required: true },
+      imagem_url: { type: 'string', desc: 'Criativo em IMAGEM: link https público (JPG/PNG) ou o link devolvido pelo envio do painel; de preferência 1080x1350 ou 1080x1080. Não use junto com imagens_urls ou video_ref.' },
+      imagens_urls: { type: 'string[]', desc: 'Criativo em CARROSSEL: de 2 a 10 links https de imagens (ou links devolvidos pelo envio do painel), na ordem dos cartões.' },
+      video_ref: { type: 'string', desc: 'Criativo em VÍDEO: código devolvido pelo envio de vídeo do painel (MP4/MOV até 100 MB). Exige video_miniatura_url.' },
+      video_miniatura_url: { type: 'string', desc: 'Capa do vídeo: link https de uma imagem (o painel gera sozinho a partir do vídeo).' },
+      interesses: { type: 'string[]', desc: 'Interesses do público (segmentação detalhada), ex.: ["Estética facial", "Harmonização facial"]. O servidor resolve cada nome no Meta; use meta_buscar_interesses para conferir as opções e passe também "id|nome".' },
+      publicos_personalizados: { type: 'string[]', desc: 'Públicos personalizados da conta a INCLUIR (nome ou id). Use meta_listar_publicos para ver os disponíveis.' },
+      publicos_excluidos: { type: 'string[]', desc: 'Públicos personalizados da conta a EXCLUIR (nome ou id).' },
       destino: { type: 'string', enum: DESTINOS, desc: 'Para onde o clique leva (padrão site; padrão post no objetivo Engajamento). Mensagens (messenger, instagram_direct, instagram_facebook) valem para Engajamento, Leads e Vendas.' },
       url_destino: { type: 'string', desc: 'Link https de destino (obrigatório só quando destino = site)' },
       titulo: { type: 'string', desc: 'Título do anúncio (opcional)' },
@@ -346,7 +450,7 @@ metaTools.push(
       ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
     },
     budgetBRL: (a) => Number(a.orcamento_diario_brl),
-    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct', instagram_facebook: 'Instagram e Facebook' })[destinoDe(a)] || 'site'}; público ${a.localizacoes?.length ? a.localizacoes.map(nomeDoToken).join('; ') : (a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
+    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct', instagram_facebook: 'Instagram e Facebook' })[destinoDe(a)] || 'site'}, criativo ${criativoDe(a) === 'carrossel' ? `carrossel de ${a.imagens_urls.length} imagens` : criativoDe(a)}; público ${a.localizacoes?.length ? a.localizacoes.map(nomeDoToken).join('; ') : (a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
     precheck: async (a) => {
       const erro = validarFluxo(a); if (erro) return { error: erro };
       const { page, ig } = paginaDe(a);
@@ -357,33 +461,43 @@ metaTools.push(
       const aviso = [local, `Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
       const dest = destinoDe(a);
       if (MSG[dest]) aviso.push(`Mensagens: exige que a página${dest !== 'messenger' ? ' e o Instagram' : ''} aceitem conversas (fluxo ainda não validado em conta real)`);
-      if (midiaLocal(a.imagem_url)?.temp) aviso.push('o criativo enviado sobe direto ao Meta e é apagado do nosso servidor depois');
+      const tipo = criativoDe(a);
+      if (tipo !== 'imagem') aviso.push(`criativo em ${tipo === 'video' ? 'vídeo' : 'carrossel'} (ainda não validado em conta real)`);
+      if ([a.imagem_url, ...(a.imagens_urls || []), a.video_miniatura_url].some((u) => midiaLocal(u)?.temp) || tipo === 'video') aviso.push('o criativo enviado sobe direto ao Meta e é apagado do nosso servidor depois');
+      try { const pub = await resolverPublico(a); if (pub.resumo.length) aviso.push(pub.resumo.join(' · ')); } catch (e) { return { error: e.message }; }
       if (dest === 'whatsapp') aviso.push('WhatsApp: exige número do WhatsApp Business conectado à página (fluxo ainda não validado em conta real)');
       return { warn: aviso.join(' · ') + '. Tudo será criado PAUSADO.' };
     },
     handler: async (a) => {
       const conta = acct(a.ad_account_id); const o = OBJ_FLUXO[a.objetivo]; const { page, ig } = paginaDe(a);
-      const dest = destinoDe(a); const whats = dest === 'whatsapp'; const msg = MSG[dest]; const criado = {};
-      const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { const feito = Object.entries(criado).filter(([k]) => !['imagem', 'criativo'].includes(k)); throw new Error(`Falhou na etapa "${nome}": ${e.message}.${feito.length ? ` Já criado (PAUSADO): ${feito.map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ' Nada foi criado nesta campanha; pode tentar de novo.'}`); } };
-      // Criativo enviado pelo painel: os bytes sobem direto ao Meta (image_hash) e a cópia no nosso servidor é apagada ao final.
-      const local = midiaLocal(a.imagem_url); let imagem = { picture: a.imagem_url };
-      if (local) {
-        const up = await etapa('envio da imagem ao Meta', () => post(`${conta}/adimages`, { bytes: local.data }));
+      const dest = destinoDe(a); const whats = dest === 'whatsapp'; const msg = MSG[dest]; const criado = {}; const tipo = criativoDe(a);
+      const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { const feito = Object.entries(criado).filter(([k]) => !['imagem', 'video', 'criativo'].includes(k)); throw new Error(`Falhou na etapa "${nome}": ${e.message}.${feito.length ? ` Já criado (PAUSADO): ${feito.map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ' Nada foi criado nesta campanha; pode tentar de novo.'}`); } };
+      // 1) Local e público: falha cedo, antes de enviar qualquer mídia
+      const geoLoc = await etapa('localização do público', () => resolverGeo(a));
+      const pub = await etapa('segmentação por interesses e públicos', () => resolverPublico(a));
+      // 2) Mídia enviada pelo painel: sobe direto ao Meta (image_hash / video_id) e a cópia no nosso servidor é apagada ao final.
+      const urls = tipo === 'carrossel' ? a.imagens_urls : tipo === 'video' ? [a.video_miniatura_url] : [a.imagem_url];
+      const imgs = [];
+      for (const [i, u] of urls.entries()) {
+        const l = midiaLocal(u);
+        if (!l) { imgs.push({ picture: u, local: null }); continue; }
+        const up = await etapa(`envio da imagem${urls.length > 1 ? ` ${i + 1}` : ''} ao Meta`, () => post(`${conta}/adimages`, { bytes: l.data }));
         const hash = Object.values(up.images || {})[0]?.hash;
         if (!hash) throw new Error('Falhou na etapa "envio da imagem ao Meta": o Meta não devolveu o código (hash) da imagem.');
-        criado.imagem = hash; imagem = { image_hash: hash };
+        criado.imagem = hash; imgs.push({ image_hash: hash, local: l });
       }
-      const geoLoc = await etapa('localização do público', () => resolverGeo(a));
-      const link = whats ? 'https://api.whatsapp.com/send' : msg ? MSG_LINK : a.url_destino;
-      const cta = whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : msg ? { type: msg.cta, value: { app_destination: msg.app } } : { type: a.cta || 'LEARN_MORE', value: { link } };
+      const midia = (i) => (i.image_hash ? { image_hash: i.image_hash } : { picture: i.picture });
+      let videoId = null;
+      if (tipo === 'video') { videoId = await etapa('envio do vídeo ao Meta', () => subirVideo(conta, a.video_ref, a.nome)); criado.video = videoId; }
+      // 3) Criativo ANTES da campanha: se o Meta recusar, nada fica pela metade na conta.
+      const linkPag = `https://www.facebook.com/${page}`;
+      const link = whats ? 'https://api.whatsapp.com/send' : msg ? MSG_LINK : dest === 'post' ? linkPag : a.url_destino;
+      const cta = whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : msg ? { type: msg.cta, value: { app_destination: msg.app } } : { type: dest === 'post' ? 'LEARN_MORE' : (a.cta || 'LEARN_MORE'), value: { link } };
       let spec;
-      if (dest === 'post') { spec = { page_id: page, photo_data: { caption: a.texto_principal, ...(imagem.image_hash ? { image_hash: imagem.image_hash } : { url: imagem.picture }) } }; }
-      else {
-        const ld = { message: a.texto_principal, link, ...imagem, call_to_action: cta };
-        if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
-        spec = { page_id: page, link_data: ld };
-      }
-      // O criativo é criado ANTES da campanha: se o Meta recusar, nada fica pela metade na conta.
+      if (tipo === 'imagem' && dest === 'post') spec = { page_id: page, photo_data: { caption: a.texto_principal, ...(imgs[0].image_hash ? { image_hash: imgs[0].image_hash } : { url: imgs[0].picture }) } };
+      else if (tipo === 'carrossel') spec = { page_id: page, link_data: { message: a.texto_principal, link, child_attachments: imgs.map((i) => ({ link, ...midia(i), ...(a.titulo ? { name: a.titulo } : {}), ...(a.descricao ? { description: a.descricao } : {}) })), multi_share_optimized: true, call_to_action: cta } };
+      else if (tipo === 'video') spec = { page_id: page, video_data: { video_id: videoId, message: a.texto_principal, ...(imgs[0].image_hash ? { image_hash: imgs[0].image_hash } : { image_url: imgs[0].picture }), ...(a.titulo ? { title: a.titulo } : {}), ...(a.descricao ? { link_description: a.descricao } : {}), call_to_action: cta } };
+      else { const ld = { message: a.texto_principal, link, ...midia(imgs[0]), call_to_action: cta }; if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao; spec = { page_id: page, link_data: ld }; }
       const criar = (sp) => post(`${conta}/adcreatives`, { name: `${a.nome} | Criativo`, object_story_spec: JSON.stringify(sp) });
       let igUsado = !!ig;
       const cri = await etapa('criativo', async () => {
@@ -396,10 +510,14 @@ metaTools.push(
         }
       });
       criado.criativo = cri.id;
+      // 4) Campanha → conjunto → anúncio
       const camp = await etapa('campanha', () => post(`${conta}/campaigns`, { name: a.nome, objective: a.objetivo, status: 'PAUSED', special_ad_categories: '[]', daily_budget: cents(a.orcamento_diario_brl), bid_strategy: 'LOWEST_COST_WITHOUT_CAP' }));
       criado.campanha = camp.id;
       const targeting = { geo_locations: geoLoc ? geoLoc.geo : { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
       if (a.genero && a.genero !== 'todos') targeting.genders = [a.genero === 'masculino' ? 1 : 2];
+      if (pub.interests.length) targeting.flexible_spec = [{ interests: pub.interests }];
+      if (pub.inc.length) targeting.custom_audiences = pub.inc.map(({ id }) => ({ id }));
+      if (pub.exc.length) targeting.excluded_custom_audiences = pub.exc.map(({ id }) => ({ id }));
       const conj = { name: `${a.nome} | Conjunto`, campaign_id: camp.id, status: 'PAUSED', billing_event: 'IMPRESSIONS', targeting: JSON.stringify(targeting), optimization_goal: whats || msg ? 'CONVERSATIONS' : o.goal };
       if (whats) { conj.destination_type = 'WHATSAPP'; conj.promoted_object = JSON.stringify({ page_id: page }); }
       else if (msg) { conj.destination_type = msg.destination_type; conj.promoted_object = JSON.stringify({ page_id: page }); }
@@ -411,9 +529,10 @@ metaTools.push(
       criado.conjunto = set.id;
       const ad = await etapa('anúncio', () => post(`${conta}/ads`, { name: `${a.nome} | Anúncio 1`, adset_id: set.id, creative: JSON.stringify({ creative_id: cri.id }), status: 'PAUSED' }));
       criado.anuncio = ad.id;
-      // Tudo criado: o Meta já tem a imagem, então a cópia temporária sai do nosso servidor.
-      let apagada = false; if (local?.temp) apagada = store.delMedia(local.id);
-      return { status: 'criada_pausada', instagram_vinculado: igUsado, imagem_apagada_do_servidor: apagada, campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
+      // Tudo criado: o Meta já tem as mídias, então as cópias temporárias saem do nosso servidor.
+      let apagadas = 0; for (const i of imgs) if (i.local?.temp && store.delMedia(i.local.id)) apagadas++;
+      const videoApagado = tipo === 'video' ? apagarVideo(a.video_ref) : false;
+      return { status: 'criada_pausada', tipo_criativo: tipo, instagram_vinculado: igUsado, imagem_apagada_do_servidor: apagadas > 0, video_apagado_do_servidor: videoApagado, campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
     },
   },
   {
