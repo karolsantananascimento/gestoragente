@@ -29,9 +29,9 @@ export const AGENTS = [
   {
     id: 'luiz', nome: 'Luiz', cargo: 'Designer (IA)', emoji: '🎨',
     expertise: 'Domina os formatos: Instagram/Facebook (feed 4:5, carrossel, story), Reels, TikTok, YouTube (widescreen 16:9 e Shorts) e Google Display (todos os tamanhos IAB e responsivos). Cria a arte exatamente nas medidas pedidas, respeitando zonas seguras (story, Reels, TikTok, Shorts) e uma arte por tamanho no Display.',
-    funcao: 'Cria a arte dentro dos padrões da marca e também organiza a identidade visual: mantém o kit de marca de cada cliente (cores, fontes, logo, grade, regras e proibições) e guarda os padrões de marca.',
-    entrega: 'Kit de marca organizado por cliente e arte pronta, que sobe para aprovação humana',
-    ferramentas: 'luiz_registrar_arte, marca_organizar, marca_ver, conteudo_listar',
+    funcao: 'Recebe o briefing do criativo e cria a arte dentro dos padrões da marca. Registra o link da arte pronta.',
+    entrega: 'Arte pronta, que sobe para aprovação humana',
+    ferramentas: 'luiz_registrar_arte, marca_ver, conteudo_listar',
     integracoes: () => [{ nome: 'Canva (pelo conector do Claude)', ok: null }],
   },
   {

@@ -109,41 +109,6 @@ export const teamTools = [
     handler: async ({ cliente }) => { const cl = getCliente(cliente); if (!cl) return { status: 'erro', erro: `Cliente não encontrado. Clientes: ${store.clientes().map((c) => c.nome).join(', ')}.` }; const b = { cliente: cl.nome, ...cl.marca }; if (b.logo_url?.startsWith('/')) b.logo_url = `${config.publicUrl}${b.logo_url}`; if (Array.isArray(b.referencias_visuais)) b.referencias_visuais = b.referencias_visuais.map((u) => (u.startsWith('/') ? `${config.publicUrl}${u}` : u)); return kitCompleto(cl.marca) ? b : { ...b, aviso: 'Kit da marca incompleto. Peça à administradora para preencher na aba Marca do painel antes de produzir.' }; },
   },
   {
-    name: 'marca_organizar', risk: 'internal', agent: 'luiz',
-    description: 'LUIZ organiza a identidade visual, o kit de marca e os padrões de marca de UM cliente: salva só os campos informados (os outros ficam como estão). Informe só os campos que quer salvar. Use quando o kit estiver vazio, incompleto ou desatualizado, ou a usuária pedir. Não invente: use o que a usuária, o site, o kit do Canva (list-brand-kits) ou as artes aprovadas mostram, e diga o que ficou pendente.',
-    params: {
-      cliente: { type: 'string', desc: 'Nome ou id do cliente', required: true },
-      identidade: { type: 'string', desc: 'Identidade da marca (opcional)' },
-      posicionamento: { type: 'string', desc: 'Posicionamento (opcional)' },
-      estilo_visual: { type: 'string', desc: 'Estilo visual: grade, imagem, tratamento (opcional)' },
-      cores: { type: 'string', desc: 'Paleta com hex e papel de cada cor (opcional)' },
-      fontes: { type: 'string', desc: 'Famílias e uso (título, apoio) (opcional)' },
-      logo_url: { type: 'string', desc: 'Link do logo (opcional)' },
-      regras_visuais: { type: 'string', desc: 'Uso do logo, grade, margens, formatos (opcional)' },
-      proibido: { type: 'string', desc: 'O que nunca fazer (opcional)' },
-      padrao_de_feed: { type: 'string', desc: 'Padrão do feed/grid (opcional)' },
-      direcao_visual_vigente: { type: 'string', desc: 'Direção visual atual, prevalece sobre regras antigas (opcional)' },
-      referencia_site: { type: 'string', desc: 'Site de referência (opcional)' },
-      regra_redes: { type: 'string', desc: 'Regra para peças de rede social (opcional)' },
-      links: { type: 'string', desc: 'Links úteis: Canva, pasta, moodboard (opcional)' },
-    },
-    handler: async ({ cliente, ...campos }) => {
-      const cl = getCliente(cliente);
-      if (!cl) return { status: 'erro', erro: `Cliente não encontrado. Clientes: ${store.clientes().map((c) => c.nome).join(', ')}.` };
-      const ok = ['identidade', 'posicionamento', 'estilo_visual', 'cores', 'fontes', 'logo_url', 'regras_visuais', 'proibido', 'padrao_de_feed', 'direcao_visual_vigente', 'referencia_site', 'regra_redes', 'links'];
-      const salvos = [], ignorados = [];
-      const marca = { ...(cl.marca || {}) };
-      for (const [k, v] of Object.entries(campos && typeof campos === 'object' ? campos : {})) {
-        if (!ok.includes(k) || v === undefined || v === null || String(v).trim() === '') { ignorados.push(k); continue; }
-        marca[k] = String(v).slice(0, 8000); salvos.push(k);
-      }
-      if (!salvos.length) return { status: 'erro', erro: `Nenhum campo válido. Campos aceitos: ${ok.join(', ')}.` };
-      store.setBrand(marca, cl.id);
-      const falta = ['identidade', 'tom_de_voz', 'estilo_visual', 'estilo_comunicacao'].filter((k) => !marca[k] && !(k === 'identidade' && marca.posicionamento) && !(k === 'estilo_visual' && marca.regras_visuais) && !(k === 'estilo_comunicacao' && marca.tom_de_voz));
-      return { status: 'ok', cliente: cl.nome, salvos, ignorados, kit_completo: kitCompleto(marca), ainda_falta: falta };
-    },
-  },
-  {
     name: 'conteudo_listar', risk: 'read', agent: 'hugo,luiz,mariana',
     description: 'Lista conteúdos do pipeline. Filtre por status: em_arte (briefings para o Luiz), ajustes, aguardando_aprovacao, aprovado, agendado, publicado, erro, cancelado.',
     params: { status: { type: 'string', desc: 'Filtro de status (opcional)', enum: Object.keys(STATUS) }, cliente: { type: 'string', desc: 'Nome ou id do cliente (opcional)' } },
