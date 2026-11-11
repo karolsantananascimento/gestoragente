@@ -102,8 +102,20 @@ export const store = {
     if (!config.databaseUrl) { load(); return 'arquivo'; }
     const local = /localhost|127\.0\.0\.1/.test(config.databaseUrl);
     pool = new pg.Pool({ connectionString: config.databaseUrl, max: 3, ssl: local ? false : { rejectUnauthorized: false } });
-    await pool.query('create table if not exists app_state (key text primary key, value jsonb not null, updated_at timestamptz default now())');
-    const r = await pool.query("select value from app_state where key = 'state'");
+    // Banco pausado/reiniciando (ex.: Supabase gratuito pausa por inatividade): tenta de novo por ~3 min antes de desistir.
+    // Não cai para arquivo local de propósito: o painel apareceria vazio e as gravações seguintes não iriam para o banco.
+    let r;
+    for (let tentativa = 1; ; tentativa++) {
+      try {
+        await pool.query('create table if not exists app_state (key text primary key, value jsonb not null, updated_at timestamptz default now())');
+        r = await pool.query("select value from app_state where key = 'state'");
+        break;
+      } catch (e) {
+        if (tentativa >= 18) throw e;
+        console.error(`[store] banco indisponível (${e.message}); nova tentativa ${tentativa}/18 em 10s`);
+        await new Promise((ok) => setTimeout(ok, 10_000));
+      }
+    }
     state = normalize(r.rows[0]?.value || {});
     return 'postgres';
   },
