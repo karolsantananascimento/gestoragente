@@ -15,6 +15,13 @@ export function findClientInText(text, fallback) {
   return hit || getCliente(fallback) || getCliente('');
 }
 
+// Todos os clientes citados (para pedidos como "crie um post para a Disco e para a Operizy").
+export function findClientsInText(text) {
+  const t = norm(text);
+  const hits = store.clientes().filter((c) => t.includes(norm(c.nome)) || t.includes(c.id.replace(/-/g, ' ')));
+  return hits.filter((a) => !hits.some((b) => b !== a && b.nome.length > a.nome.length && norm(b.nome).includes(norm(a.nome))));
+}
+
 export function findDate(text) {
   const t = norm(text);
   const hojeRecife = new Date(Date.now() - RECIFE);
@@ -72,7 +79,8 @@ export function runCommand({ texto, cliente: clienteRef, by }) {
   const cliente = findClientInText(raw, clienteRef);
   if (!cliente) return { handled: false };
 
-  if (/\b(aprov\w+|publiqu\w+|agend\w+)\b/.test(t) && !/\b(pauta|post)\b.*\bcri/.test(t)) {
+  const querCriar = /\b(cri\w+|faz\w*|prepar\w+|mont\w+|ger\w+|escrev\w+|quero|preciso|bora|sugir\w+|plane\w+)\b/.test(t) && /\b(pauta|post|posts|conteudo|carrossel|reels|story|stories|legenda)\b/.test(t);
+  if (/\b(aprov\w+|publiqu\w+|agend\w+)\b/.test(t) && !querCriar) {
     return { handled: true, reply: 'Aprovar e publicar só acontece no botão "Aprovar…" da aba Conteúdo, por uma administradora. Posso pedir ajustes ou criar novas pautas por aqui.' };
   }
 
@@ -100,9 +108,19 @@ export function runCommand({ texto, cliente: clienteRef, by }) {
   // criar pauta
   if (/\b(pauta|post|posts|conteudo|carrossel|reels|story|stories|legenda|campanha de conteudo)\b/.test(t) && /\b(cri\w+|faz\w*|prepar\w+|mont\w+|ger\w+|escrev\w+|quero|preciso|necessito|bora|sugir\w+|planej\w+)\b/.test(t) || /^pauta\b/.test(t)) {
     const canais = findChannels(raw); const data = findDate(raw);
-    const fmt = detectarFormato(raw); const r = createRequest({ cliente: cliente.id, texto: raw, canais, formato_midia: fmt || undefined, data_publicacao: data }, by);
-    if (r.error) return { handled: true, reply: r.error };
-    return { handled: true, pedido: r.pedido, cliente_id: cliente.id, reply: `Pedido registrado para ${cliente.nome}${data ? ` (data sugerida ${data.split('-').reverse().join('/')})` : ''}.` };
+    const fmt = detectarFormato(raw);
+    const alvos = findClientsInText(raw); const lista = alvos.length > 1 ? alvos : [cliente];
+    const pedidos = []; const erros = [];
+    for (const c of lista) {
+      const r = createRequest({ cliente: c.id, texto: raw, canais, formato_midia: fmt || undefined, data_publicacao: data }, by);
+      if (r.error) erros.push(`${c.nome}: ${r.error}`); else pedidos.push(r.pedido);
+    }
+    if (!pedidos.length) return { handled: true, reply: erros.join(' ') };
+    const nomes = pedidos.map((p) => getCliente(p.cliente_id)?.nome).join(', ');
+    let reply = `Pedido registrado para ${nomes}${data ? ` (data sugerida ${data.split('-').reverse().join('/')})` : ''}.`;
+    if (erros.length) reply += ` Não deu para: ${erros.join(' ')}`;
+    if (/\b(agend\w+|aprov\w+|publiqu\w+)\b/.test(t)) reply += ' O agendamento só acontece depois da aprovação humana no botão da aba Conteúdo.';
+    return { handled: true, pedidos, pedido: pedidos[0], cliente_id: pedidos[0].cliente_id, reply };
   }
   return { handled: false };
 }

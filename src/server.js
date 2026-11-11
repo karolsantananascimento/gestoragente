@@ -299,7 +299,12 @@ app.post('/api/chat', requireUser, async (req, res) => {
     const cmd = runCommand({ texto: message, cliente, by: req.user.email });
     if (cmd.handled) {
       let reply = cmd.reply;
-      if (cmd.pedido) reply += ' ' + dispararPedido(cmd.pedido).texto;
+      const bloqueados = [];
+      for (const ped of cmd.pedidos || (cmd.pedido ? [cmd.pedido] : [])) {
+        const d = dispararPedido(ped);
+        if (d.modo === 'bloqueado') bloqueados.push(d.texto); else if (!reply.includes(d.texto)) reply += ' ' + d.texto;
+      }
+      if (bloqueados.length) reply += ' Ainda não começou: ' + bloqueados.join(' ');
       store.log({ type: 'comando', by: req.user.email, cliente: cmd.cliente_id || null });
       return res.json({ reply, pending: pendingActions(), comando: true });
     }
