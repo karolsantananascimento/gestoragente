@@ -42,7 +42,7 @@ ok(r.status === 'bloqueado' && /não é suportado/.test(r.motivos.join(' ')), 'o
 r = await proposeAction(T, { ...base, objetivo: 'OUTCOME_ENGAGEMENT', destino: 'site' }, 't');
 ok(r.status === 'bloqueado' && /Engajamento/.test(r.motivos.join(' ')), 'Engajamento não aceita destino site');
 r = await proposeAction(T, { ...base, destino: 'messenger' }, 't');
-ok(r.status === 'bloqueado' && /Engajamento/.test(r.motivos.join(' ')), 'Mensagens só com o objetivo Engajamento');
+ok(r.status === 'bloqueado' && /Engajamento, Leads ou Vendas/.test(r.motivos.join(' ')), 'Mensagens não valem para Tráfego');
 
 const antes = calls.filter((c) => c.m === 'POST').length;
 r = await proposeAction(T, { ...base, genero: 'feminino', idade_min: 25, idade_max: 45, termina_em: '2030-01-01T23:59:00-03:00' }, 't');
@@ -83,12 +83,17 @@ ok(r.status === 'pendente_aprovacao' && g(0).get('objective') === 'OUTCOME_ENGAG
 ok(JSON.parse(g(2).get('object_story_spec')).photo_data.caption === 'Legenda' && !g(1).get('promoted_object'), 'Engajamento: criativo é foto com legenda, sem link');
 
 // Mensagens no Messenger e no Instagram Direct
-for (const [dest, tipo, app] of [['messenger', 'MESSAGE_PAGE', 'MESSENGER'], ['instagram_direct', 'INSTAGRAM_MESSAGE', 'INSTAGRAM_DIRECT']]) {
+for (const [dest, tipo, app, dt] of [['messenger', 'MESSAGE_PAGE', 'MESSENGER', 'MESSENGER'], ['instagram_direct', 'INSTAGRAM_MESSAGE', 'INSTAGRAM_DIRECT', 'INSTAGRAM_DIRECT'], ['instagram_facebook', 'MESSAGE_PAGE', 'MESSENGER', 'MESSAGING_INSTAGRAM_DIRECT_MESSENGER']]) {
   m0 = calls.length; r = await proposeAction(T, { ...eng, destino: dest }, 't'); await approveAction(r.id, 'admin');
   ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
   const cta = JSON.parse(g(2).get('object_story_spec')).link_data.call_to_action;
-  ok(g(1).get('destination_type') === dest.toUpperCase() && g(1).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(1).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
+  ok(g(1).get('destination_type') === dt && g(1).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(1).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
 }
+
+// Mensagens também valem para Leads (sem pixel e sem link)
+m0 = calls.length; r = await proposeAction(T, { ...eng, objetivo: 'OUTCOME_LEADS', destino: 'instagram_facebook' }, 't'); await approveAction(r.id, 'admin');
+ps2 = calls.slice(m0).filter((c) => c.m === 'POST');
+ok(r.status === 'pendente_aprovacao' && new URLSearchParams(ps2[1].body).get('optimization_goal') === 'CONVERSATIONS', 'Leads aceita destino de mensagens sem pixel');
 
 // Criativo enviado pelo painel: sobe os bytes ao Meta e a cópia é apagada depois
 const mid = 'a'.repeat(32); store.setMedia(mid, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });

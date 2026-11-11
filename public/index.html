@@ -459,7 +459,7 @@
       <div class="grid2">
         <label>Objetivo<select name="objetivo"><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Leads (contatos)</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option><option value="OUTCOME_ENGAGEMENT">Engajamento e mensagens (Instagram / Facebook)</option></select></label>
         <label>Orçamento por dia (R$)<input name="orc" type="number" min="1" step="1" required placeholder="40"></label>
-        <label id="lbDestino">Destino<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option><option value="post">Engajamento no anúncio (curtidas e comentários)</option><option value="messenger">Mensagens no Messenger (Facebook)</option><option value="instagram_direct">Mensagens no Instagram Direct</option></select></label>
+        <label id="lbDestino">Destino<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option><option value="post">Engajamento no anúncio (curtidas e comentários)</option><option value="instagram_facebook">Envio de mensagens no Instagram e no Facebook</option><option value="messenger">Envio de mensagens só no Facebook (Messenger)</option><option value="instagram_direct">Envio de mensagens só no Instagram (Direct)</option></select></label>
         <label id="lbUrl">Link de destino<input name="url" type="url" placeholder="https://..."></label>
         <label id="lbPixel" class="hidden">Pixel do Meta (obrigatório para Leads/Vendas no site)<input name="pixel" placeholder="ID do pixel"></label>
       </div>
@@ -930,7 +930,8 @@ $('#tAI').onclick = () => {
 };
 /* ---------- nova campanha (fluxo completo) ---------- */
 const campForm = () => $('#campForm').elements;
-const DEST_POR_OBJ = { OUTCOME_LEADS: ['site', 'whatsapp'], OUTCOME_ENGAGEMENT: ['post', 'messenger', 'instagram_direct'] };
+const MSGS = ['instagram_facebook', 'messenger', 'instagram_direct'];
+const DEST_POR_OBJ = { OUTCOME_LEADS: ['site', 'whatsapp', ...MSGS], OUTCOME_SALES: ['site', ...MSGS], OUTCOME_ENGAGEMENT: ['post', ...MSGS] };
 function campRefresh() {
   const f = campForm(); const ok = DEST_POR_OBJ[f.objetivo.value] || ['site'];
   for (const o of f.destino.options) { o.disabled = !ok.includes(o.value); o.hidden = o.disabled; }

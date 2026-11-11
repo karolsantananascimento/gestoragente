@@ -222,11 +222,13 @@ const OBJ_FLUXO = {
   OUTCOME_ENGAGEMENT: { goal: 'POST_ENGAGEMENT', rotulo: 'Engajamento' },
 };
 // Destinos do fluxo. Engajamento: post (curtidas/comentários), messenger (Facebook) ou instagram_direct. Leads: site ou whatsapp. Demais: site.
-const DESTINOS = ['site', 'whatsapp', 'post', 'messenger', 'instagram_direct'];
+const DESTINOS = ['site', 'whatsapp', 'post', 'messenger', 'instagram_direct', 'instagram_facebook'];
 const MSG = {
   messenger: { destination_type: 'MESSENGER', cta: 'MESSAGE_PAGE', app: 'MESSENGER', rotulo: 'mensagens no Messenger (Facebook)' },
   instagram_direct: { destination_type: 'INSTAGRAM_DIRECT', cta: 'INSTAGRAM_MESSAGE', app: 'INSTAGRAM_DIRECT', rotulo: 'mensagens no Instagram Direct' },
+  instagram_facebook: { destination_type: 'MESSAGING_INSTAGRAM_DIRECT_MESSENGER', cta: 'MESSAGE_PAGE', app: 'MESSENGER', rotulo: 'mensagens no Instagram e no Facebook' },
 };
+const OBJ_MSG = ['OUTCOME_ENGAGEMENT', 'OUTCOME_LEADS', 'OUTCOME_SALES']; // objetivos que aceitam destino de mensagens
 const MSG_LINK = 'https://fb.com/messenger_doc/';
 const destinoDe = (a) => a.destino || (a.objetivo === 'OUTCOME_ENGAGEMENT' ? 'post' : 'site');
 // Criativo enviado pelo painel (guardado no nosso servidor): devolve { id, data (base64), temp } para subir os bytes direto ao Meta.
@@ -251,8 +253,9 @@ function validarFluxo(a) {
   if (!DESTINOS.includes(dest)) return `Destino "${dest}" inválido. Use: ${DESTINOS.join(', ')}.`;
   const whats = dest === 'whatsapp', msg = !!MSG[dest], site = dest === 'site';
   if (whats && a.objetivo !== 'OUTCOME_LEADS') return 'Destino WhatsApp só funciona com o objetivo Leads.';
-  if ((msg || dest === 'post') && a.objetivo !== 'OUTCOME_ENGAGEMENT') return 'Mensagens (Messenger/Instagram Direct) e engajamento no anúncio usam o objetivo Engajamento.';
-  if (a.objetivo === 'OUTCOME_ENGAGEMENT' && !(msg || dest === 'post')) return 'O objetivo Engajamento usa o destino post, messenger ou instagram_direct.';
+  if (msg && !OBJ_MSG.includes(a.objetivo)) return 'Mensagens no Instagram/Facebook funcionam com os objetivos Engajamento, Leads ou Vendas.';
+  if (dest === 'post' && a.objetivo !== 'OUTCOME_ENGAGEMENT') return 'Engajamento no anúncio (curtidas e comentários) usa o objetivo Engajamento.';
+  if (a.objetivo === 'OUTCOME_ENGAGEMENT' && !(msg || dest === 'post')) return 'O objetivo Engajamento usa o destino post, messenger, instagram_direct ou instagram_facebook.';
   if (site && !httpsUrl(a.url_destino)) return 'Informe o link de destino (https://) do anúncio.';
   if (site && o.evento && !pixelDe(a)) return `O objetivo ${o.rotulo} para site precisa do pixel do Meta (informe pixel_id ou configure META_PIXEL_ID). Sem pixel, use Tráfego ou o destino WhatsApp.`;
   const imin = a.idade_min ?? 18, imax = a.idade_max ?? 65;
@@ -262,7 +265,7 @@ function validarFluxo(a) {
   for (const [k, v] of [['inicio', a.inicio], ['termina_em', a.termina_em]]) if (v && Number.isNaN(new Date(v).getTime())) return `Data inválida em ${k}.`;
   if (a.termina_em && new Date(a.termina_em).getTime() < Date.now()) return 'A data de término já passou.';
   if (!paginaDe(a).page) return 'Não achei a página do Facebook para anunciar: cadastre-a na aba Marca do cliente (ou informe page_id).';
-  if (dest === 'instagram_direct' && !paginaDe(a).ig) return 'Para anunciar mensagens no Instagram Direct cadastre o Instagram profissional do cliente na aba Marca (INSTAGRAM_USER_ID).';
+  if (['instagram_direct', 'instagram_facebook'].includes(dest) && !paginaDe(a).ig) return 'Para anunciar mensagens no Instagram Direct cadastre o Instagram profissional do cliente na aba Marca (INSTAGRAM_USER_ID).';
   return '';
 }
 
@@ -271,14 +274,14 @@ metaTools.push(
     name: 'meta_subir_campanha_completa',
     platform: 'meta',
     risk: 'write',
-    description: 'FLUXO COMPLETO de campanha no Meta Ads: cria a campanha (orçamento diário na campanha), o conjunto (público, idade, gênero, países, datas), o criativo (imagem, texto, título, CTA, link) e o anúncio. TUDO nasce PAUSADO e só vai ao ar depois de ativado (meta_ativar_estrutura). Uma única aprovação humana cobre a criação inteira. Objetivos: OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_LEADS, OUTCOME_SALES (os dois últimos para site exigem pixel; Leads também aceita destino whatsapp) e OUTCOME_ENGAGEMENT (destino post = curtidas/comentários, messenger = mensagens no Facebook, instagram_direct = mensagens no Instagram). A imagem pode ser um link https ou um criativo enviado pelo painel: neste caso a imagem sobe direto ao Meta e é APAGADA do nosso servidor depois.',
+    description: 'FLUXO COMPLETO de campanha no Meta Ads: cria a campanha (orçamento diário na campanha), o conjunto (público, idade, gênero, países, datas), o criativo (imagem, texto, título, CTA, link) e o anúncio. TUDO nasce PAUSADO e só vai ao ar depois de ativado (meta_ativar_estrutura). Uma única aprovação humana cobre a criação inteira. Objetivos: OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_LEADS, OUTCOME_SALES (os dois últimos para site exigem pixel; Leads também aceita destino whatsapp) e OUTCOME_ENGAGEMENT (destino post = curtidas/comentários). Mensagens: destino messenger (Facebook), instagram_direct ou instagram_facebook (os dois), válidos em Engajamento, Leads e Vendas. A imagem pode ser um link https ou um criativo enviado pelo painel: neste caso a imagem sobe direto ao Meta e é APAGADA do nosso servidor depois.',
     params: {
       nome: { type: 'string', desc: 'Nome da campanha', required: true },
       objetivo: { type: 'string', enum: Object.keys(OBJ_FLUXO), desc: 'Objetivo', required: true },
       orcamento_diario_brl: { type: 'number', desc: 'Orçamento diário em reais', required: true },
       texto_principal: { type: 'string', desc: 'Texto principal do anúncio (legenda)', required: true },
       imagem_url: { type: 'string', desc: 'Link https público da imagem (JPG/PNG) ou o link devolvido pelo envio do painel; de preferência 1080x1350 ou 1080x1080', required: true },
-      destino: { type: 'string', enum: DESTINOS, desc: 'Para onde o clique leva (padrão site; padrão post no objetivo Engajamento)' },
+      destino: { type: 'string', enum: DESTINOS, desc: 'Para onde o clique leva (padrão site; padrão post no objetivo Engajamento). Mensagens (messenger, instagram_direct, instagram_facebook) valem para Engajamento, Leads e Vendas.' },
       url_destino: { type: 'string', desc: 'Link https de destino (obrigatório só quando destino = site)' },
       titulo: { type: 'string', desc: 'Título do anúncio (opcional)' },
       descricao: { type: 'string', desc: 'Descrição curta (opcional)' },
@@ -295,7 +298,7 @@ metaTools.push(
       ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
     },
     budgetBRL: (a) => Number(a.orcamento_diario_brl),
-    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct' })[destinoDe(a)] || 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
+    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct', instagram_facebook: 'Instagram e Facebook' })[destinoDe(a)] || 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
     precheck: async (a) => {
       const erro = validarFluxo(a); if (erro) return { error: erro };
       const { page, ig } = paginaDe(a);
@@ -303,7 +306,7 @@ metaTools.push(
       acct(a.ad_account_id);
       const aviso = [`Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
       const dest = destinoDe(a);
-      if (MSG[dest]) aviso.push(`Mensagens: exige que a página${dest === 'instagram_direct' ? ' e o Instagram' : ''} aceitem conversas (fluxo ainda não validado em conta real)`);
+      if (MSG[dest]) aviso.push(`Mensagens: exige que a página${dest !== 'messenger' ? ' e o Instagram' : ''} aceitem conversas (fluxo ainda não validado em conta real)`);
       if (midiaLocal(a.imagem_url)?.temp) aviso.push('o criativo enviado sobe direto ao Meta e é apagado do nosso servidor depois');
       if (dest === 'whatsapp') aviso.push('WhatsApp: exige número do WhatsApp Business conectado à página (fluxo ainda não validado em conta real)');
       return { warn: aviso.join(' · ') + '. Tudo será criado PAUSADO.' };
