@@ -8,6 +8,7 @@ const calls = []; let falhaCriativo = false;
 const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url); calls.push({ u, m: opts.method || 'GET', body: opts.body });
+  if (/\/search\?/.test(u)) return j({ data: [{ key: '111', name: 'Recife', type: 'city', region: 'Pernambuco', country_code: 'BR' }, { key: '1', name: 'Pernambuco', type: 'region', country_code: 'BR' }] });
   if (/\/pg1\?fields=name/.test(u)) return j({ name: 'Disco Mídia' });
   if (/\/777\?fields=name,status/.test(u)) return j({ name: 'Disco | Leads', status: 'PAUSED', daily_budget: '4000' });
   if (/\/777\/adsets/.test(u)) return j({ data: [{ id: 's1', status: 'PAUSED' }] });
@@ -89,6 +90,19 @@ for (const [dest, tipo, app, dt] of [['messenger', 'MESSAGE_PAGE', 'MESSENGER', 
   const cta = JSON.parse(g(2).get('object_story_spec')).link_data.call_to_action;
   ok(g(1).get('destination_type') === dt && g(1).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(1).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
 }
+
+// Localização exata: cidades e estados em vez do país inteiro
+r = await proposeAction(T, { ...base, localizacoes: ['Recife'], raio_km: 5 }, 't');
+ok(r.status === 'bloqueado' && /17 a 80/.test(r.motivos.join(' ')), 'raio fora de 17–80 km é bloqueado');
+r = await proposeAction(T, base, 't');
+ok(r.status === 'pendente_aprovacao' && /país inteiro/.test(r.avisos.join(' ')), 'sem localização o aviso diz que vai para o país inteiro');
+m0 = calls.length; r = await proposeAction(T, { ...base, localizacoes: ['Recife', 'city|222|25|João Pessoa, Paraíba', 'region|1||Pernambuco'], raio_km: 30 }, 't');
+ok(r.status === 'pendente_aprovacao' && /Recife, Pernambuco \(cidade \+ 30 km\)/.test(r.avisos.join(' ')) && /João Pessoa/.test(r.resumo), 'a aprovação mostra as cidades escolhidas');
+await approveAction(r.id, 'admin');
+const geoPost = calls.slice(m0).filter((c) => c.m === 'POST' && /adsets$/.test(c.u))[0]; const geo = JSON.parse(new URLSearchParams(geoPost.body).get('targeting')).geo_locations;
+ok(!geo.countries && geo.cities.length === 2 && geo.cities[0].key === '111' && geo.cities[0].radius === 30 && geo.cities[0].distance_unit === 'kilometer' && geo.cities[1].key === '222' && geo.cities[1].radius === 25 && geo.regions[0].key === '1', 'o conjunto usa cidades (com raio) e estado, sem país inteiro');
+const BT = getPlatformTool('meta_buscar_localizacoes'); const bl = await BT.handler({ busca: 'Recife' });
+ok(bl[0].chave === '111' && bl[0].tipo === 'city' && bl[1].tipo === 'region', 'busca de localizações devolve cidade e estado');
 
 // Mensagens também valem para Leads (sem pixel e sem link)
 m0 = calls.length; r = await proposeAction(T, { ...eng, objetivo: 'OUTCOME_LEADS', destino: 'instagram_facebook' }, 't'); await approveAction(r.id, 'admin');

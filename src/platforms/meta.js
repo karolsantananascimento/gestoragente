@@ -66,6 +66,14 @@ export const metaTools = [
     },
   },
   {
+    name: 'meta_buscar_localizacoes',
+    platform: 'meta',
+    risk: 'read',
+    description: 'Busca cidades e estados no Meta para segmentar o público com localização exata (ex.: "Recife", "João Pessoa", "Pernambuco"). Devolve tipo (city/region), chave, nome e estado. Use antes de montar o público de uma campanha.',
+    params: { busca: { type: 'string', desc: 'Nome da cidade ou do estado', required: true }, pais: { type: 'string', desc: 'Código do país (padrão BR)' } },
+    handler: async ({ busca, pais = 'BR' }) => buscarLocal(busca, String(pais).toUpperCase()),
+  },
+  {
     name: 'meta_listar_campanhas',
     platform: 'meta',
     risk: 'read',
@@ -154,14 +162,18 @@ export const metaTools = [
       idade_max: { type: 'number', desc: 'Idade máxima (13 a 65)' },
       genero: { type: 'string', enum: ['todos', 'masculino', 'feminino'], desc: 'Gênero do público' },
       paises: { type: 'string[]', desc: 'Códigos de país (ex.: BR, PT)' },
+      localizacoes: { type: 'string[]', desc: 'Cidades/estados exatos (ex.: ["Recife", "João Pessoa, Paraíba"]). Substitui o público geográfico atual.' },
+      raio_km: { type: 'number', desc: 'Raio em km ao redor das cidades (17 a 80, padrão 17)' },
     },
-    summarize: (a) => `Meta: público do conjunto ${a.id} →${a.idade_min ? ` idade mín. ${a.idade_min}` : ''}${a.idade_max ? ` idade máx. ${a.idade_max}` : ''}${a.genero ? ` gênero ${a.genero}` : ''}${a.paises?.length ? ` países ${a.paises.join(',')}` : ''}`,
+    summarize: (a) => `Meta: público do conjunto ${a.id} →${a.idade_min ? ` idade mín. ${a.idade_min}` : ''}${a.idade_max ? ` idade máx. ${a.idade_max}` : ''}${a.genero ? ` gênero ${a.genero}` : ''}${a.localizacoes?.length ? ` locais ${a.localizacoes.map(nomeDoToken).join('; ')}` : a.paises?.length ? ` países ${a.paises.join(',')}` : ''}`,
     precheck: async (a) => {
+      if (a.raio_km !== undefined && (a.raio_km < 17 || a.raio_km > 80)) return { error: 'O raio das cidades vai de 17 a 80 km.' };
       if (a.idade_min !== undefined && (a.idade_min < 13 || a.idade_min > 65)) return { error: 'Idade mínima deve ficar entre 13 e 65.' };
       if (a.idade_max !== undefined && (a.idade_max < 13 || a.idade_max > 65)) return { error: 'Idade máxima deve ficar entre 13 e 65.' };
       if (a.idade_min !== undefined && a.idade_max !== undefined && a.idade_min > a.idade_max) return { error: 'Idade mínima maior que a máxima.' };
       if (a.paises?.some((c) => !/^[A-Za-z]{2}$/.test(c))) return { error: 'Países devem ser códigos de 2 letras (ex.: BR).' };
-      if (a.idade_min === undefined && a.idade_max === undefined && !a.genero && !a.paises?.length) return { error: 'Informe ao menos um ajuste de público.' };
+      if (a.idade_min === undefined && a.idade_max === undefined && !a.genero && !a.paises?.length && !a.localizacoes?.length) return { error: 'Informe ao menos um ajuste de público.' };
+      if (a.localizacoes?.length) { try { const g = await resolverGeo(a); return { warn: `Novo local: ${g.resumo.join('; ')} (substitui o local atual).` }; } catch (e) { return { error: e.message }; } }
       const cur = await get(a.id, { fields: 'name,targeting{age_min,age_max,genders,geo_locations{countries}}' });
       const t = cur.targeting || {};
       return { warn: `Público atual de "${cur.name}": idade ${t.age_min || '?'}–${t.age_max || '?'}, gêneros ${t.genders ? t.genders.join(',') : 'todos'}, países ${(t.geo_locations?.countries || []).join(',') || '—'}.` };
@@ -172,7 +184,8 @@ export const metaTools = [
       if (a.idade_min !== undefined) t.age_min = a.idade_min;
       if (a.idade_max !== undefined) t.age_max = a.idade_max;
       if (a.genero) { if (a.genero === 'todos') delete t.genders; else t.genders = [a.genero === 'masculino' ? 1 : 2]; }
-      if (a.paises?.length) t.geo_locations = { ...(t.geo_locations || {}), countries: a.paises.map((c) => c.toUpperCase()) };
+      if (a.localizacoes?.length) t.geo_locations = (await resolverGeo(a)).geo;
+      else if (a.paises?.length) t.geo_locations = { ...(t.geo_locations || {}), countries: a.paises.map((c) => c.toUpperCase()) };
       return post(a.id, { targeting: JSON.stringify(t) });
     },
   },
@@ -212,6 +225,37 @@ export const metaTools = [
       }),
   },
 ];
+
+// ---------- Localização exata (cidades e estados) ----------
+// Formato de cada item de "localizacoes": um nome ("Recife", "João Pessoa, Paraíba") que o servidor resolve no Meta,
+// ou o item já escolhido no painel: "city|<chave>|<raio_km>|<nome>" / "region|<chave>||<nome>".
+const geoMemo = new Map();
+async function buscarLocal(q, pais = 'BR') {
+  const k = `${pais}|${String(q).toLowerCase()}`; if (geoMemo.has(k)) return geoMemo.get(k);
+  const r = await get('search', { type: 'adgeolocation', q: String(q), location_types: JSON.stringify(['city', 'region']), country_code: pais, limit: '10' });
+  const out = (r.data || []).filter((x) => x.type === 'city' || x.type === 'region').map((x) => ({ tipo: x.type, chave: String(x.key), nome: x.name, regiao: x.region || null, pais: x.country_code }));
+  if (geoMemo.size > 200) geoMemo.clear(); geoMemo.set(k, out); return out;
+}
+const semAcento = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const nomeDoToken = (t) => (/^(city|region)\|/.test(t) ? t.split('|').slice(3).join('|') || t : String(t));
+const rotuloLoc = (l) => (l.tipo === 'city' ? `${l.nome}${l.regiao ? `, ${l.regiao}` : ''} (cidade + ${l.raio} km)` : `${l.nome} (estado)`);
+async function resolverGeo(a) {
+  const toks = (a.localizacoes || []).map((t) => String(t).trim()).filter(Boolean);
+  if (!toks.length) return null;
+  const raioPadrao = Number(a.raio_km) || 17; const locs = [];
+  for (const t of toks) {
+    const m = /^(city|region)\|(\d+)\|(\d*)\|(.*)$/.exec(t);
+    if (m) { locs.push({ tipo: m[1], chave: m[2], nome: m[4] || m[2], raio: Number(m[3]) || raioPadrao }); continue; }
+    const [nome, dica] = t.split(',').map((x) => x.trim());
+    const achados = await buscarLocal(nome, (a.paises?.[0] || 'BR').toUpperCase());
+    const alvo = (dica && achados.find((x) => semAcento(x.regiao || '').includes(semAcento(dica)))) || achados[0];
+    if (!alvo) throw new Error(`Não encontrei a localização "${t}" no Meta. Use meta_buscar_localizacoes para ver as opções.`);
+    locs.push({ ...alvo, raio: raioPadrao });
+  }
+  const cities = locs.filter((l) => l.tipo === 'city').map((l) => ({ key: l.chave, radius: l.raio, distance_unit: 'kilometer' }));
+  const regions = locs.filter((l) => l.tipo === 'region').map((l) => ({ key: l.chave }));
+  return { geo: { ...(cities.length ? { cities } : {}), ...(regions.length ? { regions } : {}) }, resumo: locs.map(rotuloLoc) };
+}
 
 // ---------- Fluxo completo: campanha → conjunto → criativo → anúncio (tudo PAUSADO, uma única aprovação) ----------
 const OBJ_FLUXO = {
@@ -261,6 +305,8 @@ function validarFluxo(a) {
   const imin = a.idade_min ?? 18, imax = a.idade_max ?? 65;
   if (imin < 13 || imax > 65 || imin > imax) return 'Faixa de idade inválida (13 a 65, mínima menor que a máxima).';
   if ((a.paises || []).some((c) => !/^[A-Za-z]{2}$/.test(c))) return 'Países devem ser códigos de 2 letras (ex.: BR).';
+  if (a.raio_km !== undefined && !(a.raio_km >= 17 && a.raio_km <= 80)) return 'O raio das cidades vai de 17 a 80 km.';
+  if ((a.localizacoes || []).length > 25) return 'No máximo 25 localizações por campanha.';
   if (a.cta && !CTAS.includes(a.cta)) return `CTA inválido. Use: ${CTAS.join(', ')}.`;
   for (const [k, v] of [['inicio', a.inicio], ['termina_em', a.termina_em]]) if (v && Number.isNaN(new Date(v).getTime())) return `Data inválida em ${k}.`;
   if (a.termina_em && new Date(a.termina_em).getTime() < Date.now()) return 'A data de término já passou.';
@@ -286,7 +332,9 @@ metaTools.push(
       titulo: { type: 'string', desc: 'Título do anúncio (opcional)' },
       descricao: { type: 'string', desc: 'Descrição curta (opcional)' },
       cta: { type: 'string', enum: CTAS, desc: 'Botão de chamada (padrão LEARN_MORE)' },
-      paises: { type: 'string[]', desc: 'Códigos de país, ex.: BR (padrão BR)' },
+      localizacoes: { type: 'string[]', desc: 'Localização EXATA do público: cidades e/ou estados, ex.: ["Recife", "João Pessoa, Paraíba"]. Quando informada, a campanha NÃO vai para o país inteiro. Pergunte ao usuário onde anunciar e use meta_buscar_localizacoes se precisar conferir.' },
+      raio_km: { type: 'number', desc: 'Raio em km ao redor de cada cidade, 17 a 80 (padrão 17)' },
+      paises: { type: 'string[]', desc: 'Códigos de país, ex.: BR (padrão BR). Só vale quando não há localizacoes.' },
       idade_min: { type: 'number', desc: 'Idade mínima 13 a 65 (padrão 18)' },
       idade_max: { type: 'number', desc: 'Idade máxima 13 a 65 (padrão 65)' },
       genero: { type: 'string', enum: ['todos', 'masculino', 'feminino'], desc: 'Gênero (padrão todos)' },
@@ -298,13 +346,15 @@ metaTools.push(
       ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
     },
     budgetBRL: (a) => Number(a.orcamento_diario_brl),
-    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct', instagram_facebook: 'Instagram e Facebook' })[destinoDe(a)] || 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
+    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct', instagram_facebook: 'Instagram e Facebook' })[destinoDe(a)] || 'site'}; público ${a.localizacoes?.length ? a.localizacoes.map(nomeDoToken).join('; ') : (a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
     precheck: async (a) => {
       const erro = validarFluxo(a); if (erro) return { error: erro };
       const { page, ig } = paginaDe(a);
       const pg = await get(page, { fields: 'name' });
       acct(a.ad_account_id);
-      const aviso = [`Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
+      let local = 'Local: país inteiro (' + (a.paises?.length ? a.paises : ['BR']).join(',') + '), nenhuma cidade ou estado escolhido';
+      if (a.localizacoes?.length) { try { local = `Local: ${(await resolverGeo(a)).resumo.join('; ')}`; } catch (e) { return { error: e.message }; } }
+      const aviso = [local, `Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
       const dest = destinoDe(a);
       if (MSG[dest]) aviso.push(`Mensagens: exige que a página${dest !== 'messenger' ? ' e o Instagram' : ''} aceitem conversas (fluxo ainda não validado em conta real)`);
       if (midiaLocal(a.imagem_url)?.temp) aviso.push('o criativo enviado sobe direto ao Meta e é apagado do nosso servidor depois');
@@ -323,9 +373,10 @@ metaTools.push(
         if (!hash) throw new Error('Falhou na etapa "envio da imagem ao Meta": o Meta não devolveu o código (hash) da imagem.');
         criado.imagem = hash; imagem = { image_hash: hash };
       }
+      const geoLoc = await etapa('localização do público', () => resolverGeo(a));
       const camp = await etapa('campanha', () => post(`${conta}/campaigns`, { name: a.nome, objective: a.objetivo, status: 'PAUSED', special_ad_categories: '[]', daily_budget: cents(a.orcamento_diario_brl), bid_strategy: 'LOWEST_COST_WITHOUT_CAP' }));
       criado.campanha = camp.id;
-      const targeting = { geo_locations: { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
+      const targeting = { geo_locations: geoLoc ? geoLoc.geo : { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
       if (a.genero && a.genero !== 'todos') targeting.genders = [a.genero === 'masculino' ? 1 : 2];
       const conj = { name: `${a.nome} | Conjunto`, campaign_id: camp.id, status: 'PAUSED', billing_event: 'IMPRESSIONS', targeting: JSON.stringify(targeting), optimization_goal: whats || msg ? 'CONVERSATIONS' : o.goal };
       if (whats) { conj.destination_type = 'WHATSAPP'; conj.promoted_object = JSON.stringify({ page_id: page }); }
