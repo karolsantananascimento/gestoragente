@@ -364,7 +364,7 @@ metaTools.push(
     handler: async (a) => {
       const conta = acct(a.ad_account_id); const o = OBJ_FLUXO[a.objetivo]; const { page, ig } = paginaDe(a);
       const dest = destinoDe(a); const whats = dest === 'whatsapp'; const msg = MSG[dest]; const criado = {};
-      const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { throw new Error(`Falhou na etapa "${nome}": ${e.message}.${Object.keys(criado).length ? ` Já criado (PAUSADO): ${Object.entries(criado).map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ''}`); } };
+      const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { const feito = Object.entries(criado).filter(([k]) => !['imagem', 'criativo'].includes(k)); throw new Error(`Falhou na etapa "${nome}": ${e.message}.${feito.length ? ` Já criado (PAUSADO): ${feito.map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ' Nada foi criado nesta campanha; pode tentar de novo.'}`); } };
       // Criativo enviado pelo painel: os bytes sobem direto ao Meta (image_hash) e a cópia no nosso servidor é apagada ao final.
       const local = midiaLocal(a.imagem_url); let imagem = { picture: a.imagem_url };
       if (local) {
@@ -374,6 +374,28 @@ metaTools.push(
         criado.imagem = hash; imagem = { image_hash: hash };
       }
       const geoLoc = await etapa('localização do público', () => resolverGeo(a));
+      const link = whats ? 'https://api.whatsapp.com/send' : msg ? MSG_LINK : a.url_destino;
+      const cta = whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : msg ? { type: msg.cta, value: { app_destination: msg.app } } : { type: a.cta || 'LEARN_MORE', value: { link } };
+      let spec;
+      if (dest === 'post') { spec = { page_id: page, photo_data: { caption: a.texto_principal, ...(imagem.image_hash ? { image_hash: imagem.image_hash } : { url: imagem.picture }) } }; }
+      else {
+        const ld = { message: a.texto_principal, link, ...imagem, call_to_action: cta };
+        if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
+        spec = { page_id: page, link_data: ld };
+      }
+      // O criativo é criado ANTES da campanha: se o Meta recusar, nada fica pela metade na conta.
+      const criar = (sp) => post(`${conta}/adcreatives`, { name: `${a.nome} | Criativo`, object_story_spec: JSON.stringify(sp) });
+      let igUsado = !!ig;
+      const cri = await etapa('criativo', async () => {
+        if (!ig) return criar(spec);
+        try { return await criar({ ...spec, instagram_user_id: ig }); }
+        catch (e1) {
+          if (MSG[dest] && dest !== 'messenger') throw e1; // mensagens no Instagram exigem a conta vinculada
+          igUsado = false; // sem a conta do Instagram liberada para esta conta de anúncio, o anúncio roda no Instagram com a identidade da página
+          try { return await criar(spec); } catch (e2) { throw new Error(`${e2.message} (com o Instagram vinculado deu: ${e1.message})`); }
+        }
+      });
+      criado.criativo = cri.id;
       const camp = await etapa('campanha', () => post(`${conta}/campaigns`, { name: a.nome, objective: a.objetivo, status: 'PAUSED', special_ad_categories: '[]', daily_budget: cents(a.orcamento_diario_brl), bid_strategy: 'LOWEST_COST_WITHOUT_CAP' }));
       criado.campanha = camp.id;
       const targeting = { geo_locations: geoLoc ? geoLoc.geo : { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
@@ -387,23 +409,11 @@ metaTools.push(
       if (a.termina_em) conj.end_time = new Date(a.termina_em).toISOString();
       const set = await etapa('conjunto de anúncios', () => post(`${conta}/adsets`, conj));
       criado.conjunto = set.id;
-      const link = whats ? 'https://api.whatsapp.com/send' : msg ? MSG_LINK : a.url_destino;
-      const cta = whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : msg ? { type: msg.cta, value: { app_destination: msg.app } } : { type: a.cta || 'LEARN_MORE', value: { link } };
-      let spec;
-      if (dest === 'post') { spec = { page_id: page, photo_data: { caption: a.texto_principal, ...(imagem.image_hash ? { image_hash: imagem.image_hash } : { url: imagem.picture }) } }; }
-      else {
-        const ld = { message: a.texto_principal, link, ...imagem, call_to_action: cta };
-        if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
-        spec = { page_id: page, link_data: ld };
-      }
-      if (ig) spec.instagram_user_id = ig;
-      const cri = await etapa('criativo', () => post(`${conta}/adcreatives`, { name: `${a.nome} | Criativo`, object_story_spec: JSON.stringify(spec) }));
-      criado.criativo = cri.id;
       const ad = await etapa('anúncio', () => post(`${conta}/ads`, { name: `${a.nome} | Anúncio 1`, adset_id: set.id, creative: JSON.stringify({ creative_id: cri.id }), status: 'PAUSED' }));
       criado.anuncio = ad.id;
       // Tudo criado: o Meta já tem a imagem, então a cópia temporária sai do nosso servidor.
       let apagada = false; if (local?.temp) apagada = store.delMedia(local.id);
-      return { status: 'criada_pausada', imagem_apagada_do_servidor: apagada, campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
+      return { status: 'criada_pausada', instagram_vinculado: igUsado, imagem_apagada_do_servidor: apagada, campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
     },
   },
   {
@@ -417,6 +427,7 @@ metaTools.push(
     precheck: async (a) => {
       const c = await get(a.id, { fields: 'name,status,daily_budget' });
       const sets = await get(`${a.id}/adsets`, { fields: 'id,status', limit: '50' }); const ads = await get(`${a.id}/ads`, { fields: 'id,status', limit: '100' });
+      if (!(ads.data || []).length) return { error: `A campanha "${c.name}" não tem nenhum anúncio (o criativo falhou?). Ativar só gastaria sem entregar nada. Crie o anúncio antes.` };
       const n = (l) => (l.data || []).filter((x) => x.status === 'PAUSED').length;
       return { warn: `"${c.name}" (${c.status}${c.daily_budget ? `, R$ ${Number(c.daily_budget) / 100}/dia` : ''}): serão ativados ${n(sets)} conjunto(s) e ${n(ads)} anúncio(s) pausados. O gasto começa após a revisão do Meta.` };
     },

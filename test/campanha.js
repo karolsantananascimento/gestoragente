@@ -4,19 +4,23 @@ process.env.DATA_DIR = './data/campanha-test'; process.env.DRY_RUN = 'false';
 process.env.META_ACCESS_TOKEN = 'tk'; process.env.META_AD_ACCOUNT_ID = 'act_1'; process.env.MAX_DAILY_BUDGET_BRL = '100';
 process.env.PUBLIC_URL = 'https://app.exemplo.com'; process.env.META_PAGE_ID = 'pg1'; process.env.INSTAGRAM_USER_ID = 'ig1';
 fs.rmSync('./data/campanha-test', { recursive: true, force: true });
-const calls = []; let falhaCriativo = false;
+const calls = []; let falhaCriativo = false, falhaIG = false;
 const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
 globalThis.fetch = async (url, opts = {}) => {
   const u = String(url); calls.push({ u, m: opts.method || 'GET', body: opts.body });
   if (/\/search\?/.test(u)) return j({ data: [{ key: '111', name: 'Recife', type: 'city', region: 'Pernambuco', country_code: 'BR' }, { key: '1', name: 'Pernambuco', type: 'region', country_code: 'BR' }] });
   if (/\/pg1\?fields=name/.test(u)) return j({ name: 'Disco Mídia' });
   if (/\/777\?fields=name,status/.test(u)) return j({ name: 'Disco | Leads', status: 'PAUSED', daily_budget: '4000' });
+  if (/\/888\?fields=name,status/.test(u)) return j({ name: 'Sem anúncio', status: 'PAUSED' });
+  if (/\/888\/adsets/.test(u)) return j({ data: [{ id: 's9', status: 'PAUSED' }] });
+  if (/\/888\/ads/.test(u)) return j({ data: [] });
   if (/\/777\/adsets/.test(u)) return j({ data: [{ id: 's1', status: 'PAUSED' }] });
   if (/\/777\/ads/.test(u)) return j({ data: [{ id: 'a1', status: 'PAUSED' }, { id: 'a2', status: 'ACTIVE' }] });
   if (opts.method === 'POST') {
     if (/act_1\/adimages/.test(u)) return j({ images: { bytes: { hash: 'hash123' } } });
     if (/act_1\/campaigns/.test(u)) return j({ id: '777' });
     if (/act_1\/adsets/.test(u)) return j({ id: 's1' });
+    if (/act_1\/adcreatives/.test(u) && falhaIG && /instagram_user_id/.test(decodeURIComponent(String(opts.body)))) return j({ error: { message: 'Invalid parameter', error_user_msg: 'Conta do Instagram sem acesso', error_subcode: 2446 } }, 400);
     if (/act_1\/adcreatives/.test(u)) return falhaCriativo ? j({ error: { message: 'Imagem inválida' } }, 400) : j({ id: 'c1' });
     if (/act_1\/ads/.test(u)) return j({ id: 'a1' });
     return j({ success: true });
@@ -53,11 +57,11 @@ const ap = await approveAction(r.id, 'admin');
 ok(ap.status === 'executado' && ap.resultado.campanha_id === '777' && ap.resultado.anuncio_id === 'a1', 'aprovar cria campanha, conjunto, criativo e anúncio');
 const posts = calls.filter((c) => c.m === 'POST').slice(antes);
 const f = (i) => new URLSearchParams(posts[i].body);
-ok(posts.length === 4 && /campaigns$/.test(posts[0].u) && /adsets$/.test(posts[1].u) && /adcreatives$/.test(posts[2].u) && /\/ads$/.test(posts[3].u), 'ordem: campanha → conjunto → criativo → anúncio');
-ok(f(0).get('status') === 'PAUSED' && f(0).get('daily_budget') === '4000' && f(1).get('status') === 'PAUSED' && f(3).get('status') === 'PAUSED', 'tudo nasce PAUSADO e o orçamento vai na campanha (R$ 40 = 4000)');
-const tg = JSON.parse(f(1).get('targeting'));
-ok(tg.age_min === 25 && tg.age_max === 45 && tg.genders[0] === 2 && tg.geo_locations.countries[0] === 'BR' && f(1).get('optimization_goal') === 'LINK_CLICKS' && f(1).get('end_time'), 'público, meta de otimização e término no conjunto');
-const spec = JSON.parse(f(2).get('object_story_spec'));
+ok(posts.length === 4 && /adcreatives$/.test(posts[0].u) && /campaigns$/.test(posts[1].u) && /adsets$/.test(posts[2].u) && /\/ads$/.test(posts[3].u), 'ordem: criativo → campanha → conjunto → anúncio (criativo primeiro)');
+ok(f(1).get('status') === 'PAUSED' && f(1).get('daily_budget') === '4000' && f(2).get('status') === 'PAUSED' && f(3).get('status') === 'PAUSED', 'tudo nasce PAUSADO e o orçamento vai na campanha (R$ 40 = 4000)');
+const tg = JSON.parse(f(2).get('targeting'));
+ok(tg.age_min === 25 && tg.age_max === 45 && tg.genders[0] === 2 && tg.geo_locations.countries[0] === 'BR' && f(2).get('optimization_goal') === 'LINK_CLICKS' && f(2).get('end_time'), 'público, meta de otimização e término no conjunto');
+const spec = JSON.parse(f(0).get('object_story_spec'));
 ok(spec.page_id === 'pg1' && spec.instagram_user_id === 'ig1' && spec.link_data.picture === base.imagem_url && spec.link_data.call_to_action.type === 'LEARN_MORE', 'criativo usa a página, o Instagram, a imagem e o CTA');
 ok(JSON.parse(f(3).get('creative')).creative_id === 'c1' && f(3).get('adset_id') === 's1', 'anúncio liga o criativo ao conjunto');
 
@@ -73,22 +77,23 @@ ok(new URLSearchParams(wp.body).get('destination_type') === 'WHATSAPP' && JSON.p
 // falha no meio: informa o que já foi criado e não ativa nada
 falhaCriativo = true;
 r = await proposeAction(T, base, 't'); const bad = await approveAction(r.id, 'admin');
-ok(bad.status === 'falhou' && /criativo/.test(bad.erro) && /campanha 777/.test(bad.erro) && /nada foi ativado/.test(bad.erro), 'falha no criativo informa o que já foi criado (pausado)');
+ok(bad.status === 'falhou' && /criativo/.test(bad.erro) && /Nada foi criado/.test(bad.erro), 'falha no criativo não deixa campanha pela metade');
+ok(!calls.slice(-4).some((c) => /campaigns$|adsets$/.test(c.u)), 'com o criativo recusado nem a campanha nem o conjunto são criados');
 falhaCriativo = false;
 
 // Engajamento no anúncio (curtidas e comentários), sem link de destino
 const eng = { nome: 'Disco | Engaj', objetivo: 'OUTCOME_ENGAGEMENT', orcamento_diario_brl: 20, texto_principal: 'Legenda', imagem_url: 'https://app.exemplo.com/media/abc', cliente: 'Disco' };
 let m0 = calls.length; r = await proposeAction(T, eng, 't'); await approveAction(r.id, 'admin');
 let ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); let g = (i) => new URLSearchParams(ps2[i].body);
-ok(r.status === 'pendente_aprovacao' && g(0).get('objective') === 'OUTCOME_ENGAGEMENT' && g(1).get('optimization_goal') === 'POST_ENGAGEMENT' && g(1).get('destination_type') === 'ON_POST', 'Engajamento: conjunto ON_POST otimizando por engajamento');
-ok(JSON.parse(g(2).get('object_story_spec')).photo_data.caption === 'Legenda' && !g(1).get('promoted_object'), 'Engajamento: criativo é foto com legenda, sem link');
+ok(r.status === 'pendente_aprovacao' && g(1).get('objective') === 'OUTCOME_ENGAGEMENT' && g(2).get('optimization_goal') === 'POST_ENGAGEMENT' && g(2).get('destination_type') === 'ON_POST', 'Engajamento: conjunto ON_POST otimizando por engajamento');
+ok(JSON.parse(g(0).get('object_story_spec')).photo_data.caption === 'Legenda' && !g(2).get('promoted_object'), 'Engajamento: criativo é foto com legenda, sem link');
 
 // Mensagens no Messenger e no Instagram Direct
 for (const [dest, tipo, app, dt] of [['messenger', 'MESSAGE_PAGE', 'MESSENGER', 'MESSENGER'], ['instagram_direct', 'INSTAGRAM_MESSAGE', 'INSTAGRAM_DIRECT', 'INSTAGRAM_DIRECT'], ['instagram_facebook', 'MESSAGE_PAGE', 'MESSENGER', 'MESSAGING_INSTAGRAM_DIRECT_MESSENGER']]) {
   m0 = calls.length; r = await proposeAction(T, { ...eng, destino: dest }, 't'); await approveAction(r.id, 'admin');
   ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
-  const cta = JSON.parse(g(2).get('object_story_spec')).link_data.call_to_action;
-  ok(g(1).get('destination_type') === dt && g(1).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(1).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
+  const cta = JSON.parse(g(0).get('object_story_spec')).link_data.call_to_action;
+  ok(g(2).get('destination_type') === dt && g(2).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(2).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
 }
 
 // Localização exata: cidades e estados em vez do país inteiro
@@ -107,7 +112,7 @@ ok(bl[0].chave === '111' && bl[0].tipo === 'city' && bl[1].tipo === 'region', 'b
 // Mensagens também valem para Leads (sem pixel e sem link)
 m0 = calls.length; r = await proposeAction(T, { ...eng, objetivo: 'OUTCOME_LEADS', destino: 'instagram_facebook' }, 't'); await approveAction(r.id, 'admin');
 ps2 = calls.slice(m0).filter((c) => c.m === 'POST');
-ok(r.status === 'pendente_aprovacao' && new URLSearchParams(ps2[1].body).get('optimization_goal') === 'CONVERSATIONS', 'Leads aceita destino de mensagens sem pixel');
+ok(r.status === 'pendente_aprovacao' && new URLSearchParams(ps2[2].body).get('optimization_goal') === 'CONVERSATIONS', 'Leads aceita destino de mensagens sem pixel');
 
 // Criativo enviado pelo painel: sobe os bytes ao Meta e a cópia é apagada depois
 const mid = 'a'.repeat(32); store.setMedia(mid, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });
@@ -115,8 +120,8 @@ m0 = calls.length; r = await proposeAction(T, { ...base, imagem_url: `https://ap
 ok(store.media(mid) && /apagado do nosso servidor/.test(r.avisos.join(' ')), 'antes da aprovação a imagem continua guardada');
 const ap2 = await approveAction(r.id, 'admin');
 ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
-ok(/adimages$/.test(ps2[0].u) && g(0).get('bytes') === 'QUJD' && /campaigns$/.test(ps2[1].u), 'a imagem sobe ao Meta (bytes) antes de criar a campanha');
-const ld = JSON.parse(g(3).get('object_story_spec')).link_data;
+ok(/adimages$/.test(ps2[0].u) && g(0).get('bytes') === 'QUJD' && /adcreatives$/.test(ps2[1].u) && /campaigns$/.test(ps2[2].u), 'a imagem sobe ao Meta (bytes) antes de tudo');
+const ld = JSON.parse(g(1).get('object_story_spec')).link_data;
 ok(ld.image_hash === 'hash123' && !ld.picture, 'o criativo usa o hash devolvido pelo Meta, não o link');
 ok(ap2.resultado.imagem_apagada_do_servidor === true && !store.media(mid), 'depois de criar tudo a imagem é apagada do servidor');
 // Arte do Conteúdo (não temporária) nunca é apagada
@@ -131,8 +136,18 @@ ok(bad2.status === 'falhou' && !!store.media(mid2), 'se algo falhar, a imagem te
 store.setMedia('d'.repeat(32), { type: 'image/jpeg', data: 'QUJD', at: new Date(Date.now() - 49 * 3600e3).toISOString(), temp: true });
 ok(store.limparMediaTemp(48 * 3600e3) === 1 && !store.media('d'.repeat(32)) && !!store.media(mid2), 'temporárias com mais de 48 h são varridas');
 
+// Instagram sem acesso nesta conta de anúncio: o criativo é refeito com a identidade da página e a campanha sai
+falhaIG = true; m0 = calls.length; r = await proposeAction(T, base, 't'); const igr = await approveAction(r.id, 'admin'); falhaIG = false;
+const crs = calls.slice(m0).filter((c) => c.m === 'POST' && /adcreatives$/.test(c.u));
+ok(igr.status === 'executado' && crs.length === 2 && /instagram_user_id/.test(decodeURIComponent(crs[0].body)) && !/instagram_user_id/.test(decodeURIComponent(crs[1].body)) && igr.resultado.instagram_vinculado === false, 'se o Instagram for recusado, o criativo é refeito só com a página e a campanha é criada');
+// Mensagens no Instagram exigem a conta vinculada: sem fallback
+falhaIG = true; r = await proposeAction(T, { ...eng, destino: 'instagram_direct' }, 't'); const igm = await approveAction(r.id, 'admin'); falhaIG = false;
+ok(igm.status === 'falhou' && /Conta do Instagram sem acesso/.test(igm.erro) && /2446/.test(igm.erro), 'Instagram Direct não usa fallback e mostra o motivo detalhado do Meta');
+
 // ativação
 const A = getPlatformTool('meta_ativar_estrutura');
+const semAds = await proposeAction(A, { id: '888' }, 't');
+ok(semAds.status === 'bloqueado' && /nenhum anúncio/.test(semAds.motivos.join(' ')), 'não deixa ativar campanha sem anúncio');
 const mark = calls.length;
 r = await proposeAction(A, { id: '777' }, 't');
 ok(r.status === 'pendente_aprovacao' && /1 conjunto/.test(r.avisos.join(' ')) && /1 anúncio/.test(r.avisos.join(' ')), 'ativação mostra o que será ligado');

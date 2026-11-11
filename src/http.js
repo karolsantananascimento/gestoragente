@@ -13,7 +13,9 @@ export async function httpJson(url, { method = 'GET', headers = {}, body, form }
   let data;
   try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
   if (!res.ok) {
-    const msg = data?.error?.message || data?.message || data?.raw || res.statusText;
+    const er = data?.error || {};
+    const det = [er.error_user_title, er.error_user_msg].filter(Boolean).join(': ');
+    const msg = `${er.message || data?.message || data?.raw || res.statusText}${det ? ` — ${det}` : ''}${er.error_subcode ? ` (subcódigo ${er.error_subcode})` : ''}`;
     const err = new Error(`HTTP ${res.status} em ${new URL(url).host}: ${String(msg).slice(0, 400)}`);
     err.status = res.status;
     err.data = data;
