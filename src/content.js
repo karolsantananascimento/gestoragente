@@ -481,7 +481,8 @@ export function cancelRequest(id, by) {
 }
 
 // Guarda uma imagem enviada pelo painel (data URL) como JPEG no nosso servidor e devolve o link público estável.
-export async function guardarImagem(dataUrl) {
+// temp=true: criativo de campanha. A imagem é apagada do servidor assim que o Meta a recebe (ou em 48 h se nunca for usada).
+export async function guardarImagem(dataUrl, { temp = false } = {}) {
   const origin = config.publicUrl;
   if (!origin) return { error: 'PUBLIC_URL não está configurada: não há como guardar a imagem enviada.' };
   const m = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
@@ -491,7 +492,7 @@ export async function guardarImagem(dataUrl) {
   catch { return { error: 'Não consegui ler a imagem.' }; }
   if (buf.length > MAX_IMG) return { error: 'A imagem passa de 4 MB depois de otimizar. Reduza o tamanho.' };
   const id = crypto.randomBytes(16).toString('hex');
-  store.setMedia(id, { type: 'image/jpeg', data: buf.toString('base64'), at: new Date().toISOString() });
+  store.setMedia(id, { type: 'image/jpeg', data: buf.toString('base64'), at: new Date().toISOString(), ...(temp ? { temp: true } : {}) });
   return { url: `${origin}/media/${id}` };
 }
 

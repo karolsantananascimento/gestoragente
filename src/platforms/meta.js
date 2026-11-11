@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { httpJson, NotConfigured } from '../http.js';
 import { contasDe } from './social.js';
+import { store } from '../store.js';
 
 // Só o token é obrigatório. A conta de anúncio pode vir de META_AD_ACCOUNT_ID ou ser informada em cada chamada.
 function requireMeta() {
@@ -218,6 +219,21 @@ const OBJ_FLUXO = {
   OUTCOME_AWARENESS: { goal: 'REACH', rotulo: 'Reconhecimento' },
   OUTCOME_LEADS: { goal: 'OFFSITE_CONVERSIONS', evento: 'LEAD', rotulo: 'Leads' },
   OUTCOME_SALES: { goal: 'OFFSITE_CONVERSIONS', evento: 'PURCHASE', rotulo: 'Vendas' },
+  OUTCOME_ENGAGEMENT: { goal: 'POST_ENGAGEMENT', rotulo: 'Engajamento' },
+};
+// Destinos do fluxo. Engajamento: post (curtidas/comentários), messenger (Facebook) ou instagram_direct. Leads: site ou whatsapp. Demais: site.
+const DESTINOS = ['site', 'whatsapp', 'post', 'messenger', 'instagram_direct'];
+const MSG = {
+  messenger: { destination_type: 'MESSENGER', cta: 'MESSAGE_PAGE', app: 'MESSENGER', rotulo: 'mensagens no Messenger (Facebook)' },
+  instagram_direct: { destination_type: 'INSTAGRAM_DIRECT', cta: 'INSTAGRAM_MESSAGE', app: 'INSTAGRAM_DIRECT', rotulo: 'mensagens no Instagram Direct' },
+};
+const MSG_LINK = 'https://fb.com/messenger_doc/';
+const destinoDe = (a) => a.destino || (a.objetivo === 'OUTCOME_ENGAGEMENT' ? 'post' : 'site');
+// Criativo enviado pelo painel (guardado no nosso servidor): devolve { id, data (base64), temp } para subir os bytes direto ao Meta.
+const midiaLocal = (url) => {
+  const o = config.publicUrl; if (!o || !String(url || '').startsWith(`${o}/media/`)) return null;
+  const id = String(url).slice(o.length + 7); if (!/^[a-f0-9]{32}$/.test(id)) return null;
+  const m = store.media(id); return m ? { id, data: m.data, temp: !!m.temp } : null;
 };
 const CTAS = ['LEARN_MORE', 'SIGN_UP', 'SHOP_NOW', 'CONTACT_US', 'GET_QUOTE', 'SUBSCRIBE', 'DOWNLOAD', 'APPLY_NOW', 'BOOK_TRAVEL'];
 const httpsUrl = (u) => /^https:\/\/[^\s]+$/i.test(String(u || ''));
@@ -231,10 +247,14 @@ function validarFluxo(a) {
   if (!(Number(a.orcamento_diario_brl) > 0)) return 'Informe o orçamento diário em reais.';
   if (!String(a.texto_principal || '').trim()) return 'Informe o texto principal do anúncio.';
   if (!httpsUrl(a.imagem_url)) return 'A imagem do anúncio precisa ser um link https público (JPG/PNG).';
-  const whats = a.destino === 'whatsapp';
+  const dest = destinoDe(a);
+  if (!DESTINOS.includes(dest)) return `Destino "${dest}" inválido. Use: ${DESTINOS.join(', ')}.`;
+  const whats = dest === 'whatsapp', msg = !!MSG[dest], site = dest === 'site';
   if (whats && a.objetivo !== 'OUTCOME_LEADS') return 'Destino WhatsApp só funciona com o objetivo Leads.';
-  if (!whats && !httpsUrl(a.url_destino)) return 'Informe o link de destino (https://) do anúncio.';
-  if (!whats && o.evento && !pixelDe(a)) return `O objetivo ${o.rotulo} para site precisa do pixel do Meta (informe pixel_id ou configure META_PIXEL_ID). Sem pixel, use Tráfego ou o destino WhatsApp.`;
+  if ((msg || dest === 'post') && a.objetivo !== 'OUTCOME_ENGAGEMENT') return 'Mensagens (Messenger/Instagram Direct) e engajamento no anúncio usam o objetivo Engajamento.';
+  if (a.objetivo === 'OUTCOME_ENGAGEMENT' && !(msg || dest === 'post')) return 'O objetivo Engajamento usa o destino post, messenger ou instagram_direct.';
+  if (site && !httpsUrl(a.url_destino)) return 'Informe o link de destino (https://) do anúncio.';
+  if (site && o.evento && !pixelDe(a)) return `O objetivo ${o.rotulo} para site precisa do pixel do Meta (informe pixel_id ou configure META_PIXEL_ID). Sem pixel, use Tráfego ou o destino WhatsApp.`;
   const imin = a.idade_min ?? 18, imax = a.idade_max ?? 65;
   if (imin < 13 || imax > 65 || imin > imax) return 'Faixa de idade inválida (13 a 65, mínima menor que a máxima).';
   if ((a.paises || []).some((c) => !/^[A-Za-z]{2}$/.test(c))) return 'Países devem ser códigos de 2 letras (ex.: BR).';
@@ -242,6 +262,7 @@ function validarFluxo(a) {
   for (const [k, v] of [['inicio', a.inicio], ['termina_em', a.termina_em]]) if (v && Number.isNaN(new Date(v).getTime())) return `Data inválida em ${k}.`;
   if (a.termina_em && new Date(a.termina_em).getTime() < Date.now()) return 'A data de término já passou.';
   if (!paginaDe(a).page) return 'Não achei a página do Facebook para anunciar: cadastre-a na aba Marca do cliente (ou informe page_id).';
+  if (dest === 'instagram_direct' && !paginaDe(a).ig) return 'Para anunciar mensagens no Instagram Direct cadastre o Instagram profissional do cliente na aba Marca (INSTAGRAM_USER_ID).';
   return '';
 }
 
@@ -250,15 +271,15 @@ metaTools.push(
     name: 'meta_subir_campanha_completa',
     platform: 'meta',
     risk: 'write',
-    description: 'FLUXO COMPLETO de campanha no Meta Ads: cria a campanha (orçamento diário na campanha), o conjunto (público, idade, gênero, países, datas), o criativo (imagem, texto, título, CTA, link) e o anúncio. TUDO nasce PAUSADO e só vai ao ar depois de ativado (meta_ativar_estrutura). Uma única aprovação humana cobre a criação inteira. Objetivos: OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_LEADS e OUTCOME_SALES (os dois últimos para site exigem pixel; Leads também aceita destino whatsapp).',
+    description: 'FLUXO COMPLETO de campanha no Meta Ads: cria a campanha (orçamento diário na campanha), o conjunto (público, idade, gênero, países, datas), o criativo (imagem, texto, título, CTA, link) e o anúncio. TUDO nasce PAUSADO e só vai ao ar depois de ativado (meta_ativar_estrutura). Uma única aprovação humana cobre a criação inteira. Objetivos: OUTCOME_TRAFFIC, OUTCOME_AWARENESS, OUTCOME_LEADS, OUTCOME_SALES (os dois últimos para site exigem pixel; Leads também aceita destino whatsapp) e OUTCOME_ENGAGEMENT (destino post = curtidas/comentários, messenger = mensagens no Facebook, instagram_direct = mensagens no Instagram). A imagem pode ser um link https ou um criativo enviado pelo painel: neste caso a imagem sobe direto ao Meta e é APAGADA do nosso servidor depois.',
     params: {
       nome: { type: 'string', desc: 'Nome da campanha', required: true },
       objetivo: { type: 'string', enum: Object.keys(OBJ_FLUXO), desc: 'Objetivo', required: true },
       orcamento_diario_brl: { type: 'number', desc: 'Orçamento diário em reais', required: true },
       texto_principal: { type: 'string', desc: 'Texto principal do anúncio (legenda)', required: true },
-      imagem_url: { type: 'string', desc: 'Link https público da imagem (JPG/PNG), de preferência 1080x1350 ou 1080x1080', required: true },
-      destino: { type: 'string', enum: ['site', 'whatsapp'], desc: 'Para onde o clique leva (padrão site)' },
-      url_destino: { type: 'string', desc: 'Link https de destino (obrigatório quando destino = site)' },
+      imagem_url: { type: 'string', desc: 'Link https público da imagem (JPG/PNG) ou o link devolvido pelo envio do painel; de preferência 1080x1350 ou 1080x1080', required: true },
+      destino: { type: 'string', enum: DESTINOS, desc: 'Para onde o clique leva (padrão site; padrão post no objetivo Engajamento)' },
+      url_destino: { type: 'string', desc: 'Link https de destino (obrigatório só quando destino = site)' },
       titulo: { type: 'string', desc: 'Título do anúncio (opcional)' },
       descricao: { type: 'string', desc: 'Descrição curta (opcional)' },
       cta: { type: 'string', enum: CTAS, desc: 'Botão de chamada (padrão LEARN_MORE)' },
@@ -274,40 +295,61 @@ metaTools.push(
       ad_account_id: { type: 'string', desc: 'Conta de anúncio (act_...). Padrão: a configurada.' },
     },
     budgetBRL: (a) => Number(a.orcamento_diario_brl),
-    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${a.destino === 'whatsapp' ? 'WhatsApp' : 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
+    summarize: (a) => `Meta: SUBIR campanha completa "${a.nome}" (${OBJ_FLUXO[a.objetivo]?.rotulo || a.objetivo}, R$ ${a.orcamento_diario_brl}/dia, ${({ whatsapp: 'WhatsApp', post: 'engajamento no anúncio', messenger: 'Messenger', instagram_direct: 'Instagram Direct' })[destinoDe(a)] || 'site'}; público ${(a.paises?.length ? a.paises : ['BR']).join(',')} ${a.idade_min ?? 18}–${a.idade_max ?? 65}${a.genero && a.genero !== 'todos' ? ' ' + a.genero : ''}). Cria campanha + conjunto + anúncio, tudo PAUSADO`,
     precheck: async (a) => {
       const erro = validarFluxo(a); if (erro) return { error: erro };
       const { page, ig } = paginaDe(a);
       const pg = await get(page, { fields: 'name' });
       acct(a.ad_account_id);
       const aviso = [`Página: ${pg.name || page}`, ig ? 'Instagram vinculado' : 'sem Instagram vinculado (só Facebook)', `conta ${acct(a.ad_account_id)}`];
-      if (a.destino === 'whatsapp') aviso.push('WhatsApp: exige número do WhatsApp Business conectado à página (fluxo ainda não validado em conta real)');
+      const dest = destinoDe(a);
+      if (MSG[dest]) aviso.push(`Mensagens: exige que a página${dest === 'instagram_direct' ? ' e o Instagram' : ''} aceitem conversas (fluxo ainda não validado em conta real)`);
+      if (midiaLocal(a.imagem_url)?.temp) aviso.push('o criativo enviado sobe direto ao Meta e é apagado do nosso servidor depois');
+      if (dest === 'whatsapp') aviso.push('WhatsApp: exige número do WhatsApp Business conectado à página (fluxo ainda não validado em conta real)');
       return { warn: aviso.join(' · ') + '. Tudo será criado PAUSADO.' };
     },
     handler: async (a) => {
       const conta = acct(a.ad_account_id); const o = OBJ_FLUXO[a.objetivo]; const { page, ig } = paginaDe(a);
-      const whats = a.destino === 'whatsapp'; const criado = {};
+      const dest = destinoDe(a); const whats = dest === 'whatsapp'; const msg = MSG[dest]; const criado = {};
       const etapa = async (nome, fn) => { try { return await fn(); } catch (e) { throw new Error(`Falhou na etapa "${nome}": ${e.message}.${Object.keys(criado).length ? ` Já criado (PAUSADO): ${Object.entries(criado).map(([k, v]) => `${k} ${v}`).join(', ')}. Corrija e tente de novo; nada foi ativado.` : ''}`); } };
+      // Criativo enviado pelo painel: os bytes sobem direto ao Meta (image_hash) e a cópia no nosso servidor é apagada ao final.
+      const local = midiaLocal(a.imagem_url); let imagem = { picture: a.imagem_url };
+      if (local) {
+        const up = await etapa('envio da imagem ao Meta', () => post(`${conta}/adimages`, { bytes: local.data }));
+        const hash = Object.values(up.images || {})[0]?.hash;
+        if (!hash) throw new Error('Falhou na etapa "envio da imagem ao Meta": o Meta não devolveu o código (hash) da imagem.');
+        criado.imagem = hash; imagem = { image_hash: hash };
+      }
       const camp = await etapa('campanha', () => post(`${conta}/campaigns`, { name: a.nome, objective: a.objetivo, status: 'PAUSED', special_ad_categories: '[]', daily_budget: cents(a.orcamento_diario_brl), bid_strategy: 'LOWEST_COST_WITHOUT_CAP' }));
       criado.campanha = camp.id;
       const targeting = { geo_locations: { countries: (a.paises?.length ? a.paises : ['BR']).map((c) => c.toUpperCase()) }, age_min: a.idade_min ?? 18, age_max: a.idade_max ?? 65, targeting_automation: { advantage_audience: 0 } };
       if (a.genero && a.genero !== 'todos') targeting.genders = [a.genero === 'masculino' ? 1 : 2];
-      const conj = { name: `${a.nome} | Conjunto`, campaign_id: camp.id, status: 'PAUSED', billing_event: 'IMPRESSIONS', targeting: JSON.stringify(targeting), optimization_goal: whats ? 'CONVERSATIONS' : o.goal };
+      const conj = { name: `${a.nome} | Conjunto`, campaign_id: camp.id, status: 'PAUSED', billing_event: 'IMPRESSIONS', targeting: JSON.stringify(targeting), optimization_goal: whats || msg ? 'CONVERSATIONS' : o.goal };
       if (whats) { conj.destination_type = 'WHATSAPP'; conj.promoted_object = JSON.stringify({ page_id: page }); }
+      else if (msg) { conj.destination_type = msg.destination_type; conj.promoted_object = JSON.stringify({ page_id: page }); }
+      else if (dest === 'post') conj.destination_type = 'ON_POST';
       else if (o.evento) conj.promoted_object = JSON.stringify({ pixel_id: pixelDe(a), custom_event_type: o.evento });
       if (a.inicio) conj.start_time = new Date(a.inicio).toISOString();
       if (a.termina_em) conj.end_time = new Date(a.termina_em).toISOString();
       const set = await etapa('conjunto de anúncios', () => post(`${conta}/adsets`, conj));
       criado.conjunto = set.id;
-      const link = whats ? 'https://api.whatsapp.com/send' : a.url_destino;
-      const ld = { message: a.texto_principal, link, picture: a.imagem_url, call_to_action: whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : { type: a.cta || 'LEARN_MORE', value: { link } } };
-      if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
-      const spec = { page_id: page, link_data: ld }; if (ig) spec.instagram_user_id = ig;
+      const link = whats ? 'https://api.whatsapp.com/send' : msg ? MSG_LINK : a.url_destino;
+      const cta = whats ? { type: 'WHATSAPP_MESSAGE', value: { app_destination: 'WHATSAPP' } } : msg ? { type: msg.cta, value: { app_destination: msg.app } } : { type: a.cta || 'LEARN_MORE', value: { link } };
+      let spec;
+      if (dest === 'post') { spec = { page_id: page, photo_data: { caption: a.texto_principal, ...(imagem.image_hash ? { image_hash: imagem.image_hash } : { url: imagem.picture }) } }; }
+      else {
+        const ld = { message: a.texto_principal, link, ...imagem, call_to_action: cta };
+        if (a.titulo) ld.name = a.titulo; if (a.descricao) ld.description = a.descricao;
+        spec = { page_id: page, link_data: ld };
+      }
+      if (ig) spec.instagram_user_id = ig;
       const cri = await etapa('criativo', () => post(`${conta}/adcreatives`, { name: `${a.nome} | Criativo`, object_story_spec: JSON.stringify(spec) }));
       criado.criativo = cri.id;
       const ad = await etapa('anúncio', () => post(`${conta}/ads`, { name: `${a.nome} | Anúncio 1`, adset_id: set.id, creative: JSON.stringify({ creative_id: cri.id }), status: 'PAUSED' }));
       criado.anuncio = ad.id;
-      return { status: 'criada_pausada', campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
+      // Tudo criado: o Meta já tem a imagem, então a cópia temporária sai do nosso servidor.
+      let apagada = false; if (local?.temp) apagada = store.delMedia(local.id);
+      return { status: 'criada_pausada', imagem_apagada_do_servidor: apagada, campanha_id: camp.id, conjunto_id: set.id, criativo_id: cri.id, anuncio_id: ad.id, proximo_passo: 'Revise no Gerenciador de Anúncios (a revisão do Meta pode levar algumas horas) e ative com meta_ativar_estrutura.' };
     },
   },
   {

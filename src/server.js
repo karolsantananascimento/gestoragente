@@ -356,7 +356,7 @@ app.get('/api/content', requireUser, (req, res) => res.json({ status: STATUS, it
 const out = (res, r, code = 400) => (r.error ? res.status(code).json({ error: r.error }) : res.json(r.item ? { item: r.item } : r));
 app.post('/api/content', requireUser, (req, res) => out(res, createItem(req.body || {}, req.user.email)));
 app.patch('/api/content/:id', requireUser, (req, res) => out(res, editItem(req.params.id, req.body || {}, req.user.email)));
-app.post('/api/media/upload', requireUser, async (req, res) => out(res, await guardarImagem(req.body?.file)));
+app.post('/api/media/upload', requireUser, async (req, res) => out(res, await guardarImagem(req.body?.file, { temp: req.body?.efemera === true })));
 app.post('/api/content/:id/upload', requireUser, async (req, res) => out(res, await uploadSlides(req.params.id, req.body?.files, req.body?.observacoes, req.user.email)));
 app.post('/api/content/:id/art', requireUser, async (req, res) => out(res, await submitArt(req.params.id, req.body || {}, req.user.email)));
 app.post('/api/content/:id/video', requireUser, (req, res) => out(res, submitVideo(req.params.id, req.body || {}, req.user.email)));
@@ -477,6 +477,10 @@ app.get('/media/:id', (req, res) => {
 app.use(express.static(path.join(here, '..', 'public'), { setHeaders: (res, f) => { if (/\.html$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } })); // o painel sempre carrega a versão mais nova
 
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
+{ // criativos de campanha enviados e nunca usados somem em 48 h
+  const limpar = () => { try { const n = store.limparMediaTemp(48 * 3600e3); if (n) console.log(`[media] ${n} criativo(s) temporário(s) apagado(s)`); } catch (e) { console.error('[media]', e.message); } };
+  limpar(); setInterval(limpar, 3600e3).unref();
+}
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
 { // pautas prontas da agência (src/pautas/*.csv): entram os próximos 7 dias, na partida e todo dia
   const rodar = () => { try { for (const r of importarPautasDeArquivo()) if (r.criados) console.log(`[pauta] ${r.cliente}: ${r.criados} pauta(s) importada(s) de ${r.arquivo}`); const a = aplicarArtesDeArquivo(); if (a) console.log(`[artes] ${a} arte(s) entregue(s) para aprovação`); } catch (e) { console.error('[pauta]', e.message); } };

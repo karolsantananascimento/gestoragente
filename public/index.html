@@ -457,9 +457,9 @@
       <h3>1. Campanha</h3>
       <label>Nome<input name="nome" required placeholder="Ex.: Disco | Leads | Nov"></label>
       <div class="grid2">
-        <label>Objetivo<select name="objetivo"><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Leads (contatos)</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option></select></label>
+        <label>Objetivo<select name="objetivo"><option value="OUTCOME_TRAFFIC">Tráfego (cliques para o site)</option><option value="OUTCOME_LEADS">Leads (contatos)</option><option value="OUTCOME_SALES">Vendas</option><option value="OUTCOME_AWARENESS">Reconhecimento (alcance)</option><option value="OUTCOME_ENGAGEMENT">Engajamento e mensagens (Instagram / Facebook)</option></select></label>
         <label>Orçamento por dia (R$)<input name="orc" type="number" min="1" step="1" required placeholder="40"></label>
-        <label id="lbDestino">Destino do clique<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option></select></label>
+        <label id="lbDestino">Destino<select name="destino"><option value="site">Site / página</option><option value="whatsapp">WhatsApp (só Leads)</option><option value="post">Engajamento no anúncio (curtidas e comentários)</option><option value="messenger">Mensagens no Messenger (Facebook)</option><option value="instagram_direct">Mensagens no Instagram Direct</option></select></label>
         <label id="lbUrl">Link de destino<input name="url" type="url" placeholder="https://..."></label>
         <label id="lbPixel" class="hidden">Pixel do Meta (obrigatório para Leads/Vendas no site)<input name="pixel" placeholder="ID do pixel"></label>
       </div>
@@ -484,6 +484,7 @@
       </div>
       <label>Descrição curta (opcional)<input name="descricao" maxlength="120"></label>
       <div class="lbl2">Imagem do anúncio</div>
+      <div class="note">A imagem enviada daqui sobe direto ao Meta e é apagada do nosso servidor assim que a campanha é criada.</div>
       <div class="row"><button type="button" class="ghost" id="campImg">📤 Enviar imagem</button><select id="campArte" title="Usar a arte de um conteúdo"><option value="">…ou usar uma arte do Conteúdo</option></select></div>
       <img id="campPrev" class="hidden" alt="Prévia" style="max-height:160px;border-radius:10px;border:1px solid var(--line);margin-top:8px">
       <input type="hidden" name="imagem">
@@ -929,13 +930,14 @@ $('#tAI').onclick = () => {
 };
 /* ---------- nova campanha (fluxo completo) ---------- */
 const campForm = () => $('#campForm').elements;
+const DEST_POR_OBJ = { OUTCOME_LEADS: ['site', 'whatsapp'], OUTCOME_ENGAGEMENT: ['post', 'messenger', 'instagram_direct'] };
 function campRefresh() {
-  const f = campForm(); const whats = f.destino.value === 'whatsapp';
-  if (whats && f.objetivo.value !== 'OUTCOME_LEADS') f.destino.value = 'site';
-  const w = f.destino.value === 'whatsapp';
-  show($('#lbUrl'), !w); f.url.required = !w;
-  show($('#lbPixel'), !w && /LEADS|SALES/.test(f.objetivo.value));
-  f.destino.querySelector('[value=whatsapp]').disabled = f.objetivo.value !== 'OUTCOME_LEADS';
+  const f = campForm(); const ok = DEST_POR_OBJ[f.objetivo.value] || ['site'];
+  for (const o of f.destino.options) { o.disabled = !ok.includes(o.value); o.hidden = o.disabled; }
+  if (!ok.includes(f.destino.value)) f.destino.value = ok[0];
+  const site = f.destino.value === 'site';
+  show($('#lbUrl'), site); f.url.required = site;
+  show($('#lbPixel'), site && /LEADS|SALES/.test(f.objetivo.value));
 }
 $('#campForm').elements.objetivo.onchange = campRefresh; $('#campForm').elements.destino.onchange = campRefresh;
 function campImagem(url) { const f = campForm(); f.imagem.value = url || ''; const im = $('#campPrev'); if (url) { im.src = url; im.referrerPolicy = 'no-referrer'; } show(im, !!url); }
@@ -949,7 +951,7 @@ $('#campClose').onclick = () => show($('#campModal'), false);
 $('#campArte').onchange = () => campImagem($('#campArte').value);
 $('#campImg').onclick = async () => {
   const files = await pickImages(false); if (!files.length) return;
-  try { toast('Enviando imagem…'); const r = await api('/api/media/upload', { method: 'POST', body: JSON.stringify({ file: files[0] }) }); campImagem(r.url); $('#campArte').value = ''; }
+  try { toast('Enviando imagem…'); const r = await api('/api/media/upload', { method: 'POST', body: JSON.stringify({ file: files[0], efemera: true }) }); campImagem(r.url); $('#campArte').value = ''; }
   catch (e) { $('#campErr').textContent = e.message; }
 };
 $('#campForm').onsubmit = async (e) => {

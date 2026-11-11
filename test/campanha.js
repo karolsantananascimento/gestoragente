@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 process.env.DATA_DIR = './data/campanha-test'; process.env.DRY_RUN = 'false';
 process.env.META_ACCESS_TOKEN = 'tk'; process.env.META_AD_ACCOUNT_ID = 'act_1'; process.env.MAX_DAILY_BUDGET_BRL = '100';
-process.env.META_PAGE_ID = 'pg1'; process.env.INSTAGRAM_USER_ID = 'ig1';
+process.env.PUBLIC_URL = 'https://app.exemplo.com'; process.env.META_PAGE_ID = 'pg1'; process.env.INSTAGRAM_USER_ID = 'ig1';
 fs.rmSync('./data/campanha-test', { recursive: true, force: true });
 const calls = []; let falhaCriativo = false;
 const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
@@ -13,6 +13,7 @@ globalThis.fetch = async (url, opts = {}) => {
   if (/\/777\/adsets/.test(u)) return j({ data: [{ id: 's1', status: 'PAUSED' }] });
   if (/\/777\/ads/.test(u)) return j({ data: [{ id: 'a1', status: 'PAUSED' }, { id: 'a2', status: 'ACTIVE' }] });
   if (opts.method === 'POST') {
+    if (/act_1\/adimages/.test(u)) return j({ images: { bytes: { hash: 'hash123' } } });
     if (/act_1\/campaigns/.test(u)) return j({ id: '777' });
     if (/act_1\/adsets/.test(u)) return j({ id: 's1' });
     if (/act_1\/adcreatives/.test(u)) return falhaCriativo ? j({ error: { message: 'Imagem inválida' } }, 400) : j({ id: 'c1' });
@@ -36,8 +37,12 @@ r = await proposeAction(T, { ...base, orcamento_diario_brl: 500 }, 't');
 ok(r.status === 'bloqueado' && /teto/.test(r.motivos.join(' ')), 'orçamento acima do teto diário é bloqueado');
 r = await proposeAction(T, { ...base, idade_min: 10 }, 't');
 ok(r.status === 'bloqueado', 'idade fora de 13–65 é bloqueada');
-r = await proposeAction(T, { ...base, objetivo: 'OUTCOME_ENGAGEMENT' }, 't');
+r = await proposeAction(T, { ...base, objetivo: 'OUTCOME_APP_PROMOTION' }, 't');
 ok(r.status === 'bloqueado' && /não é suportado/.test(r.motivos.join(' ')), 'objetivo fora do fluxo é recusado');
+r = await proposeAction(T, { ...base, objetivo: 'OUTCOME_ENGAGEMENT', destino: 'site' }, 't');
+ok(r.status === 'bloqueado' && /Engajamento/.test(r.motivos.join(' ')), 'Engajamento não aceita destino site');
+r = await proposeAction(T, { ...base, destino: 'messenger' }, 't');
+ok(r.status === 'bloqueado' && /Engajamento/.test(r.motivos.join(' ')), 'Mensagens só com o objetivo Engajamento');
 
 const antes = calls.filter((c) => c.m === 'POST').length;
 r = await proposeAction(T, { ...base, genero: 'feminino', idade_min: 25, idade_max: 45, termina_em: '2030-01-01T23:59:00-03:00' }, 't');
@@ -69,6 +74,43 @@ falhaCriativo = true;
 r = await proposeAction(T, base, 't'); const bad = await approveAction(r.id, 'admin');
 ok(bad.status === 'falhou' && /criativo/.test(bad.erro) && /campanha 777/.test(bad.erro) && /nada foi ativado/.test(bad.erro), 'falha no criativo informa o que já foi criado (pausado)');
 falhaCriativo = false;
+
+// Engajamento no anúncio (curtidas e comentários), sem link de destino
+const eng = { nome: 'Disco | Engaj', objetivo: 'OUTCOME_ENGAGEMENT', orcamento_diario_brl: 20, texto_principal: 'Legenda', imagem_url: 'https://app.exemplo.com/media/abc', cliente: 'Disco' };
+let m0 = calls.length; r = await proposeAction(T, eng, 't'); await approveAction(r.id, 'admin');
+let ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); let g = (i) => new URLSearchParams(ps2[i].body);
+ok(r.status === 'pendente_aprovacao' && g(0).get('objective') === 'OUTCOME_ENGAGEMENT' && g(1).get('optimization_goal') === 'POST_ENGAGEMENT' && g(1).get('destination_type') === 'ON_POST', 'Engajamento: conjunto ON_POST otimizando por engajamento');
+ok(JSON.parse(g(2).get('object_story_spec')).photo_data.caption === 'Legenda' && !g(1).get('promoted_object'), 'Engajamento: criativo é foto com legenda, sem link');
+
+// Mensagens no Messenger e no Instagram Direct
+for (const [dest, tipo, app] of [['messenger', 'MESSAGE_PAGE', 'MESSENGER'], ['instagram_direct', 'INSTAGRAM_MESSAGE', 'INSTAGRAM_DIRECT']]) {
+  m0 = calls.length; r = await proposeAction(T, { ...eng, destino: dest }, 't'); await approveAction(r.id, 'admin');
+  ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
+  const cta = JSON.parse(g(2).get('object_story_spec')).link_data.call_to_action;
+  ok(g(1).get('destination_type') === dest.toUpperCase() && g(1).get('optimization_goal') === 'CONVERSATIONS' && /pg1/.test(g(1).get('promoted_object')) && cta.type === tipo && cta.value.app_destination === app, `Mensagens (${dest}): conversas, página e botão corretos`);
+}
+
+// Criativo enviado pelo painel: sobe os bytes ao Meta e a cópia é apagada depois
+const mid = 'a'.repeat(32); store.setMedia(mid, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });
+m0 = calls.length; r = await proposeAction(T, { ...base, imagem_url: `https://app.exemplo.com/media/${mid}` }, 't');
+ok(store.media(mid) && /apagado do nosso servidor/.test(r.avisos.join(' ')), 'antes da aprovação a imagem continua guardada');
+const ap2 = await approveAction(r.id, 'admin');
+ps2 = calls.slice(m0).filter((c) => c.m === 'POST'); g = (i) => new URLSearchParams(ps2[i].body);
+ok(/adimages$/.test(ps2[0].u) && g(0).get('bytes') === 'QUJD' && /campaigns$/.test(ps2[1].u), 'a imagem sobe ao Meta (bytes) antes de criar a campanha');
+const ld = JSON.parse(g(3).get('object_story_spec')).link_data;
+ok(ld.image_hash === 'hash123' && !ld.picture, 'o criativo usa o hash devolvido pelo Meta, não o link');
+ok(ap2.resultado.imagem_apagada_do_servidor === true && !store.media(mid), 'depois de criar tudo a imagem é apagada do servidor');
+// Arte do Conteúdo (não temporária) nunca é apagada
+const fix = 'b'.repeat(32); store.setMedia(fix, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString() });
+r = await proposeAction(T, { ...base, imagem_url: `https://app.exemplo.com/media/${fix}` }, 't'); await approveAction(r.id, 'admin');
+ok(!!store.media(fix), 'arte do Conteúdo usada na campanha não é apagada');
+// Falha no meio: a imagem temporária fica para a nova tentativa
+const mid2 = 'c'.repeat(32); store.setMedia(mid2, { type: 'image/jpeg', data: 'QUJD', at: new Date().toISOString(), temp: true });
+falhaCriativo = true; r = await proposeAction(T, { ...base, imagem_url: `https://app.exemplo.com/media/${mid2}` }, 't'); const bad2 = await approveAction(r.id, 'admin'); falhaCriativo = false;
+ok(bad2.status === 'falhou' && !!store.media(mid2), 'se algo falhar, a imagem temporária fica para tentar de novo');
+// limpeza de temporárias esquecidas
+store.setMedia('d'.repeat(32), { type: 'image/jpeg', data: 'QUJD', at: new Date(Date.now() - 49 * 3600e3).toISOString(), temp: true });
+ok(store.limparMediaTemp(48 * 3600e3) === 1 && !store.media('d'.repeat(32)) && !!store.media(mid2), 'temporárias com mais de 48 h são varridas');
 
 // ativação
 const A = getPlatformTool('meta_ativar_estrutura');

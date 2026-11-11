@@ -177,6 +177,9 @@ export const store = {
   updatePedido(id, patch) { const x = load().pedidos.find((p) => p.id === id); if (x) { Object.assign(x, patch); save(); } return x; },
   media: (id) => load().media[id],
   setMedia(id, m) { load().media[id] = m; save(); },
+  delMedia(id) { const md = load().media; if (!(id in md)) return false; delete md[id]; save(); return true; },
+  // Apaga imagens temporárias (criativos de campanha enviados e nunca usados) mais velhas que maxMs.
+  limparMediaTemp(maxMs) { const md = load().media; let n = 0; for (const [id, m] of Object.entries(md)) if (m?.temp && Date.now() - new Date(m.at).getTime() > maxMs) { delete md[id]; n++; } if (n) save(); return n; },
   // Kit da marca: o que foi salvo no painel; se estiver vazio, usa o kit padrão do repositório (src/brandDefault.json).
   clientes: () => load().clientes,
   cliente: (idOuNome) => {
