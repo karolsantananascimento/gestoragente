@@ -28,7 +28,7 @@ import { sugerirPublico } from './segmentacao.js';
 import { teamInfo } from './team.js';
 import { addSource, refreshSource, removeSource, listSources } from './sources.js';
 import { redesDe } from './platforms/social.js';
-import { kitCompleto, getCliente, createItem, listItems, editItem, submitArt, submitVideo, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, deleteItem, deleteItemsAntes, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
+import { kitCompleto, getCliente, createItem, listItems, editItem, editarLegenda, redistribuirDatas, submitArt, submitVideo, uploadSlides, guardarImagem, requestChanges, createRequest, listRequests, cancelRequest, approveItem, cancelItem, deleteItem, deleteItemsAntes, scheduleItem, tick, planoSemanas, importSeeds, STATUS } from './content.js';
 import { approveAction, rejectAction, pendingActions, proposeAction } from './guardrails.js';
 import {
   authenticate, loginByVerifiedEmail, signSession, readSession, changePassword,
@@ -368,6 +368,8 @@ app.post('/api/content/:id/changes', requireUser, (req, res) => out(res, request
 app.post('/api/content/:id/schedule', requireUser, requireAdmin, async (req, res) => out(res, await scheduleItem(req.params.id, req.user.email)));
 app.post('/api/content/:id/cancel', requireUser, requireAdmin, (req, res) => out(res, cancelItem(req.params.id, req.user.email)));
 app.delete('/api/content/:id', requireUser, requireAdmin, (req, res) => out(res, deleteItem(req.params.id, req.user.email)));
+app.post('/api/content/redistribuir', requireUser, requireAdmin, (req, res) => out(res, redistribuirDatas({ cliente: req.body?.cliente }, req.user.email)));
+app.post('/api/content/:id/legenda', requireUser, (req, res) => out(res, editarLegenda(req.params.id, req.body?.legenda, req.user.email)));
 app.post('/api/content/limpar', requireUser, requireAdmin, (req, res) => out(res, deleteItemsAntes({ cliente: req.body?.cliente, antes: req.body?.antes }, req.user.email)));
 
 // Cada pedido é atendido na hora: com IA (chave da Anthropic) o Hugo escreve; sem IA o sistema cria um rascunho marcado, que o Hugo com IA refina depois.
@@ -504,6 +506,9 @@ await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { // criativos de campanha enviados e nunca usados somem em 48 h
   const limpar = () => { try { const v = limparVideos(48 * 3600e3); if (v) console.log(`[media] ${v} vídeo(s) temporário(s) apagado(s)`); const n = store.limparMediaTemp(48 * 3600e3); if (n) console.log(`[media] ${n} criativo(s) temporário(s) apagado(s)`); } catch (e) { console.error('[media]', e.message); } };
   limpar(); setInterval(limpar, 3600e3).unref();
+}
+if (!store.settings().datas_1_por_dia_20261124) { // ajuste único pedido em 23/11/2026: 1 post por dia a partir de 24/11
+  const r = redistribuirDatas({}, 'sistema'); store.setSettings({ datas_1_por_dia_20261124: true }); console.log(`[conteudo] datas redistribuídas: ${r.movidos} post(s)`, JSON.stringify(r.resumo));
 }
 { const n = await importSeeds(); if (n) console.log(`[conteudo] ${n} pauta(s) inicial(is) criada(s)`); }
 { // pautas prontas da agência (src/pautas/*.csv): entram os próximos 7 dias, na partida e todo dia

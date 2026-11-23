@@ -318,7 +318,7 @@
       <h2 class="ptitle">Conteúdo · <span id="curName"></span></h2>
       <div class="flow"><span class="st">✍ Hugo escreve a pauta</span>→<span class="st">🎨 Luiz faz a arte</span>→<span class="st hu">✅ Você aprova</span>→<span class="st">📅 Mariana agenda</span></div>
     </div>
-    <div class="actions"><span class="note" id="contentNote"></span><button class="ghost" id="reloadItems" title="Atualizar">↻</button><button class="ghost" id="cleanItems" title="Exclui as pautas deste cliente criadas antes de hoje (menos as aprovadas, agendadas e publicadas)">🗑 Limpar anteriores</button><button class="ghost" id="newItem">+ Nova pauta</button><button id="runTeam">▶ Rodar</button></div>
+    <div class="actions"><span class="note" id="contentNote"></span><button class="ghost" id="reloadItems" title="Atualizar">↻</button><button class="ghost" id="spreadItems" title="Reorganiza as datas deste cliente: 1 post por dia a partir de amanhã (mantém o horário; agendados na rede não mudam)">📅 1 post/dia</button><button class="ghost" id="cleanItems" title="Exclui as pautas deste cliente criadas antes de hoje (menos as aprovadas, agendadas e publicadas)">🗑 Limpar anteriores</button><button class="ghost" id="newItem">+ Nova pauta</button><button id="runTeam">▶ Rodar</button></div>
   </div>
   <div class="alert" id="autoNote"></div>
   <div class="weeks" id="weeks"></div>
@@ -1639,7 +1639,21 @@ function itemCard(it, full, color) {
   if (!full && it.arte_url) { const img = document.createElement('img'); img.className = 'thumb'; img.loading = 'lazy'; img.src = it.arte_url; img.alt = 'Arte'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); c.appendChild(img); }
   if (it.video_url || it.video_arquivo) { const v = it.video_url ? mk('a', '🎬 Ver vídeo') : mk('div', '🎬 ' + it.video_arquivo); if (it.video_url) { v.href = it.video_url; v.target = '_blank'; v.rel = 'noopener noreferrer'; v.onclick = (ev) => ev.stopPropagation(); } v.style.cssText = 'display:block;font-size:13px;margin:6px 0'; c.appendChild(v); }
   if (it.canva_url) { const a = mk('a', '🎨 Abrir arte no Canva'); a.href = it.canva_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.cssText = 'display:inline-block;font-size:13px;margin:6px 0'; a.onclick = (ev) => ev.stopPropagation(); c.appendChild(a); }
-  c.appendChild(mk('div', it.legenda, 'cap'));
+  const capEl = mk('div', it.legenda, 'cap'); c.appendChild(capEl);
+  if (full && !['agendado', 'publicado', 'cancelado'].includes(it.status)) {
+    const eb = mk('button', '✏️ Editar legenda', 'ghost'); eb.style.cssText = 'font-size:12px;padding:4px 10px;margin:4px 0';
+    eb.onclick = (ev) => {
+      ev.stopPropagation();
+      const ta = document.createElement('textarea'); ta.value = it.legenda || ''; ta.rows = 8; ta.maxLength = 2200; ta.style.cssText = 'width:100%;margin-top:6px'; ta.onclick = (e) => e.stopPropagation();
+      const cnt = mk('small', '', 'note'); const upd = () => { cnt.textContent = ta.value.length + ' / 2200'; }; ta.oninput = upd; upd();
+      const ok = mk('button', 'Salvar legenda', 'big'); const no = mk('button', 'Cancelar', 'no');
+      const bar = document.createElement('div'); bar.className = 'row'; bar.append(ok, no, cnt);
+      no.onclick = (e) => { e.stopPropagation(); ta.replaceWith(capEl); bar.remove(); eb.hidden = false; };
+      ok.onclick = async (e) => { e.stopPropagation(); ok.disabled = true; try { const r = await api(`/api/content/${it.id}/legenda`, { method: 'POST', body: JSON.stringify({ legenda: ta.value }) }); it.legenda = r.item.legenda; capEl.textContent = it.legenda; ta.replaceWith(capEl); bar.remove(); eb.hidden = false; toast('Legenda salva.', 'ok'); loadItems().catch(() => {}); } catch (er) { toast(er.message, 'bad'); ok.disabled = false; } };
+      capEl.replaceWith(ta); eb.hidden = true; eb.after(bar); ta.focus();
+    };
+    c.appendChild(eb);
+  }
   const cs = Object.entries(it.canais_status || {});
   const w = document.createElement('div'); w.style.marginTop = '6px';
   if (cs.length) for (const [canal, v] of cs) { const t = mk('span', `${canal}: ${v.status.replace('_', ' ')}`, 'tag ' + (CH_TAG[v.status] || '')); t.title = v.detalhe || ''; w.appendChild(t); }
@@ -1792,6 +1806,10 @@ $('#addSlide').onclick = () => { const c = coletarSlides(true); if (c.length < 1
 $('#newItem').onclick = () => openItem(null);
 $('#itemClose').onclick = () => show($('#itemModal'), false);
 $('#reloadItems').onclick = () => loadItems().catch(() => {});
+$('#spreadItems').onclick = async () => {
+  if (!confirm('Reorganizar as datas deste cliente: 1 post por dia a partir de amanhã, na ordem atual? O horário de cada post é mantido; o que já está agendado na rede não muda.')) return;
+  try { const r = await api('/api/content/redistribuir', { method: 'POST', body: JSON.stringify({ cliente: CUR }) }); const x = r.resumo?.[0]; toast(x ? `${x.posts} post(s): de ${x.de.split('-').reverse().join('/')} a ${x.ate.split('-').reverse().join('/')}.` : 'Nada para reorganizar.', 'ok'); await loadItems(); } catch (e) { toast(e.message, 'bad'); }
+};
 $('#cleanItems').onclick = async () => {
   if (me.role !== 'admin') return toast('Somente administradores podem excluir pautas.', 'bad');
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);

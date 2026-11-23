@@ -168,6 +168,55 @@ export function editItem(id, patch, by) {
   return { item: it };
 }
 
+// Legenda editada à mão: vale também para o que já foi aprovado (ou deu erro), enquanto não foi agendado na rede.
+const LEGENDA_FECHADA = ['agendado', 'publicado', 'cancelado'];
+export function editarLegenda(id, legenda, by) {
+  const it = store.getContent(id);
+  if (!it) return { error: 'Conteúdo não encontrado.' };
+  if (LEGENDA_FECHADA.includes(it.status)) return { error: `Não dá para editar a legenda de um conteúdo "${STATUS[it.status]}".${it.status === 'agendado' ? ' Ele já está agendado na rede: edite lá.' : ''}` };
+  const txt = String(legenda ?? '').trim();
+  if (!txt) return { error: 'A legenda não pode ficar vazia.' };
+  if (txt.length > 2200) return { error: 'A legenda passou de 2.200 caracteres (limite do Instagram).' };
+  it.legenda = txt; it.rascunho_auto = false; it.updatedAt = now();
+  hist(it, by, 'Legenda editada manualmente.');
+  store.saveContent();
+  return { item: it };
+}
+
+// Redistribui as datas: 1 post por dia, a partir de amanhã (horário de Recife), por cliente.
+// Mantém o horário de cada post (12:00 quando não há). Agendados na rede não mudam e ocupam o dia deles.
+export function redistribuirDatas({ cliente } = {}, by = 'sistema') {
+  const R = 3 * 3600e3;
+  const ymd = (t) => new Date(t - R).toISOString().slice(0, 10);
+  const amanha = (() => { const d = new Date(`${ymd(Date.now())}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); return d; })();
+  const cl = cliente ? getCliente(cliente) : null;
+  if (cliente && !cl) return { error: 'Cliente não encontrado.' };
+  const porCliente = new Map();
+  for (const c of store.content()) {
+    if (cl && c.cliente_id !== cl.id) continue;
+    if (['publicado', 'cancelado'].includes(c.status)) continue;
+    if (!porCliente.has(c.cliente_id)) porCliente.set(c.cliente_id, []);
+    porCliente.get(c.cliente_id).push(c);
+  }
+  let movidos = 0; const resumo = [];
+  for (const [cid, lista] of porCliente) {
+    const fixos = new Set(lista.filter((c) => c.status === 'agendado' && c.data_publicacao).map((c) => ymd(Date.parse(c.data_publicacao))));
+    const mover = lista.filter((c) => c.status !== 'agendado')
+      .sort((a, b) => String(a.data_publicacao || '9').localeCompare(String(b.data_publicacao || '9')) || String(a.createdAt).localeCompare(String(b.createdAt)));
+    const d = new Date(amanha);
+    for (const c of mover) {
+      while (fixos.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() + 1);
+      const hora = c.data_publicacao ? new Date(Date.parse(c.data_publicacao) - R).toISOString().slice(11, 16) : '12:00';
+      const novo = new Date(Date.parse(`${d.toISOString().slice(0, 10)}T${hora}:00Z`) + R).toISOString();
+      if (novo !== c.data_publicacao) { hist(c, by, `Data ajustada: 1 post por dia (${d.toISOString().slice(0, 10)} ${hora}).`); c.data_publicacao = novo; movidos++; }
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    if (mover.length) resumo.push({ cliente: cid, posts: mover.length, de: ymd(Date.parse(mover[0].data_publicacao)), ate: ymd(Date.parse(mover.at(-1).data_publicacao)) });
+  }
+  if (movidos) store.saveContent();
+  return { movidos, resumo };
+}
+
 // Luiz entrega a arte → sobe para aprovação humana.
 // Link do design editável no Canva (só canva.com / canva.link por https). Vazio apaga.
 export function cleanCanvaUrl(v) {
