@@ -713,13 +713,22 @@ const qc = () => 'cliente=' + encodeURIComponent(CUR);
 async function loadClients(keep) {
   const r = await api('/api/clients'); CLIENTS = r.clientes;
   let saved = ''; try { saved = localStorage.getItem('cliente') || ''; } catch {}
-  CUR = [keep, CUR, saved].find((x) => x && CLIENTS.some((c) => c.id === x)) || (CLIENTS.find((c) => c.padrao) || CLIENTS[0]).id;
+  // Link direto (/disco, /operizy…): o endereço escolhe o cliente na primeira carga.
+  const slugU = (x) => String(x).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const rota = slugU(decodeURIComponent(location.pathname.split('/')[1] || ''));
+  const daRota = rota ? CLIENTS.find((c) => slugU(c.id) === rota || slugU(c.nome) === rota)?.id : '';
+  CUR = [keep, CUR, daRota, saved].find((x) => x && CLIENTS.some((c) => c.id === x)) || (CLIENTS.find((c) => c.padrao) || CLIENTS[0]).id;
   const sel = $('#clientSel'); sel.innerHTML = '';
   for (const c of CLIENTS) { const o = document.createElement('option'); o.value = c.id; o.textContent = c.nome + (c.kit_completo ? '' : ' (kit incompleto)'); sel.appendChild(o); }
   sel.value = CUR;
+  try { localStorage.setItem('cliente', CUR); } catch {}
+  urlDoCliente();
 }
+// O endereço acompanha o cliente aberto, para copiar e enviar o link de cada um.
+const urlDoCliente = () => { if (CUR && location.pathname !== '/' + CUR) history.replaceState(null, '', '/' + CUR + location.search); };
 $('#clientSel').onchange = () => {
   CUR = $('#clientSel').value; try { localStorage.setItem('cliente', CUR); } catch {}
+  urlDoCliente();
   const on = document.querySelector('#tabs button.on')?.dataset.tab; if (on) openTab(on);
 };
 async function boot() {

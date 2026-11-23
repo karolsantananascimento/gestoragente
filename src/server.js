@@ -493,6 +493,13 @@ app.post('/api/media/video', requireUser, async (req, res) => {
 
 app.use(express.static(path.join(here, '..', 'public'), { setHeaders: (res, f) => { if (/\.html$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } })); // o painel sempre carrega a versão mais nova
 
+// Link direto por cliente: /disco, /operizy, /senhorita-moca… abrem o painel já na área daquele cliente.
+app.get('/:cliente', (req, res, next) => {
+  if (!/^[a-z0-9-]{2,60}$/i.test(req.params.cliente) || !store.cliente(req.params.cliente)) return next();
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(here, '..', 'public', 'index.html'));
+});
+
 await store.init().then((m) => console.log(`[store] armazenamento: ${m}`));
 { // criativos de campanha enviados e nunca usados somem em 48 h
   const limpar = () => { try { const v = limparVideos(48 * 3600e3); if (v) console.log(`[media] ${v} vídeo(s) temporário(s) apagado(s)`); const n = store.limparMediaTemp(48 * 3600e3); if (n) console.log(`[media] ${n} criativo(s) temporário(s) apagado(s)`); } catch (e) { console.error('[media]', e.message); } };
