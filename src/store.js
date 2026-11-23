@@ -3,6 +3,7 @@ import path from 'node:path';
 import pg from 'pg';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
+import { FORMATOS } from './formatos.js';
 
 // Persistência: Postgres quando DATABASE_URL existe (recomendado, sobrevive a deploys);
 // senão arquivo JSON em DATA_DIR. ATENÇÃO: no plano gratuito do Render o disco é efêmero.
@@ -48,6 +49,9 @@ const normalize = (s) => {
     if (kit) { c.marca ||= {}; for (const [k, v] of Object.entries(kit)) if (!c.marca[k] || (k === 'nome' && Object.keys(c.marca).length === 1)) c.marca[k] = v; }
   }
   for (const c of s.content) if (!c.cliente_id) c.cliente_id = 'disco';
+  // Pautas de vídeo criadas antes do editor de vídeo existir: saem da fila do designer e vão para "Em vídeo".
+  const ehVid = (c) => FORMATOS[c.formato_midia]?.midia === 'video' || ['reels', 'tiktok', 'shorts', 'youtube'].includes(String(c.formato || '').toLowerCase());
+  for (const c of s.content) if (c.status === 'em_arte' && ehVid(c)) { c.status = 'em_video'; c.roteiro ||= c.briefing_arte || ''; }
   for (const p of s.pedidos) if (!p.cliente_id) p.cliente_id = 'disco';
   return s;
 };

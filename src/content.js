@@ -27,6 +27,7 @@ async function cacheArt(url, origin) {
 export const CHANNELS = ['instagram', 'facebook', 'linkedin', 'tiktok', 'reddit', 'blog', 'youtube', 'google_ads'];
 export const STATUS = {
   em_arte: 'Em arte (Luiz)',
+  em_video: 'Em vídeo (Vítor)',
   aguardando_aprovacao: 'Aguardando aprovação',
   ajustes: 'Ajustes pedidos',
   aprovado: 'Aprovado (sem agendamento)',
@@ -35,7 +36,10 @@ export const STATUS = {
   erro: 'Erro',
   cancelado: 'Cancelado',
 };
-const EDITABLE = ['em_arte', 'ajustes', 'aguardando_aprovacao'];
+const EDITABLE = ['em_arte', 'em_video', 'ajustes', 'aguardando_aprovacao'];
+// Peça de vídeo (Reels, TikTok, Shorts, YouTube) vai para o editor de vídeo; o resto (feed, carrossel, story, Display) vai para o designer.
+export const ehVideo = (x) => FORMATOS[x?.formato_midia]?.midia === 'video' || ['reels', 'tiktok', 'shorts', 'youtube'].includes(String(x?.formato || '').toLowerCase());
+const etapaDe = (x) => (ehVideo(x) ? 'em_video' : 'em_arte');
 const now = () => new Date().toISOString();
 
 // Datas sem fuso são interpretadas em America/Recife (UTC-3, sem horário de verão).
@@ -103,9 +107,12 @@ export function createItem(p, by) {
   if (fid && !formatoPorId(fid)) return { error: `Formato inválido: "${fid}". Use: ${Object.keys(FORMATOS).join(', ')}.` };
   if (fid) formato = FORMATOS[fid].legacy;
   else { if (!formato) formato = sl.list.length > 1 ? 'carrossel' : 'feed'; fid = idDeLegado(formato) || ''; }
+  const video = ehVideo({ formato_midia: fid, formato });
+  // Vídeo exige roteiro cena a cena; sem ele, o briefing serve de roteiro provisório.
+  const roteiro = String(p.roteiro || '').trim().slice(0, 4000) || (video ? briefing : '');
   const item = {
     id: crypto.randomUUID().slice(0, 8),
-    titulo, legenda, briefing_arte: briefing,
+    titulo, legenda, briefing_arte: briefing, roteiro,
     slides: sl.list,
     cliente_id: cliente.id,
     marca: cliente.nome,
@@ -115,12 +122,12 @@ export function createItem(p, by) {
     canais: ch.list,
     data_publicacao: when ? when.toISOString() : null,
     arte_url: '', arte_nota: '',
-    status: 'em_arte',
+    status: video ? 'em_video' : 'em_arte',
     canais_status: {},
     historico: [],
     createdBy: by, createdAt: now(), updatedAt: now(),
   };
-  hist(item, by, 'Pauta criada (legenda + briefing).');
+  hist(item, by, video ? 'Pauta de vídeo criada (legenda + roteiro). Encaminhada ao editor de vídeo.' : 'Pauta criada (legenda + briefing). Encaminhada ao designer.');
   store.addContent(item);
   store.log({ type: 'content_created', id: item.id, by });
   return { item };
@@ -136,6 +143,7 @@ export function editItem(id, patch, by) {
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (!EDITABLE.includes(it.status)) return { error: `Não dá para editar um conteúdo "${STATUS[it.status]}".` };
   for (const k of ['titulo', 'legenda', 'briefing_arte', 'formato', 'objetivo']) if (patch[k] !== undefined) it[k] = String(patch[k]).trim();
+  for (const k of ['roteiro', 'plano_video']) if (patch[k] !== undefined) it[k] = String(patch[k]).trim().slice(0, 4000);
   if (patch.formato_midia !== undefined) {
     const f = formatoPorId(patch.formato_midia); if (patch.formato_midia && !f) return { error: `Formato inválido: "${patch.formato_midia}".` };
     it.formato_midia = f ? f.id : ''; if (f) it.formato = f.legacy; it.tamanhos = f ? tamanhosDe(f, patch.tamanhos).map((t) => t.id) : [];
@@ -153,6 +161,8 @@ export function editItem(id, patch, by) {
     it.arte_url = u;
   }
   if (patch.canva_url !== undefined) { const c = cleanCanvaUrl(patch.canva_url); if (c.error) return c; it.canva_url = c.url; }
+  // Mudou de feed para vídeo (ou o contrário) antes da entrega: o card troca de fila (designer ↔ editor de vídeo).
+  if (['em_arte', 'em_video'].includes(it.status) && it.status !== etapaDe(it)) { it.status = etapaDe(it); if (it.status === 'em_video' && !it.roteiro) it.roteiro = it.briefing_arte; }
   hist(it, by, 'Conteúdo editado.');
   store.saveContent();
   return { item: it };
@@ -202,15 +212,18 @@ export async function submitArt(id, { arte_url, arte_urls, observacoes, canva_ur
 }
 
 // Vídeo editado no OpenScreen (ou em qualquer editor): registra o arquivo/link e leva o card para aprovação humana.
-export function submitVideo(id, { video_url, video_arquivo, observacoes } = {}, by) {
+export function submitVideo(id, { video_url, video_arquivo, capa_url, observacoes } = {}, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
-  if (!['em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe vídeo quando está em arte ou com ajustes.` };
+  if (!['em_video', 'em_arte', 'ajustes'].includes(it.status)) return { error: `Este conteúdo está "${STATUS[it.status]}"; só recebe vídeo quando está em vídeo, em arte ou com ajustes.` };
   const url = String(video_url || '').trim();
   const arquivo = String(video_arquivo || '').trim().slice(0, 200);
   if (!url && !arquivo) return { error: 'Informe o link (https://) do vídeo ou o nome do arquivo exportado.' };
   if (url && !/^https:\/\/\S+$/i.test(url)) return { error: 'O link do vídeo precisa começar com https://.' };
+  const capa = String(capa_url || '').trim();
+  if (capa && !/^https:\/\/\S+$/i.test(capa)) return { error: 'O link da capa precisa começar com https://.' };
   it.video_url = url; it.video_arquivo = arquivo;
+  if (capa) it.arte_url = capa;
   it.arte_nota = String(observacoes || '').slice(0, 500) || it.arte_nota || '';
   it.status = 'aguardando_aprovacao';
   hist(it, by, `Vídeo entregue${arquivo ? ` (${arquivo})` : ''}${url ? ' com link' : ''}. Aguardando aprovação humana.`);
@@ -221,7 +234,7 @@ export function submitVideo(id, { video_url, video_arquivo, observacoes } = {}, 
 export function requestChanges(id, nota, by) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
-  if (!['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) return { error: 'Só dá para pedir ajustes antes da aprovação.' };
+  if (!['em_arte', 'em_video', 'ajustes', 'aguardando_aprovacao'].includes(it.status)) return { error: 'Só dá para pedir ajustes antes da aprovação.' };
   const texto = String(nota || '').trim();
   if (!texto) return { error: 'Descreva o que deve ser ajustado.' };
   it.feedback = ((it.status === 'ajustes' && it.feedback ? it.feedback + ' | ' : '') + texto).slice(0, 1000);
@@ -237,7 +250,7 @@ export async function approveItem(id, by, opts = {}) {
   const it = store.getContent(id);
   if (!it) return { error: 'Conteúdo não encontrado.' };
   if (it.status !== 'aguardando_aprovacao') return { error: `Este conteúdo está "${STATUS[it.status]}", não aguarda aprovação.` };
-  if (!it.arte_url) return { error: 'Sem arte registrada.' };
+  if (!it.arte_url && !it.video_url) return { error: ehVideo(it) ? 'Sem vídeo registrado (o editor precisa entregar o link https do vídeo).' : 'Sem arte registrada.' };
   const agora = opts.modo === 'agora';
   if (opts.modo && !['agora', 'agendar'].includes(opts.modo)) return { error: 'Modo inválido. Use "agendar" ou "agora".' };
   if (!agora && !it.data_publicacao) return { error: 'Defina a data de publicação antes de aprovar (ou escolha publicar agora).' };

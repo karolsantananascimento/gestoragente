@@ -1,6 +1,6 @@
 import { store } from './store.js';
 import { pendingActions } from './guardrails.js';
-import { listItems, listRequests, getCliente } from './content.js';
+import { listItems, listRequests, getCliente, ehVideo } from './content.js';
 import { autoRodando, iaComProblema, autoDisponivel } from './agent.js';
 import { listarLeads } from './vendas.js';
 
@@ -9,7 +9,7 @@ const DIAS = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day
 const nomeCli = (id) => store.cliente(id)?.nome || id || '';
 const ROT = {
   proposed: 'Propôs uma ação de tráfego', executed: 'Ação de tráfego executada após aprovação', simulated: 'Ação simulada (modo simulação)', rejected: 'Proposta rejeitada', blocked: 'Ação bloqueada pelos tetos de segurança', failed: 'Ação falhou',
-  auto_hugo: 'Hugo criou pautas automaticamente', auto_hugo_erro: 'Hugo não conseguiu atender (erro da IA)', content_created: 'Pauta criada', content_art: 'Arte entregue para aprovação', content_changes: 'Ajustes pedidos na arte', content_approved: 'Conteúdo aprovado por um administrador',
+  auto_hugo: 'Hugo criou pautas automaticamente', auto_hugo_erro: 'Hugo não conseguiu atender (erro da IA)', content_created: 'Pauta criada', content_art: 'Arte entregue para aprovação', content_video: 'Vídeo entregue para aprovação', content_changes: 'Ajustes pedidos na arte', content_approved: 'Conteúdo aprovado por um administrador',
   content_scheduled: 'Conteúdo agendado', content_published: 'Conteúdo publicado', content_cancelled: 'Conteúdo cancelado', pedido_criado: 'Novo pedido de pauta',
   lead_novo: 'Novo lead recebido', lead_qualificado: 'Lead qualificado', lead_humano: 'Conversa passada para um humano', lead_optout: 'Lead pediu para parar', disparo_proposto: 'Disparo proposto', disparo_aprovado: 'Disparo aprovado', disparo_cancelado: 'Disparo cancelado',
 };
@@ -17,6 +17,7 @@ const POR_AGENTE = {
   camila: ['proposed', 'executed', 'simulated', 'rejected', 'blocked', 'failed'],
   hugo: ['auto_hugo', 'auto_hugo_erro', 'content_created', 'pedido_criado'],
   luiz: ['content_art', 'content_changes'],
+  vitor: ['content_video'],
   mariana: ['content_approved', 'content_scheduled', 'content_published', 'content_cancelled'],
   felipe: ['lead_novo', 'lead_qualificado', 'lead_humano', 'lead_optout', 'disparo_proposto', 'disparo_aprovado', 'disparo_cancelado'],
 };
@@ -44,12 +45,17 @@ export function atividadeDe(id) {
     else if (autoDisponivel() && iaComProblema()) agora.push('A IA do servidor está com problema (crédito ou chave). Pedidos viram rascunho.');
     if (!agora.length) agora.push('Sem pedidos abertos. Aguardando novas solicitações.');
   } else if (id === 'luiz') {
-    const em = [...listItems('em_arte'), ...listItems('ajustes')].sort((a, b) => String(a.data_publicacao || '9').localeCompare(String(b.data_publicacao || '9')));
+    const em = [...listItems('em_arte'), ...listItems('ajustes')].filter((i) => !ehVideo(i)).sort((a, b) => String(a.data_publicacao || '9').localeCompare(String(b.data_publicacao || '9')));
     for (const i of lista(em, 6)) agora.push(`${i.status === 'ajustes' ? 'Refazer arte (ajustes pedidos)' : 'Arte a criar'}: ${i.titulo} (${nomeCli(i.cliente_id)}${i.data_publicacao ? ', ' + DIAS(i.data_publicacao) : ''})`);
     if (em.length > 6) agora.push(`… e mais ${em.length - 6} na fila.`);
     if (em.length) set('aguardando'); else agora.push('Fila de artes vazia.');
     const aprov = listItems('aguardando_aprovacao').length;
     if (aprov) agora.push(`${aprov} arte(s) entregue(s) aguardando aprovação de um administrador.`);
+  } else if (id === 'vitor') {
+    const em = [...listItems('em_video'), ...listItems('ajustes').filter((i) => ehVideo(i))].sort((a, b) => String(a.data_publicacao || '9').localeCompare(String(b.data_publicacao || '9')));
+    for (const i of lista(em, 6)) agora.push(`${i.status === 'ajustes' ? 'Refazer vídeo (ajustes pedidos)' : i.plano_video ? 'Plano pronto, aguardando o vídeo' : 'Vídeo a planejar'}: ${i.titulo} (${nomeCli(i.cliente_id)}${i.data_publicacao ? ', ' + DIAS(i.data_publicacao) : ''})`);
+    if (em.length > 6) agora.push(`… e mais ${em.length - 6} na fila.`);
+    if (em.length) set('aguardando'); else agora.push('Fila de vídeos vazia.');
   } else if (id === 'mariana') {
     const ag = [...listItems('agendado')].sort((a, b) => String(a.data_publicacao).localeCompare(String(b.data_publicacao)));
     for (const i of lista(ag, 5)) agora.push(`Agendado: ${i.titulo} (${nomeCli(i.cliente_id)}, ${DIAS(i.data_publicacao)})`);

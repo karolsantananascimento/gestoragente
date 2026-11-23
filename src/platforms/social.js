@@ -51,6 +51,7 @@ export function redesDe(clienteId) {
 // ---------- mídia e erros ----------
 const VIDEO = /\.(mp4|mov)(\?|$)/i;
 const midia = (item) => {
+  if (item.video_url) return { urls: [item.video_url], video: true, carrossel: false }; // vídeo entregue pelo editor: publica o vídeo (a capa fica só no painel)
   const urls = (item.arte_urls?.length ? item.arte_urls : [item.arte_url]).filter(Boolean);
   return { urls, video: urls.length === 1 && VIDEO.test(urls[0]), carrossel: urls.length > 1 };
 };

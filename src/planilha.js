@@ -69,7 +69,7 @@ export function importarLinhas(clienteRef, linhas, { de, ate, fonte = 'planilha'
     if (jaTem.has(origem)) {
       // Pauta já importada e ainda sem arte aprovada, mas a planilha mudou o formato (ex.: Reels → Carrossel): atualiza.
       const ex = listItems(null, cl.id).find((c) => c.origem === origem);
-      const edit = ex && ['em_arte', 'ajustes'].includes(ex.status) && !ex.arte_url;
+      const edit = ex && ['em_arte', 'em_video', 'ajustes'].includes(ex.status) && !ex.arte_url;
       if (edit && fmt === 'carrossel' && ex.formato === fmt && !ex.slides?.length) { // carrosséis importados antes do roteiro por lâmina existir
         if (!editItem(ex.id, { slides: slidesDe(l.arte) }, by).error) atualizados.push(ex.id);
         continue;

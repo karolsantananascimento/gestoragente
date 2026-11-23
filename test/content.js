@@ -42,17 +42,17 @@ try {
   let q = (await callTool('time_proximas_tarefas', { semanas: 2, cliente: 'Disco' })).squads[0];
   ok(q.meta_semanal === 2 && q.hugo.semanas.length >= 1 && q.hugo.semanas[0].datas_sugeridas.length > 0, 'time_proximas_tarefas diz ao Hugo quantos posts faltam e em que datas');
   const w0 = q.hugo.semanas[0];
-  for (const d of w0.datas_sugeridas) await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Auto ' + d, legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: d });
+  for (const d of w0.datas_sugeridas) await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Disco', titulo: 'Auto ' + d, legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: d });
   const q2 = (await callTool('time_proximas_tarefas', { semanas: 2, cliente: 'Disco' })).squads[0];
   ok(!q2.hugo.semanas.some((w) => w.semana_de === w0.semana_de), 'depois de criar as pautas sugeridas a semana fica completa (sem passar da meta)');
   ok(q2.luiz.pendentes.length === w0.datas_sugeridas.length, 'as pautas aparecem na fila do Luiz');
 
   // Hugo cria pela ferramenta
-  let r = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
+  let r = await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Disco', titulo: 'Lançamento', legenda: 'Legenda #um', briefing_arte: 'Fundo roxo, texto curto', canais: ['instagram', 'facebook', 'linkedin'], data_publicacao: future }, 'mcp');
   ok(r.status === 'ok' && r.conteudo.status === 'em_arte', 'Hugo cria a pauta e ela nasce em "em_arte"');
   const id = r.conteudo.id;
 
-  r = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'], data_publicacao: future });
+  r = await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Disco', titulo: 'x', legenda: 'y', briefing_arte: 'z', canais: ['orkut'], data_publicacao: future });
   ok(r.status === 'erro', 'canal inexistente é recusado');
 
   // Mariana não agenda sem aprovação
@@ -119,7 +119,7 @@ try {
   const rq = c.createRequest({ texto: 'Post sobre site lento para a Disco', canais: 'instagram' }, 'u@x.com').pedido;
   const tasks = (await callTool('time_proximas_tarefas', { cliente: 'Disco' }, 'mcp')).squads[0];
   ok(tasks.pedidos_da_usuaria?.pedidos?.some((p) => p.pedido_id === rq.id), 'pedido aparece nas tarefas do time');
-  const np = await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Site lento', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01', pedido_id: rq.id }, 'mcp');
+  const np = await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Disco', titulo: 'Site lento', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01', pedido_id: rq.id }, 'mcp');
   ok(np.status === 'ok' && c.listRequests('aberto').length === 0 && c.listRequests('atendido')[0]?.item_id === np.conteudo.id, 'criar pauta com pedido_id fecha o pedido');
   const rq2 = c.createRequest({ texto: 'Outro post para cancelar depois' }, 'u@x.com').pedido;
   ok(c.cancelRequest(rq2.id, 'u@x.com').pedido.status === 'cancelado', 'pedido pode ser cancelado');
@@ -145,12 +145,12 @@ try {
   ok(c.planoSemanas(2, 'Operizy')[1].datas_sugeridas.length === 7, 'Operizy (1 por dia) ganha 7 datas sugeridas por semana');
   const sq = (await callTool('time_proximas_tarefas', {}, 'mcp')).squads;
   ok(sq.length === 6 && sq.find((x) => x.cliente === 'Lumiere').aguardando_identidade && !sq.find((x) => x.cliente === 'Lumiere').hugo, 'cliente sem kit completo não recebe tarefas de criação');
-  const bloq = await callTool('hugo_criar_pauta', { cliente: 'Lumiere', titulo: 't', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
+  const bloq = await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Lumiere', titulo: 't', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
   ok(bloq.status === 'erro' && /incompleto/.test(bloq.erro), 'Hugo recusa criar pauta para cliente com kit incompleto');
   const m = store.cliente('Michie Farfan');
   Object.assign(m.marca, { identidade: 'Marca X', tom_de_voz: 'caloroso', estilo_visual: 'claro e minimalista', estilo_comunicacao: 'frases curtas' });
   ok((await callTool('marca_ver', { cliente: 'Michie Farfan' }, 'mcp')).estilo_visual === 'claro e minimalista', 'marca_ver devolve o kit do cliente pedido, não o da Disco');
-  const pm = await callTool('hugo_criar_pauta', { cliente: 'Michie Farfan', titulo: 'Post Michie', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
+  const pm = await callTool('hugo_criar_pauta', { formato_midia: 'ig_feed', cliente: 'Michie Farfan', titulo: 'Post Michie', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-01-01' }, 'mcp');
   ok(pm.status === 'ok' && pm.conteudo.cliente === 'Michie Farfan', 'pauta nasce na área do cliente');
   ok((c.listItems)('em_arte', 'Michie Farfan').length === 1 && !(c.listItems)(null, 'Michie Farfan').some((x) => x.cliente_id !== 'michie-farfan'), 'a área do cliente só lista as pautas dele');
   await c.submitArt(pm.conteudo.id, { arte_url: 'https://x.com/m.png' }, 'luiz');
@@ -202,7 +202,7 @@ try {
     passo++;
     const j = (o) => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json' } });
     const base = { id: 'm', type: 'message', role: 'assistant', model: 'x', usage: { input_tokens: 1, output_tokens: 1 } };
-    if (passo === 1) return j({ ...base, stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'hugo_criar_pauta', input: { cliente: 'Disco', pedido_id: pedidoAuto.id, titulo: 'Cases de matrícula', legenda: 'Legenda', briefing_arte: 'Briefing', canais: ['instagram'], data_publicacao: '2030-03-01T11:00' } }] });
+    if (passo === 1) return j({ ...base, stop_reason: 'tool_use', content: [{ type: 'tool_use', id: 't1', name: 'hugo_criar_pauta', input: { formato_midia: 'ig_feed', cliente: 'Disco', pedido_id: pedidoAuto.id, titulo: 'Cases de matrícula', legenda: 'Legenda', briefing_arte: 'Briefing', canais: ['instagram'], data_publicacao: '2030-03-01T11:00' } }] });
     return j({ ...base, stop_reason: 'end_turn', content: [{ type: 'text', text: 'Criei 1 pauta.' }] });
   };
   const { atenderPedidos } = await import('../src/agent.js');
@@ -334,7 +334,24 @@ fs.rmSync('./data/content-test', { recursive: true, force: true });
   ok(c.submitVideo(vd.id, { video_url: 'http://x.com/a.mp4' }, 'luiz').error, 'link do vídeo precisa ser https');
   const vr = c.submitVideo(vd.id, { video_arquivo: 'reel.mp4', video_url: 'https://cdn.exemplo.com/reel.mp4' }, 'luiz');
   ok(vr.item?.status === 'aguardando_aprovacao' && vr.item.video_arquivo === 'reel.mp4' && vr.item.video_url.startsWith('https://'), 'vídeo entregue leva o card para aprovação humana');
-  ok(c.submitVideo(vd.id, { video_arquivo: 'outro.mp4' }, 'luiz').error, 'vídeo não entra depois que o card saiu de "em arte"');
+  ok(c.submitVideo(vd.id, { video_arquivo: 'outro.mp4' }, 'luiz').error, 'vídeo não entra depois que o card saiu de "em vídeo"');
+  // Editor de vídeo (Vítor): o Hugo decide o formato e o card vai para a fila certa
+  ok((await callTool('hugo_criar_pauta', { cliente: 'Disco', titulo: 'Sem formato', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-02-01' }, 'mcp')).status === 'erro', 'Hugo não cria pauta sem definir o formato');
+  ok((await callTool('hugo_criar_pauta', { cliente: 'Disco', formato_midia: 'reels', titulo: 'Reel sem roteiro', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-02-01' }, 'mcp')).status === 'erro', 'pauta de vídeo sem roteiro é recusada');
+  const rot = '0–3 s: gancho "Seu anúncio dá clique ou cliente?" | 3–15 s: três números na tela | 15–25 s: CTA chame no direct. Duração 25 s, trilha leve.';
+  const pv = await callTool('hugo_criar_pauta', { cliente: 'Disco', formato_midia: 'reels', roteiro: rot, titulo: 'Reel métricas', legenda: 'l', briefing_arte: 'capa clara', canais: ['instagram'], data_publicacao: '2030-02-02' }, 'mcp');
+  ok(pv.status === 'ok' && pv.conteudo.status === 'em_video' && pv.conteudo.roteiro === rot && /vitor/.test(pv.conteudo.destino), 'pauta de Reels nasce em "Em vídeo" com o roteiro, destinada ao Vítor');
+  const qv = (await callTool('time_proximas_tarefas', { cliente: 'Disco' })).squads[0];
+  ok(qv.vitor.pendentes.some((x) => x.id === pv.conteudo.id) && !qv.luiz.pendentes.some((x) => x.id === pv.conteudo.id), 'o vídeo entra na fila do Vítor e não na do Luiz');
+  ok((await callTool('luiz_registrar_arte', { id: pv.conteudo.id, arte_url: 'https://x.com/a.png' })).status === 'erro', 'Luiz não entrega arte em item de vídeo');
+  const plv = await callTool('vitor_salvar_plano', { id: pv.conteudo.id, plano: '0–3 s close no rosto + texto do gancho | 3–15 s números animados em lime | 15–25 s CTA com botão. Legendas Inter, trilha 90 bpm.' });
+  ok(plv.status === 'ok' && plv.conteudo.plano_video && plv.conteudo.status === 'em_video', 'Vítor salva o plano de edição sem mudar o status');
+  const vv = await callTool('vitor_registrar_video', { id: pv.conteudo.id, video_url: 'https://cdn.exemplo.com/reel.mp4', video_arquivo: 'reel.mp4' });
+  ok(vv.status === 'ok' && vv.conteudo.status === 'aguardando_aprovacao', 'Vítor entrega o vídeo e o card vai para aprovação humana');
+  const ff = await callTool('hugo_criar_pauta', { cliente: 'Disco', formato_midia: 'ig_feed', titulo: 'Vira reel', legenda: 'l', briefing_arte: 'b', canais: ['instagram'], data_publicacao: '2030-02-03' }, 'mcp');
+  const mv = c.editItem(ff.conteudo.id, { formato_midia: 'reels' }, 'u');
+  ok(ff.conteudo.status === 'em_arte' && mv.item.status === 'em_video', 'trocar o formato de feed para reels move o card do Luiz para o Vítor');
+  ok((await callTool('time_agentes', {})).some((a) => a.id === 'vitor' && /vídeo/i.test(a.cargo)), 'o time tem o editor de vídeo');
   // Exclusão definitiva e limpeza em lote
   const ex1 = c.createItem({ cliente: 'Operizy', titulo: 'Velha', legenda: 'l', briefing_arte: 'b', canais: 'instagram' }, 'hugo').item;
   ex1.createdAt = '2020-01-01T00:00:00.000Z';

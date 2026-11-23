@@ -29,10 +29,16 @@ Se o cliente tiver `fontes_de_pauta` em `time_proximas_tarefas`, chame `fontes_l
 Quando o formato for carrossel, passe também `slides` em `hugo_criar_pauta`: de 2 a 10 itens no formato "Título da lâmina | texto curto", na ordem. Lâmina 1 = capa com gancho forte (sem lista nem texto longo); lâminas do meio = uma ideia por lâmina; última = CTA claro. A legenda do carrossel complementa as lâminas, não repete. O briefing da arte descreve o estilo visual comum a todas as lâminas.
 
 
-## Formatos (obrigatório)
+## Formato e destino (obrigatório)
+Toda pauta nasce com `formato_midia` definido, e isso decide quem recebe:
+- **Imagem** (`ig_feed`, `ig_carrossel`, `ig_story`, `google_display`) → **Luiz**, com o briefing da arte.
+- **Vídeo** (`reels`, `tiktok`, `yt_shorts`, `yt_widescreen`) → **Vítor**, com o campo `roteiro` cena a cena: tempos (0–3 s gancho, …), falas, texto na tela, trilha/ritmo, duração total e CTA final. Sem roteiro a pauta de vídeo é recusada. O `briefing_arte` do vídeo descreve a direção visual e a capa.
+Se o pedido não disser o formato, escolha o que melhor serve ao objetivo (ensinar passo a passo → carrossel; mostrar bastidor, pessoa ou processo → reels) e registre a escolha no briefing.
+
+## Formatos (detalhes)
 Todo pedido traz o **formato marcado** (`formato_midia` + `especificacao`). Crie a pauta nesse formato, passando `formato_midia` (e `tamanhos` no Google Display) em `hugo_criar_pauta`, e escreva texto, roteiro e briefing nas medidas e regras dele (chame `formatos_ver` para os detalhes):
 - **Feed / Carrossel / Story (Instagram e Facebook):** legenda com gancho; carrossel com roteiro de lâminas; story com texto curto no miolo.
-- **Reels / TikTok / Shorts (vídeo 9:16):** o briefing é um **roteiro cena a cena** (gancho de 3 s, falas, texto na tela, duração total, trilha/ritmo, CTA) e a legenda; a arte pedida ao Luiz é a capa/miniatura. Respeite as zonas seguras.
+- **Reels / TikTok / Shorts (vídeo 9:16):** o `roteiro` cena a cena (gancho de 3 s, falas, texto na tela, duração total, trilha/ritmo, CTA) vai para o Vítor; o briefing traz a direção visual e a capa. Respeite as zonas seguras.
 - **YouTube widescreen (16:9):** título (até ~60 caracteres), descrição com a chamada nas 2 primeiras linhas, roteiro por blocos e briefing da miniatura 1280x720.
 - **Google Display:** copy curta por tamanho (título, descrição, CTA) e briefing para uma arte por tamanho; textos mínimos nos tamanhos pequenos.
 Se o pedido não tiver formato marcado pela usuária (`formato_marcado_pela_usuaria: false`), confirme o formato mais provável pelo texto e registre a suposição no briefing.

@@ -60,7 +60,7 @@ const findChannels = (text) => {
 const titleOf = (c) => `"${c.titulo}" (${STATUS[c.status]}, id ${c.id})`;
 
 function findItem(text, cliente) {
-  const pool = listItems(null, cliente.id).filter((c) => ['em_arte', 'ajustes', 'aguardando_aprovacao'].includes(c.status));
+  const pool = listItems(null, cliente.id).filter((c) => ['em_arte', 'em_video', 'ajustes', 'aguardando_aprovacao'].includes(c.status));
   const t = norm(text);
   const byId = pool.find((c) => t.includes(c.id.toLowerCase()));
   if (byId) return { item: byId };
@@ -102,7 +102,7 @@ export function runCommand({ texto, cliente: clienteRef, by }) {
     const por = (s) => listItems(s, cliente.id).length;
     const ped = listRequests('aberto', cliente.id).length;
     const falta = planoSemanas(2, cliente.id).reduce((a, w) => a + w.faltam, 0);
-    return { handled: true, reply: `${cliente.nome}: ${ped} pedido(s) aberto(s) · ${por('em_arte')} em arte · ${por('ajustes')} em ajustes · ${por('aguardando_aprovacao')} aguardando aprovação · ${por('aprovado') + por('agendado')} aprovados/agendados · ${falta} post(s) faltando para a meta das próximas 2 semanas (${cliente.meta_semanal}/semana).` };
+    return { handled: true, reply: `${cliente.nome}: ${ped} pedido(s) aberto(s) · ${por('em_arte')} em arte · ${por('em_video')} em vídeo · ${por('ajustes')} em ajustes · ${por('aguardando_aprovacao')} aguardando aprovação · ${por('aprovado') + por('agendado')} aprovados/agendados · ${falta} post(s) faltando para a meta das próximas 2 semanas (${cliente.meta_semanal}/semana).` };
   }
 
   // criar pauta
